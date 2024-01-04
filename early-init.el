@@ -93,14 +93,14 @@
 (defconst my-emacs-dir (expand-file-name user-emacs-directory)
   "The path to the emacs.d directory.")
 
-(defconst my-library-dir (concat my-emacs-dir "my-library/")
+(defconst my-library-dir (concat my-emacs-dir "library/")
   "The directory for my Emacs Lisp libraries.
 This will house all setup libraries and external libraries or packages.")
 
-(defconst my-user-dir (concat my-library-dir "my-private/")
+(defconst my-user-dir (concat my-library-dir "private/")
   "Storage for personal elisp, scripts, and any other private files.")
 
-(defconst my-setup-dir (concat my-library-dir "my-setup/")
+(defconst my-setup-dir (concat my-library-dir "setup/")
   "The storage location of the setup-init files.")
 
 (defconst my-var-dir (concat my-emacs-dir "var/")
@@ -202,5 +202,21 @@ straight) and by `my-etc-dir' and `my-cache-dir'.")
 (unless (file-exists-p package-user-dir)
   (mkdir package-user-dir t))
 (setopt package-quickstart-file (expand-file-name "package-quickstart.el" my-cache-dir))
+
+;;;; Measure Time Macro
+;; Useful macro to wrap functions in for testing
+;; See https://stackoverflow.com/q/23622296
+(defmacro measure-time (&rest body)
+  "Measure the time it takes to evaluate BODY."
+  `(let ((time (current-time)))
+     ,@body
+     (message "
+;; ======================================================
+;; %s *Elapsed time: %.06f*
+;; ======================================================
+" (if load-file-name
+      (file-name-nondirectory (format "%s |" load-file-name))
+    "")
+(float-time (time-since time)))))
 
 ;;; early-init.el ends here
