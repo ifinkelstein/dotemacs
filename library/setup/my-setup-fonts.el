@@ -181,6 +181,16 @@ Use a plist with the same key names as accepted by `set-face-attribute'."
   :config
   (add-hook 'marginalia-mode-hook #'all-the-icons-completion-marginalia-setup))
 
+;;;; Default fonts
+;; Set fonts
+(custom-set-variables
+ '(my-ui-default-font
+   '(:font "SF Mono" :height 200)))
+
+(custom-set-variables
+ '(my-ui-variable-width-font
+   '(:font "DejaVu Sans" :height 200)))
+
 
 (provide 'my-setup-fonts)
 ;;; fonts.el ends here
