@@ -6,22 +6,92 @@
 ;; Personal tweaks to improve LaTeX/AucTeX and related list-packages
 
 ;;; Code:
-(with-eval-after-load 'latex
-;;;; Variables
-  ;; https://emacs.stackexchange.com/questions/3083/how-to-indent-items-in-latex-auctex-itemize-environments
-  (setq LaTeX-indent-level 4) ;; set reasonable indentation for lists
-  (setq LaTeX-item-indent -2) ;; set reasonable indentation for lists
-  (setq TeX-parse-self t) ;; this should auto-detect when biber is needed for C-c C-a
+(message "Setting up LaTeX settings...")
 
+;;;; Latex Packages
+;; Basic settings
+(use-package auctex
+  :mode (("\\.tex\\'" . latex-mode)
+         ("\\.latex\\'" . latex-mode))
+  :commands (latex-mode LaTeX-mode plain-tex-mode)
+  :bind (:map LaTeX-mode-map
+         ("s-u" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "underline"))))
+         ("s-b" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "textbf"))))
+         ("s-i" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "emph"))))
+         ("s-h" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "highlight"))))
+         ("s-$" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "inline math"))))
+         ("s-d" . my-TeX-delete-current-macro)
+         ("M-i" . my-tab-to-tab-stop)
+         ("M-I" . my-tab-to-tab-stop-back))
+  :hook ((LaTeX-mode . variable-pitch-mode)
+         (LaTeX-mode . LaTeX-preview-setup)
+         (LaTeX-mode . flyspell-mode)
+         (LaTeX-mode . outline-minor-mode)
+         (LaTeX-mode . electric-pair-mode)
+         (LaTeX-mode . olivetti-mode)
+         (LaTeX-mode . hl-todo-mode)
+         (LaTeX-mode . turn-on-reftex))
+  ;; may want to disable these later
+  ;; (add-hook 'LaTeX-mode-hook
+  ;;           (lambda () (interactive)
+  ;;             (electric-indent-mode -1)
+  ;;             (auto-fill-mode -1)
+  ;;             (hungry-delete-mode -1)))
+
+  :custom
+  ;; https://emacs.stackexchange.com/questions/3083/how-to-indent-items-in-latex-auctex-itemize-environments
+  (LaTeX-indent-level 4) ;; set reasonable indentation for lists
+  (LaTeX-item-indent -2) ;; set reasonable indentation for lists
+  (TeX-parse-self t) ;; this should auto-detect when biber is needed for C-c C-a
 
   ;; disable reftex from prompting for how to cite
-  (setq reftex-ref-macro-prompt nil)
-  ;; So that RefTeX also recognizes \addbibresource. Note that you
-  ;; can't use $HOME in path for \addbibresource but that "~"
-  ;; works.
-  ;; (setq reftex-bibliography-commands '("bibliography" "nobibliography" "addbibresource"))
+  (reftex-ref-macro-prompt nil)
 
-;;;; Helper functions
+  ;; fold blocks between comments using outline-minor-mode in TeX-mode
+  (TeX-outline-extra
+   '(("%%" 1)
+     ("%%%" 2)
+     ("%%%%" 3)
+     ("%%%%%" 4)))
+
+  ;; click on a PDF to see the TeX source
+  (TeX-source-correlate-mode t)
+
+  ;; this sets the TeX engine to pdfLatex because xelatex was giving me problems with PDF figures.
+  ;; this seems to work by using PdfLatex engine
+  (TeX-engine 'xetex)
+  (TeX-auto-save nil)
+  (TeX-save-query nil)
+  (TeX-PDF-mode t)
+  (TeX-master nil)
+  :config
+   ;;;; Helper functions
+  ;; source: https://emacs.stackexchange.com/questions/6045/how-to-delete-a-latex-macro-while-preserving-its-text-content/7997#7997
+  ;; more useful than C-c C-f C-d
+  (defun my-TeX-delete-current-macro (&optional arg)
+    "Remove the current macro.
+With an optional argument ARG, delete just the ARG-th macro
+starting from the innermost."
+    (interactive "*p")
+    (let (macro end)
+      (when
+          (dotimes (i arg macro)
+            (goto-char (TeX-find-macro-start))
+            (setq macro (TeX-current-macro)
+                  end (TeX-find-macro-end))
+            ;; If we need to look for an outer macro we have to "exit" from the
+            ;; current one.
+            (backward-char))
+        ;; Return to the beginning of the macro to be deleted.
+        (forward-char)
+        (re-search-forward
+         (concat (regexp-quote TeX-esc) macro "\\(?:\\[[^]]*\\]\\)?"
+                 TeX-grop "\\(\\(.\\|\n\\)*\\)")
+         end t)
+        (replace-match "\\1")
+        ;; Delete the closing brace.
+        (delete-backward-char 1))))
+
   ;; citation for the two functions below:https://www.reddit.com/r/emacs/comments/5f99nv/help_with_auctex_how_to_delete_an_environment/
   (defun my-LaTeX-delete-macro ()
     "Remove current macro and return `t'.  If no macro at point,
@@ -56,72 +126,39 @@ return `nil'."
           ;; location of end
           (delete-region end-start end-end)
           (delete-region begin-start begin-end)))))
-;;;; Hooks
-  ;; variable pitch for latex authoring
-  (add-hook 'LaTeX-mode-hook #'variable-pitch-mode)
-  (add-hook 'LaTeX-mode-hook #'outline-minor-mode)
-  ;; fold blocks between comments using outline-minor-mode in TeX-mode
-  (setq TeX-outline-extra
-        '(("%%" 1)
-          ("%%%" 2)
-          ("%%%%" 3)))
 
-  ;; source: https://emacs.stackexchange.com/questions/6045/how-to-delete-a-latex-macro-while-preserving-its-text-content/7997#7997
-  ;; more useful than C-c C-f C-d
-  (defun my-TeX-delete-current-macro (&optional arg)
-    "Remove the current macro.
-With an optional argument ARG, delete just the ARG-th macro
-starting from the innermost."
-    (interactive "*p")
-    (let (macro end)
-      (when
-          (dotimes (i arg macro)
-            (goto-char (TeX-find-macro-start))
-            (setq macro (TeX-current-macro)
-                  end (TeX-find-macro-end))
-            ;; If we need to look for an outer macro we have to "exit" from the
-            ;; current one.
-            (backward-char))
-        ;; Return to the beginning of the macro to be deleted.
-        (forward-char)
-        (re-search-forward
-         (concat (regexp-quote TeX-esc) macro "\\(?:\\[[^]]*\\]\\)?"
-                 TeX-grop "\\(\\(.\\|\n\\)*\\)")
-         end t)
-        (replace-match "\\1")
-        ;; Delete the closing brace.
-        (delete-backward-char 1))))
-  ;; click on a PDF to see the TeX source
-  (setq TeX-source-correlate-mode t)
   ;; view generated PDF with `pdf-tools'.
   (unless (assoc "PDF Tools" TeX-view-program-list)
     (add-to-list 'TeX-view-program-list
                  '("PDF Tools" TeX-pdf-tools-sync-view)))
   (add-to-list 'TeX-view-program-selection
                '(output-pdf "PDF Tools"))
-  ;; useful yasnippets for rapidly formatting text
-  (bind-keys
-   :map LaTeX-mode-map
-   ("s-u" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "underline"))))
-   ("s-b" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "textbf"))))
-   ("s-i" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "emph"))))
-   ("s-h" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "highlight"))))
-   ("s-$" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "inline math"))))
-   ("s-d" . my-TeX-delete-current-macro)
-   ("M-i" . my-tab-to-tab-stop)
-   ("M-I" . my-tab-to-tab-stop-back)))
-;; (remove-hook 'LaTeX-mode-hook #'my-latex-auto-fill) ;; remove auto-fill
-(add-hook 'LaTeX-mode-hook
-          (lambda () (interactive)
-            (electric-pair-mode)
-            (olivetti-mode 1)
-            (electric-indent-mode -1)
-            (hl-todo-mode)
-            (auto-fill-mode -1)
-            (hungry-delete-mode -1)))
-;; this sets the TeX engine to pdfLatex because xelatex was giving me problems with PDF figures.
-;; this seems to work by using PdfLatex engine
-(setq TeX-engine 'xetex)
+
+  ) ;;auctex use-package
+
+;; (use-package preview
+;;   :after auctex
+;;   :commands LaTeX-preview-setup
+;;   :init
+;;   (progn
+;;     (setq-default preview-scale 1.4
+;;                   preview-scale-function '(lambda () (* (/ 10.0 (preview-document-pt)) preview-scale)))))
+
+(use-package reftex
+  :after auctex
+  :commands turn-on-reftex
+  :init
+  (setq reftex-plug-into-AUCTeX t))
+
+(use-package bibtex
+  :after auctex
+  :defer t
+  :mode ("\\.bib" . bibtex-mode)
+  :init
+  (progn
+    (setq bibtex-align-at-equal-sign t)
+    (add-hook 'bibtex-mode-hook (lambda () (set-fill-column 120)))))
+
 (with-eval-after-load 'font-latex
   (set-face-attribute 'font-latex-sedate-face nil :inherit 'fixed-pitch)
   (set-face-attribute 'font-latex-math-face nil :inherit 'fixed-pitch))
