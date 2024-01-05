@@ -96,14 +96,14 @@
 (use-package hl-todo
   :commands hl-todo-mode
   :hook ((prog-mode . hl-todo-mode)
-         (markdown-mode . hl-todo-mode))
+         (markdown-mode . hl-todo-mode)
+         (LaTeX-mode . hl-todo-mode))
   :custom
   (hl-todo-keyword-faces '(("zzz"   . "#FF0000")
                            ("ZZZ"   . "#FF0000")
 	                       ("FIXME"  . "#FF0000")
                            ("todo"  . "#A020F0")
 	                       ("TODO"  . "#A020F0"))))
-
 ;; hydra for TODOs
 (with-eval-after-load 'hydra
   (defhydra my-hydra-todo
