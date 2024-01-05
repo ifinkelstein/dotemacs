@@ -20,8 +20,9 @@
          ("C-n"      . vertico-next            )
          ("C-e"      . vertico-previous        )
          ("C-k"      . vertico-next-group      )
-         ("<escape>" . #'minibuffer-keyboard-quit)
-         ("M-RET"    . #'vertico-exit))
+         ("<escape>" . minibuffer-keyboard-quit)
+         ("M-TAB"    . minibuffer-complete)
+         ("M-RET"    . minibuffer-force-complete-and-exit))
   :hook (emacs-startup . vertico-mode)
   :config
   ;; Cycle through candidates
@@ -143,6 +144,16 @@
 
 ;; A few more useful configurations...
 ;; Add prompt indicator to `completing-read-multiple'.
+;; We display [CRM<separator>], e.g., [CRM,] if the separator is a comma.
+(defun crm-indicator (args)
+  (cons (format "[CRM%s] %s"
+                (replace-regexp-in-string
+                 "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" ""
+                 crm-separator)
+                (car args))
+        (cdr args)))
+(advice-add #'completing-read-multiple :filter-args #'crm-indicator)
+
 (defun crm-indicator (args)
   (cons (concat "[CRM] " (car args)) (cdr args)))
 (advice-add #'completing-read-multiple :filter-args #'crm-indicator)
