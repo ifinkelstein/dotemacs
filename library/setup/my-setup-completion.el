@@ -523,7 +523,7 @@ targets."
   (add-hook 'lambda-themes-after-load-theme-hook #'kind-icon-reset-cache))
 
 ;;;;; Yasnippet
-(defcustom my-all-snippets-dir (concat my-etc-dir "all-snippets/") "DIR for all snippet files."
+(defcustom my-all-snippets-dir (concat my-var-dir "all-snippets/") "DIR for all snippet files."
   :group 'my-emacs)
 
 (use-package yasnippet
