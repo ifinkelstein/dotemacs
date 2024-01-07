@@ -636,5 +636,38 @@ return `nil'."
                                                  ("\\textrquill" . 8262)
                                                  ("\\textcircledP" . 8471)
                                                  ("\\textreferencemark" . 8251)))))
+;;;; after-load latex
+(with-eval-after-load 'latex
+
+;;;; Hooks
+  ;; variable pitch for latex authoring
+  (add-hook 'LaTeX-mode-hook #'variable-pitch-mode)
+  (add-hook 'LaTeX-mode-hook #'outline-minor-mode)
+  ;; fold blocks between comments using outline-minor-mode in TeX-mode
+  (setq TeX-outline-extra
+        '(("%%" 1)
+          ("%%%" 2)
+          ("%%%%" 3)))
+
+  ;; click on a PDF to see the TeX source
+  (setq TeX-source-correlate-mode t)
+  ;; view generated PDF with `pdf-tools'.
+  (unless (assoc "PDF Tools" TeX-view-program-list)
+    (add-to-list 'TeX-view-program-list
+                 '("PDF Tools" TeX-pdf-tools-sync-view)))
+  (add-to-list 'TeX-view-program-selection
+               '(output-pdf "PDF Tools"))
+
+  ;; useful yasnippets for rapidly formatting text
+  (bind-keys
+   :map LaTeX-mode-map
+   ("s-u" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "underline"))))
+   ("s-b" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "textbf"))))
+   ("s-i" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "emph"))))
+   ("s-h" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "highlight"))))
+   ("s-$" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "inline math"))))
+   ("s-d" . mg-TeX-delete-current-macro)
+   ("M-i" . my-tab-to-tab-stop)
+   ("M-I" . my-tab-to-tab-stop-back)))
 ;;; end my-latex
 (provide 'my-setup-latex)
