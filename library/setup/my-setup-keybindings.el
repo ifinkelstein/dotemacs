@@ -381,7 +381,7 @@
                     (grab-mac-link-dwim 'firefox))) ;; re-define to avoid an anon function
            ("g" . org-clock-goto)
            ("G" . my-goto-gtd.org)
-           ("j" . org-goto)
+           ("j" . org-goto-interactive)
            ("h" . org-timeblock)
            ("i" . org-mru-clock-in)
            ("I" . my-goto-inbox.org)
@@ -394,7 +394,7 @@
            ("p" . org-pomodoro)
            ("q" . org-set-tags-command)
            ("R" . org-mru-clock-select-recent-task)
-           ("s" . org-ql-find-in-agenda)
+           ("s" . my-consult-org-ql-agenda-jump) ;; defined in org-ql, needs consult
            ("S" . my-org-reschedule) ;;TODO: fix this bit so we get an intelligent search
            ;; ("S" . org-ql-search)
            ("w" . org-refile)
@@ -433,6 +433,7 @@
            ("l" . selectrum-repeat             )
            ("n" . consult-notes-search-all     )
            ("r" . vr/query-replace             )
+           ("R" . substitute-target-in-buffer  )
            ("s" . consult-line                 )
            ;; search for next spelling error
            ("S" . my-flyspell-ispell-goto-next-error)

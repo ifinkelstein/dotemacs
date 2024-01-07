@@ -718,9 +718,9 @@ the query (for links starting with \"query:\")."
            :query "from:Julie Glasser"
            :key ?j)
           ;; (:name "UT Staff" :query "from:Desiree OR from:linda OR from:Amanda" :key ?M)
-          (:name "Woom"
-           :query "woom"
-           :key ?W)
+          (:name "Price Watch"
+           :query "woom or f:noreply@camelcamelcamel.com"
+           :key ?P)
           (:name "Search"
            :query "flag:unread AND (from:jobalerts-noreply@linkedin.com OR from:noreply@jobmail.naturecareers.com OR from:noreply@jobrxiv.org OR from:reply@sciencecareers.org OR from:support@academicjobsonline.org OR from:jobseeker@higheredjobs.com)"
            :key ?J)

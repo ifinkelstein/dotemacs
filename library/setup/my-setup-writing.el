@@ -182,8 +182,8 @@ Version 2017-06-02"
 (use-package abbrev
   :ensure nil
   :defer 2
+  :hook (text-mode . abbrev-mode)
   :config
-  ;; (add-hook 'text-mode-hook #'abbrev-mode)
   (setq abbrev-file-name (concat my-var-dir "abbrev/.abbrev_defs")
         save-abbrevs 'nil)
   (if (file-exists-p abbrev-file-name)

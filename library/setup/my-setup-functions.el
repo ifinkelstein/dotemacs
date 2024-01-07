@@ -848,6 +848,11 @@ will be killed."
 (remove-hook 'kill-emacs-query-functions #'my--quit-p)
 (add-hook 'kill-emacs-query-functions #'my--quit)
 
+;;;; Org functions
+;; search through an org file headings using a simple interface
+(defun org-goto-interactive ()
+  (interactive)
+  (org-goto 'outline))
 ;;; Provide
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (provide 'my-setup-functions)

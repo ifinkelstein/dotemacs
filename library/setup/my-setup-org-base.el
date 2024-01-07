@@ -1058,7 +1058,7 @@ one week to the next, unchecking them at the same time"
   (interactive)
   (find-file (concat org-directory "gtd.org")))
 
-(defun my-org-todo-region ()
+(defun my-org-change-todo-region ()
   "Toggle TODO states in the current region or tree of an org file. This function
 is interactive and allows users to switch TODO states for all entries in either
 the current region, if a region is selected, or the current tree."
