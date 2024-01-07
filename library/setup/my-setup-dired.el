@@ -78,7 +78,7 @@
       (replace-regexp-in-string old-date-regex today str))
      (t (concat str "." today)))))
 
-(defun ijf-dired-rename-marked-files-add-date ()
+(defun my-dired-rename-marked-files-add-date ()
   "Add a date to marked files in dired buffer."
   (interactive)
   (let* ((files (dired-get-marked-files)))
