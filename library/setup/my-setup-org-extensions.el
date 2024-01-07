@@ -336,7 +336,84 @@ use 'server-force-delete' and 'server-mode' to restart."
 
 ;;; org-ql
 ;; search org files with a query language org-ql
-(use-package org-ql)
+(use-package org-ql
+  :after (consult) ;; for org agenda searches
+  :config
+  (defun my-org-agenda-next ()
+    "Show the agenda block, followed by NEXT tasks in every project.
+The NEXT tasks are sorted by priority."
+    (interactive)
+    (org-ql-search (org-agenda-files)
+      '(and (or (ts-active :on today)
+                (deadline auto)
+                (scheduled :to today))
+            (not (done)))
+      :title "My Agenda View"
+      ;; The `org-super-agenda-groups' setting is used automatically when set, or it
+      ;; may be overriden by specifying it here:
+      :super-groups '((:name "bla"
+                       :tag "writing")
+                      (:todo ("NEXT" "TODO")
+                       :order 7)
+                      (:name "Personal"
+                       :habit t
+                       :tag "personal"
+                       :order 3)
+                      (:todo "WAITING"
+                       :order 6)
+                      (:priority "A" :order 1)
+                      (:priority "B" :order 2)
+
+                      (:priority "C" :order 2))))
+  ;; inspiration for the functions below from here:
+  ;; https://sachachua.com/blog/2024/01/using-consult-and-org-ql-to-search-my-org-mode-agenda-files-and-sort-the-results-to-prioritize-heading-matches/
+  (defun my-consult-org-ql-agenda-jump ()
+    "Search agenda files with preview."
+    (interactive)
+    (let* ((marker (consult--read
+                    (consult--dynamic-collection
+                     #'my-consult-org-ql-agenda-match)
+                    :state (consult--jump-state)
+                    :category 'consult-org-heading
+                    :prompt "Heading: "
+                    :sort nil
+                    :lookup #'consult--lookup-candidate))
+           (buffer (marker-buffer marker))
+           (pos (marker-position marker)))
+      ;; based on org-agenda-switch-to
+      (unless buffer (user-error "Trying to switch to non-existent buffer"))
+      (pop-to-buffer-same-window buffer)
+      (goto-char pos)
+      (when (derived-mode-p 'org-mode)
+        (org-fold-show-context 'agenda)
+        (run-hooks 'org-agenda-after-show-hook))))
+
+  (defun my-consult-org-ql-agenda-format (o)
+    (propertize
+     (org-ql-view--format-element o)
+     'consult--candidate (org-element-property :org-hd-marker o)))
+
+  (defun my-consult-org-ql-agenda-match (string)
+    "Return candidates that match STRING.
+Sort heading matches first, followed by other matches.
+Within those groups, sort by date and priority."
+    (let* ((query (org-ql--query-string-to-sexp string))
+           (sort '(date reverse priority))
+           (heading-query (-tree-map (lambda (x) (if (eq x 'rifle) 'heading x)) query))
+           (matched-heading
+            (mapcar #'my-consult-org-ql-agenda-format
+                    (org-ql-select 'org-agenda-files heading-query
+                      :action 'element-with-markers
+                      :sort sort)))
+           (all-matches
+            (mapcar #'my-consult-org-ql-agenda-format
+                    (org-ql-select 'org-agenda-files query
+                      :action 'element-with-markers
+                      :sort sort))))
+      (append
+       matched-heading
+       (seq-difference all-matches matched-heading))))
+  ) ;; org-ql
 ;;; org-sticky-header
 (use-package org-sticky-header
   :hook (org-mode . org-sticky-header-mode)
