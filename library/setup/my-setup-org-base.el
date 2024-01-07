@@ -403,7 +403,7 @@ _vr_ reset      ^^                       ^^                 ^^
   (org-export-async-debug t)
   (org-html-postamble nil) ;; dont export postamble
   (org-export-async-init-file nil)
-  (org-export-backends '(ascii beamer html icalendar latex odt pandoc md))
+  (org-export-backends '(html latex pandoc md)) ;;org-export-dispatcher menu
   ;; org v8 bundled with Emacs 24.4
   (org-odt-preferred-output-format "docx")
   :config
