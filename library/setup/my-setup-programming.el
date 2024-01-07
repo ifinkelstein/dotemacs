@@ -471,7 +471,7 @@ Lisp function does not specify a special indentation."
   :hook
   (emacs-lisp-mode . highlight-quoted-mode))
 
-;;;; dwim-shell-commands
+;;;; dwim-shell-command
 ;; convenient commands for working with the CLI
 (use-package dwim-shell-command
   :vc (:fetcher github :repo xenodium/dwim-shell-command)
@@ -481,6 +481,22 @@ Lisp function does not specify a special indentation."
          ([remap dired-do-shell-command] . dwim-shell-command)
          ([remap dired-smart-shell-command] . dwim-shell-command))
   :config
+  (defun dwim-shell-commands-unzip ()
+    "Unzip all marked archives (of any kind) using `atool'."
+    (interactive)
+    (dwim-shell-command-on-marked-files
+     "Unzip" "atool --extract --explain '<<f>>'"
+     :utils "atool"))
+
+  (defun dwim-shell-commands-zip ()
+    "Zip all marked files into archive.zip."
+    (interactive)
+    (dwim-shell-command-on-marked-files
+     "Zip" (if (eq 1 (seq-length (dwim-shell-command--files)))
+               "zip -r '<<fne>>.<<e>>' '<<f>>'"
+             "zip -r '<<archive.zip(u)>>' '<<*>>'")
+     :utils "zip"))
+
   (defun dwim-shell-command-print ()
     "Spool selected files to default printer."
     (interactive)
