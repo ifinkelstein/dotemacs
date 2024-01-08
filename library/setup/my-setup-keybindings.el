@@ -421,12 +421,15 @@
 (bind-keys :prefix-map my+search-keys
            :prefix (concat my-prefix " s")
            ("a" . consult-org-agenda           )
+           ("b" . consult-multi-occur          )
            ;; search current buffer's directory
            ("d" . consult-ripgrep              )
            ;; search with directory input
            ("D" . my-search-in-input-dir      )
-           ("b" . consult-multi-occur          )
            ("f" . consult-line                 )
+           ("F" . affe-find                        )
+           ("H" . (lambda () (interactive)
+                    (affe-find "~")) )
            ("h" . consult-org-heading          )
            ("j" . my-forward-or-backward-sexp )
            ("k" . consult-yank-pop             )
@@ -438,6 +441,8 @@
            ;; search for next spelling error
            ("S" . my-flyspell-ispell-goto-next-error)
            ("t" . my-hydra-todo/body          )
+           ("W" . (lambda () (interactive)
+                    (affe-find "~/Work")) )
            ("." . consult-line-symbol-at-point ))
 
 ;;;;; Toggle Keybindings
@@ -491,6 +496,7 @@
 (bind-keys :prefix-map my+window-keys
            :prefix (concat my-prefix " w")
            ("a" .  ace-window                      )
+           ("b" .  balance-windows )
            ("f" .  my-toggle-window-split         )
            ("c" .  delete-window                   )
            ("d" .  delete-window                   )
