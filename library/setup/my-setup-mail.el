@@ -909,7 +909,7 @@ select one email at a time.
   )
 ;;;; End Mu4e
 
-;;;; Using Org & HTML (Org-MSG
+;;;; Using Org & HTML (Org-Msg)
 (use-package org-msg
   :after (mu4e)
   ;; avoid pesky org ASCII Export buffer
