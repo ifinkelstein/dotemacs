@@ -378,6 +378,41 @@ _vr_ reset      ^^                       ^^                 ^^
     ("." org-agenda-goto-today)
     ("gr" org-agenda-redo)))
 
+;;;; org-clock
+(use-package org-clock
+  :ensure nil
+  :after org
+  :custom
+  (org-clock-history-length 23) ;; show more items in the org-clock dispatcher
+  ;; Change tasks to NEXT when clocking in
+  ;; (org-clock-in-switch-to-state 'bh/clock-in-to-next) ;TODO: fix underlying functions
+
+  ;; Sometimes I change tasks I'm clocking quickly - this removes clocked tasks with 0:00 duration
+  (org-clock-out-remove-zero-time-clocks t)
+  ;; Clock out when moving task to a done state
+  (org-clock-out-when-done t)
+  ;; Save the running clock and all clock history when exiting Emacs, load it on startup
+  (org-clock-persist t)
+  ;; Include current clocking task in clock reports
+  (org-clock-report-include-clocking-task t)
+  :config
+
+  ;; borrowed from:https://doc.norang.ca/org-mode.html#Clocking
+  (defun bh/clock-in-to-next (kw)
+    "Switch a task from TODO to NEXT when clocking in.
+Skips capture tasks, projects, and subprojects.
+Switch projects and subprojects from NEXT back to TODO"
+    (when (not (and (boundp 'org-capture-mode) org-capture-mode))
+      (cond
+       ((and (member (org-get-todo-state) (list "TODO"))
+             (bh/is-task-p))
+        "NEXT")
+       ((and (member (org-get-todo-state) (list "NEXT"))
+             (bh/is-project-p))
+        "TODO"))))
+
+  )
+
 ;;;; Org Contrib
 (use-package org-contrib
   :ensure t
