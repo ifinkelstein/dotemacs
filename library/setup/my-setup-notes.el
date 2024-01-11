@@ -45,11 +45,15 @@
            :immediate-finish t ;; this bypasses the org-roam capture C-c C-c interface to insert notes rapidly during composition
            :unnarrowed t)))
   (setq org-roam-dailies-directory "daily/")
+
+  ;; add an entry with a clock report to each daily file so I can see where my time goes
   (setq org-roam-dailies-capture-templates
         '(("d" "default" entry
            "* %?"
            :if-new (file+head "%<%Y-%m-%d>.org"
-                              "#+TITLE: %<%Y-%m-%d>\n \n#+CREATED: %U\n#+LAST_MODIFIED: %U\n\n"))))
+                              "#+TITLE: %<%Y-%m-%d>\n \n#+CREATED: %U\n#+LAST_MODIFIED: %U\n\n
+* Summary Clock Table
+#+BEGIN: clocktable :maxlevel 2 :emphasize nil :scope agenda :block %<%Y-%m-%d> :fileskip0 t\n\n#+END:\n" ))))
 
   ;; exclude headings with org-attach tags from indexing by org-roam
   ;; https://www.orgroam.com/manual.html#What-to-cache
