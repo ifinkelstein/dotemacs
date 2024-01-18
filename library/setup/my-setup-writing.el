@@ -311,6 +311,9 @@ Version 2017-06-02"
 
   ;; define useful word rotations
   (grugru-define-multiple
+    (org-mode
+     (symbol "TODO" "NEXT" "DONE")
+     (symbol "deep" "shallow"))
     (text-mode
      (symbol "true" "false")
      (symbol "left" "right")
@@ -330,10 +333,6 @@ Version 2017-06-02"
   (global-hungry-delete-mode))
 
 ;;;; Writing modes and helper functions
-;; disable pulsing cursor with a neg number
-(with-eval-after-load 'pulsing-cursor
-  (pulsing-cursor-mode -1))
-
 (with-eval-after-load 'expand-region
   (global-set-key (kbd "C-=") 'er/expand-region))
 

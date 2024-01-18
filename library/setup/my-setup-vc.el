@@ -29,6 +29,7 @@
 
 ;;;; Magit
 (use-package magit
+  :after transient
   :commands
   (magit-blame-mode
    magit-commit

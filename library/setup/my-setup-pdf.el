@@ -55,7 +55,6 @@
   ;; other hooks
   (add-hook 'pdf-view-mode-hook (lambda ()
                                   (blink-cursor-mode -1)
-                                  (pulsing-cursor-mode -1)
                                   (display-line-numbers-mode -1)
                                   (column-number-mode -1)
                                   (auto-revert-mode -1))))
