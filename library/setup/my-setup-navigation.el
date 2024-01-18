@@ -209,14 +209,20 @@
   (defun avy-action-mark-to-char (pt)
     (activate-mark)
     (goto-char (+ 1 pt)))
-  (setf (alist-get ?m avy-dispatch-alist) 'avy-action-mark-to-char)
+  (setf (alist-get ?M avy-dispatch-alist) 'avy-action-mark-to-char)
 
   (defun avy-action-helpful (pt)
     (avy-generic-command-action #'helpful-at-point))
-  (setf (alist-get ?h avy-dispatch-alist) 'avy-action-helpful)
+  (setf (alist-get ?H avy-dispatch-alist) 'avy-action-helpful)
 
   (defun avy-action-flyspell (pt)
-    (avy-generic-command-action #'flyspell-auto-correct-word))
+    (save-excursion
+      (goto-char pt)
+      (when (require 'flyspell nil t)
+        (flyspell-auto-correct-word)))
+    (select-window
+     (cdr (ring-ref avy-ring 0)))
+    t)
   (setf (alist-get ?. avy-dispatch-alist) 'avy-action-flyspell)
 
   ;; Useful actions here
@@ -281,7 +287,9 @@
 
   (defun avy-action-teleport-whole-line (pt)
     (avy-action-kill-whole-line pt)
-    (save-excursion (yank)) t))
+    (save-excursion (yank)) t)
+
+  ) ;;use-package avy
 
 ;;;; Link-Hint
 ;; use avy to navigate links
