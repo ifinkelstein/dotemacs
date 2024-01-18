@@ -10,9 +10,11 @@
 
 ;;;; Latex Packages
 ;; Basic settings
-(use-package auctex
+(use-package LaTeX
+  :ensure auctex
   :mode (("\\.tex\\'" . latex-mode)
-         ("\\.latex\\'" . latex-mode))
+         ("\\.latex\\'" . latex-mode)
+         ("\\.tikz\\'" . latex-mode))
   :commands (latex-mode LaTeX-mode plain-tex-mode)
   :bind (:map LaTeX-mode-map
          ("s-u" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "underline"))))
@@ -26,11 +28,14 @@
   :hook ((LaTeX-mode . variable-pitch-mode)
          (LaTeX-mode . LaTeX-preview-setup)
          (LaTeX-mode . flyspell-mode)
-         (LaTeX-mode . outline-minor-mode)
+         (LaTeX-mode . outline-minor-mode) ;; clobbers TAB expansion of yas-snippets
          (LaTeX-mode . electric-pair-mode)
          (LaTeX-mode . olivetti-mode)
          (LaTeX-mode . hl-todo-mode)
-         (LaTeX-mode . turn-on-reftex))
+         (LaTeX-mode . turn-on-reftex)
+         (LaTeX-mode . electric-indent-local-mode) ;; trying to see if I like this mode
+
+         )
   ;; may want to disable these later
   ;; (add-hook 'LaTeX-mode-hook
   ;;           (lambda () (interactive)
@@ -43,6 +48,9 @@
   (LaTeX-indent-level 4) ;; set reasonable indentation for lists
   (LaTeX-item-indent -2) ;; set reasonable indentation for lists
   (TeX-parse-self t) ;; this should auto-detect when biber is needed for C-c C-a
+
+  ;; for navigation menu
+  (reftex-toc-split-windows-fraction 0.15)
 
   ;; disable reftex from prompting for how to cite
   (reftex-ref-macro-prompt nil)
@@ -669,5 +677,21 @@ return `nil'."
    ("s-d" . mg-TeX-delete-current-macro)
    ("M-i" . my-tab-to-tab-stop)
    ("M-I" . my-tab-to-tab-stop-back)))
+;;; helpful functions
+;; control how reftex toc shows up
+(add-to-list 'display-buffer-alist
+             '("^\\*toc\\*" imenu-list-display-buffer))
+
+;; ref:
+;; https://github.com/malb/emacs.d/blob/master/malb.org#latex-2
+;; TODO: test this function in my workflow
+(defun malb/latex-jump ()
+  "If point is on a citation, jump to the bibtex file, otherwise open refex menu."
+  (interactive)
+  (xref-push-marker-stack)
+  (let ((current (point)))
+    (ignore-errors (org-ref-latex-jump-to-bibtex))
+    (if (eq current (point))
+        (reftex-goto-label))))
 ;;; end my-latex
 (provide 'my-setup-latex)
