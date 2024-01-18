@@ -405,6 +405,7 @@ the query (for links starting with \"query:\")."
      ((string-match-p "no-reply" addr) nil)
      ((string-match-p "@finkelteinlab" addr) nil)
      ((string-match-p "@fortelabs" addr) nil)
+     ((string-match-p "elvirasmail2@gmail.com" addr) nil)
      ((string-match-p "ccenik@stanford.edu" addr) nil)
      ((string-match-p "bxhem13@gmail.com" addr) nil) ;; Blerta' alt email do not use
      ((string-match-p "cmazzalin@medicina.ulisboa.pt" addr) nil)
@@ -810,7 +811,7 @@ the query (for links starting with \"query:\")."
 
 
 ;;;; Miscellaneous helper :functions
-  (defun ijf-email-to-kill-ring ()
+  (defun my-email-to-kill-ring ()
     "Prompt user to search for an email address. Save selected ones to the kill ring.
 
 If there's no match, return the input. Since I'm not using completing-read-multiple, can only
