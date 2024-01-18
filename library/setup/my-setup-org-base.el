@@ -118,7 +118,6 @@
   ;; don't set to DONE if children aren’t DONE
   (org-enforce-todo-dependencies t)
   (org-enforce-todo-checkbox-dependencies t)
-
   :config
   (add-hook 'org-mode-hook (lambda ()  ;; don't pair < symbols
                              (setq-local electric-pair-inhibit-predicate
@@ -131,13 +130,15 @@
 (use-package org-agenda
   :ensure nil
   :commands (org-agenda)
+  ;; Always highlight the current agenda line
+  :hook ((org-agenda-mode . (lambda () (hl-line-mode 1))))
   :custom
   ;; Agenda logging
   (org-agenda-start-with-log-mode t)
 
   ;; Agenda styling
-  (org-auto-align-tags nil) ;; Don't align tags
-  (org-agenda-tags-column 0) ;; Put tags next to heading
+  (org-auto-align-tags t) ;; Align tags
+  (org-agenda-tags-column 'auto) ;; Put tags to the right
   (org-agenda-breadcrumbs-separator "  ")
   (org-agenda-block-separator " ") ;; No default block seperator
   (org-agenda-time-grid
@@ -146,10 +147,15 @@
      " ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄"))
   (org-agenda-current-time-string
    "–––––––––––––– Now")
+  (org-agenda-compact-blocks t) ;; fit more information in the agend view
 
   ;; Display properties
   (org-agenda-tags-column org-tags-column)
+
+  ;; hide inherited tags, but this makes it impossible to sort by these tags
+  ;; so I need to change this locally in some agenda views
   (org-agenda-show-inherited-tags nil)
+
   (org-agenda-window-setup 'only-window)
   (org-agenda-restore-windows-after-quit t)
 
@@ -158,7 +164,7 @@
   (org-agenda-prefix-format
    '((agenda . " %-18c%?-10t ")
      (timeline . "  % s")
-     (todo . " ")
+     (todo . " %?-8c:%b %?s")
      (tags . " ")
      (search . " %i %-12:c")))
 
@@ -167,66 +173,92 @@
   (org-agenda-skip-timestamp-if-done t)
   (org-agenda-todo-ignore-scheduled 'future)
   (org-agenda-todo-ignore-deadlines 'far)
+  ;; Sorting order for tasks on the agenda
   (org-agenda-sorting-strategy
-   '((agenda time-up) (todo time-up) (tags time-up) (search time-up)))
+   (quote ((agenda habit-down time-up user-defined-up effort-up category-keep)
+           (todo category-up effort-up)
+           (tags category-up effort-up)
+           (search category-up))))
+  ;; (org-agenda-sorting-strategy
+  ;;  '((agenda time-up) (todo time-up) (tags time-up) (search time-up)))
+
   (calendar-week-start-day 1) ;; Start week on Monday
 
   ;; Agenda Custom Commands
   ;; Configure custom agenda views
   ;; https://orgmode.org/manual/Storing-searches.html#Storing-searches
   ;; https://systemcrafters.cc/emacs-from-scratch/organize-your-life-with-org-mode/
-
+  ;; https://doc.norang.ca/org-mode.html#CustomAgendaViews
   (org-agenda-custom-commands
-   '(("d" "Dashboard"
-      ((agenda "" ((org-agenda-span 'day)))
-       (tags-todo "DEADLINE=\"<today>\""
-                  ((org-agenda-overriding-header "Due Today!")))
-       (tags-todo "+DEADLINE<\"<+5d>\"+DEADLINE>\"<today>\""
-                  ((org-agenda-overriding-header "Due Soon")))
-       (todo "NEXT"
-             ((org-agenda-overriding-header "Next Tasks")))
-       (tags-todo "email" ((org-agenda-overriding-header "Email")))
-       ))
-
-     ("n" "Next Tasks"
-      ((todo "NEXT"
-             ((org-agenda-overriding-header "Next Tasks")))))
-
-     ("W" "Work Tasks" tags-todo "+work")
-
-     ;; Low-effort next actions
-     ("e" tags-todo "+TODO=\"NEXT\"+Effort<15&+Effort>0"
-      ((org-agenda-overriding-header "Low Effort Tasks")
-       (org-agenda-max-todos 20)
-       (org-agenda-files org-agenda-files)))
-
-     ("w" "Workflow Status"
-      ((todo "WAIT"
-             ((org-agenda-overriding-header "Waiting on External")
-              (org-agenda-files org-agenda-files)))
-       (todo "REVIEW"
-             ((org-agenda-overriding-header "In Review")
-              (org-agenda-files org-agenda-files)))
-       (todo "PLAN"
-             ((org-agenda-overriding-header "In Planning")
-              (org-agenda-todo-list-sublevels nil)
-              (org-agenda-files org-agenda-files)))
-       (todo "BACKLOG"
-             ((org-agenda-overriding-header "Project Backlog")
-              (org-agenda-todo-list-sublevels nil)
-              (org-agenda-files org-agenda-files)))
-       (todo "READY"
-             ((org-agenda-overriding-header "Ready for Work")
-              (org-agenda-files org-agenda-files)))
-       (todo "ACTIVE"
-             ((org-agenda-overriding-header "Active Projects")
-              (org-agenda-files org-agenda-files)))
-       (todo "COMPLETED"
-             ((org-agenda-overriding-header "Completed Projects")
-              (org-agenda-files org-agenda-files)))
-       (todo "CANCELED"
-             ((org-agenda-overriding-header "Cancelled Projects")
-              (org-agenda-files org-agenda-files))))))))
+   (quote (("h" "Ongoing and Habits" tags-todo "ongoing"
+            ((org-agenda-overriding-header "Habits")
+             (org-agenda-sorting-strategy
+              '(todo-state-down effort-up category-keep))))
+           (" " "Agenda"
+            ((agenda "" nil)
+             (tags "REFILE"
+                   ((org-agenda-overriding-header "Tasks to Refile")
+                    (org-tags-match-list-sublevels nil)))
+             (tags-todo "-CANCELLED/!"
+                        ((org-agenda-overriding-header "Stuck Projects")
+                         (org-agenda-skip-function 'bh/skip-non-stuck-projects)
+                         (org-agenda-sorting-strategy
+                          '(category-keep))))
+             (tags-todo "-HOLD-CANCELLED/!"
+                        ((org-agenda-overriding-header "Projects")
+                         (org-agenda-skip-function 'bh/skip-non-projects)
+                         (org-tags-match-list-sublevels 'indented)
+                         (org-agenda-sorting-strategy
+                          '(category-keep))))
+             (tags-todo "-CANCELLED/!NEXT"
+                        ((org-agenda-overriding-header (concat "Project Next Tasks"
+                                                               (if bh/hide-scheduled-and-waiting-next-tasks
+                                                                   ""
+                                                                 " (including WAITING and SCHEDULED tasks)")))
+                         (org-agenda-skip-function 'bh/skip-projects-and-habits-and-single-tasks)
+                         (org-tags-match-list-sublevels t)
+                         (org-agenda-todo-ignore-scheduled bh/hide-scheduled-and-waiting-next-tasks)
+                         (org-agenda-todo-ignore-deadlines bh/hide-scheduled-and-waiting-next-tasks)
+                         (org-agenda-todo-ignore-with-date bh/hide-scheduled-and-waiting-next-tasks)
+                         (org-agenda-sorting-strategy
+                          '(todo-state-down effort-up category-keep))))
+             (tags-todo "-REFILE-CANCELLED-WAITING-HOLD/!"
+                        ((org-agenda-overriding-header (concat "Project Subtasks"
+                                                               (if bh/hide-scheduled-and-waiting-next-tasks
+                                                                   ""
+                                                                 " (including WAITING and SCHEDULED tasks)")))
+                         (org-agenda-skip-function 'bh/skip-non-project-tasks)
+                         (org-agenda-todo-ignore-scheduled bh/hide-scheduled-and-waiting-next-tasks)
+                         (org-agenda-todo-ignore-deadlines bh/hide-scheduled-and-waiting-next-tasks)
+                         (org-agenda-todo-ignore-with-date bh/hide-scheduled-and-waiting-next-tasks)
+                         (org-agenda-sorting-strategy
+                          '(category-keep))))
+             (tags-todo "-REFILE-CANCELLED-WAITING-HOLD/!"
+                        ((org-agenda-overriding-header (concat "Standalone Tasks"
+                                                               (if bh/hide-scheduled-and-waiting-next-tasks
+                                                                   ""
+                                                                 " (including WAITING and SCHEDULED tasks)")))
+                         (org-agenda-skip-function 'bh/skip-project-tasks)
+                         (org-agenda-todo-ignore-scheduled bh/hide-scheduled-and-waiting-next-tasks)
+                         (org-agenda-todo-ignore-deadlines bh/hide-scheduled-and-waiting-next-tasks)
+                         (org-agenda-todo-ignore-with-date bh/hide-scheduled-and-waiting-next-tasks)
+                         (org-agenda-sorting-strategy
+                          '(category-keep))))
+             (tags-todo "-CANCELLED+WAITING|HOLD/!"
+                        ((org-agenda-overriding-header (concat "Waiting and Postponed Tasks"
+                                                               (if bh/hide-scheduled-and-waiting-next-tasks
+                                                                   ""
+                                                                 " (including WAITING and SCHEDULED tasks)")))
+                         (org-agenda-skip-function 'bh/skip-non-tasks)
+                         (org-tags-match-list-sublevels nil)
+                         (org-agenda-todo-ignore-scheduled bh/hide-scheduled-and-waiting-next-tasks)
+                         (org-agenda-todo-ignore-deadlines bh/hide-scheduled-and-waiting-next-tasks)))
+             (tags "-REFILE/"
+                   ((org-agenda-overriding-header "Tasks to Archive")
+                    (org-agenda-skip-function 'bh/skip-non-archivable-tasks)
+                    (org-tags-match-list-sublevels nil))))
+            nil))))
+  ) ;; use-package org-agenda
 
 ;;;;; Agenda Jump to Dashboard
 (defun my-jump-to-org-dashboard ()
@@ -489,14 +521,17 @@ Switch projects and subprojects from NEXT back to TODO"
   (add-to-list 'org-structure-template-alist ele)))
 
 ;;;; TODO Keywords and tags
-;; tags
-(setq org-tag-alist '(("class" . ?c)
-                      ("admin" . ?a)
+;; tags, in alphabetical order
+(setq org-tag-alist '(("admin" . ?a)
+                      ("class" . ?c)
+                      ("deep" . ?d)
                       ("email" . ?e)
                       ("errands" . ?r)
-                      ("service" . ?s)
+                      ("service" . ?u) ;; university and other service
+                      ("shallow" . ?s)
                       ("travel" . ?t)
                       ("writing" . ?w)))
+;; useful for adding multiple tags to an entry
 (setq org-fast-tag-selection-single-key nil)
 (customize-set-variable 'org-todo-keywords
                         '((sequence "TODO(t)" "WAITING(w)" "NEXT(n)" "|" "DONE(d)" "CANCELLED(c)")))
@@ -528,7 +563,7 @@ Switch projects and subprojects from NEXT back to TODO"
      (setq org-map-continue-from (outline-previous-heading)))
    "/DONE" 'file))
 
-;;;; Org Refile
+;;;;; Org Refile
 ;; Set refile settings.  I got a lot of help on this from Aaron Bieber's discussion.
 ;; See https://blog.aaronbieber.com/2017/03/19/organizing-notes-with-refile.html.
 
@@ -545,7 +580,13 @@ Switch projects and subprojects from NEXT back to TODO"
   (org-refile-use-cache t)  ;; use cache for org refile
   (org-refile-use-outline-path 'file)
   (org-outline-path-complete-in-steps nil)
-  (org-refile-allow-creating-parent-nodes 'confirm))
+  (org-refile-allow-creating-parent-nodes 'confirm)
+  :config
+  ;; Set a timer to regenerate the refile cache automatically every time Emacs is idled for 5 mins:
+  ;; ref: https://yiming.dev/blog/2018/03/02/my-org-refile-workflow/
+  (run-with-idle-timer 300 t (lambda ()
+                               (org-refile-cache-clear)
+                               (org-refile-get-targets))))
 
 ;;;; Open Files in Default Application
 ;;Open files in their default applications (ms word being the prime example)
@@ -556,7 +597,34 @@ Switch projects and subprojects from NEXT back to TODO"
                           ("\\.pdf\\'" . emacs)
                           (auto-mode . emacs)))
 
-;;;; Org Functions
+;;;; Helper Functions
+;;;;; Copy kill text under heading
+(defun my-org-kill-text-under-heading ()
+  "Kill the text under the current org-mode heading. The function moves the
+point to the next heading and kills the region between the current heading and
+the next one, if any."
+  (interactive)
+  (save-excursion
+    (org-back-to-heading)
+    (forward-line)
+    (unless (= (point) (point-max))
+      (let ((b (point))
+            (e (or (outline-next-heading) (point-max))))
+        (kill-region b e)))))
+
+(defun my-org-copy-text-under-heading ()
+  "Copy the text under the current org-mode heading.
+The function moves the point to the next heading and copies the
+region between the current heading and the next one, if any."
+  (interactive)
+  (save-excursion
+    (org-back-to-heading)
+    (forward-line)
+    (unless (= (point) (point-max))
+      (let ((b (point))
+            (e (or (outline-next-heading) (point-max))))
+        (copy-region-as-kill b e)))))
+
 ;;;;; Org Emphasis Functions
 ;; Adapted from https://emacs.stackexchange.com/a/14586
 ;; See https://emacstil.com/til/2021/11/29/org-emphasize-dwim/
@@ -1060,12 +1128,12 @@ one week to the next, unchecking them at the same time"
 ;; (my-previous-user-buffer))
 
 ;;;;; Attaching files
-(defun org-attach-save-file-list-to-property (dir)
+(defun my-org-attach-save-file-list-to-property (dir)
   "Save list of attachments to ORG_ATTACH_FILES property."
   (when-let* ((files (org-attach-file-list dir)))
     (org-set-property "ORG_ATTACH_FILES" (mapconcat #'identity files ", "))))
 
-(add-hook 'org-attach-after-change-hook #'org-attach-save-file-list-to-property)
+(add-hook 'org-attach-after-change-hook #'my-org-attach-save-file-list-to-property)
 
 ;;;;; Reschedule
 (defun my-org-reschedule ()

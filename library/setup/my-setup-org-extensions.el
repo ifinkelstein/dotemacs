@@ -337,7 +337,8 @@ use 'server-force-delete' and 'server-mode' to restart."
 ;;; org-ql
 ;; search org files with a query language org-ql
 (use-package org-ql
-  :after (consult) ;; for org agenda searches
+  :after (consult org) ;; for org agenda searches
+  :commands (org-ql-find org-ql-find-in-agenda my-consult-org-ql-agenda-jump org-ql-view)
   :config
   (defun my-org-agenda-next ()
     "Show the agenda block, followed by NEXT tasks in every project.
@@ -421,64 +422,171 @@ Within those groups, sort by date and priority."
   (org-sticky-header-full-path 'full))
 
 ;;; org-super-agenda
+;; useful for folding elements in org-agenda
+;; I can use outline-mode for this, but this already exists and is ready to go
+;; https://www.reddit.com/r/orgmode/comments/1070bi2/a_little_elisp_to_kill_lines_in_the_agenda_like/
+(use-package origami
+  :hook (org-agenda-mode . origami-mode)
+  :bind (:map org-super-agenda-header-map
+         ("<tab>" . origami-toggle-node)))
+
 (use-package org-super-agenda
   :after org
   :config
-  (org-super-agenda-mode)
-  (setq org-agenda-custom-commands
-        '(
-          ("q" "Quick picks"
-           ((alltodo "" ((org-agenda-overriding-header "Quick picks (<0:15)")
-                         (org-super-agenda-groups
-                          '((:name "NEXT"
-                             :effort< "0:15"
-                             :take (3) ;; only take three items
-                             :order 1)
-                            (:name "TODO"
-                             :effort< "0:15"
-                             :take (3) ;; only take three items
-                             :order 10)
-                            (:discard (:anything t)) ;; get rid of everything else
-                            )))
-                     ))) ;; quick picks
-          ("z" "Super view"
-           ((agenda "" ((org-agenda-span 'day)
-                        (org-super-agenda-groups
-                         '((;; note that this also shows DONE tasks in grid view
-                            :name "Today"
-                            :time-grid t
-                            :date today
-                            :scheduled today
-                            :order 1)
-                           (:discard (:anything t)) ;; discard everything else in agenda view
-                           ))))
-            (alltodo "" ((org-agenda-overriding-header "")
-                         (org-super-agenda-groups
-                          '((:name "Next to do"
-                             :todo "NEXT"
-                             :order 1)
-                            (:name "Important"
-                             :tag "Important"
-                             :priority "A"
-                             :order 6)
-                            (:name "Due Today"
-                             :deadline today
-                             :order 2)
-                            (:name "Due Soon"
-                             :deadline future
-                             :order 8)
-                            (:name "Overdue"
-                             :deadline past
-                             :order 7)
-                            (:name "Waiting"
-                             :todo "WAITING"
-                             :order 20)
-                            (:name "Trivial"
-                             :priority<= "C"
-                             :todo ("SOMEDAY" )
-                             :order 90)
-                            )))))) ;; super view (z)
-          )))
+  ;; (setq org-super-agenda-groups nil)
+  (org-super-agenda-mode))
+(setq org-agenda-custom-commands
+      (quote (("z" "Super View"
+               ((agenda "" ((org-agenda-span 'day)
+                            (org-super-agenda-groups
+                             '((:name "Today"
+                                :time-grid t
+                                :date today
+                                :deadline today
+                                :deadline past
+                                :scheduled today
+                                :discard (:anything t)
+                                :order 1))) ))
+                ;; use org-super-agenda to organize all agenda items in a bucket
+                (alltodo "" ((org-use-tag-inheritance t)
+                             (org-agenda-show-inherited-tags 'always) ;; makes sure org-super-agenda can search tags
+                             (org-agenda-overriding-header "")
+                             (org-super-agenda-groups
+                              '((:name "Refile"
+                                 :tag "inbox"
+                                 :order 10)
+                                (:name "Lab and Administrative"
+                                 :and (:tag "lab"
+                                       :todo "NEXT")
+                                 :and (:tag "lab"
+                                       :todo "TODO")
+                                 :and (:tag "lab"
+                                       :todo "WAITING")
+                                 :order 20)
+
+                                (:name "Grants"
+                                 :and (:tag "grant"
+                                       :todo "NEXT")
+                                 :and (:tag "grant"
+                                       :todo "TODO")
+                                 :and (:tag "grant"
+                                       :todo "WAITING")
+                                 :order 30)
+
+                                (:name "Projects"
+                                 :and (:tag "project"
+                                       :todo "NEXT")
+                                 :and (:tag "project"
+                                       :todo "TODO")
+                                 :and (:tag "project"
+                                       :todo "WAITING")
+                                 :order 40)
+
+                                ;; chores--only next or TODO
+                                (:name "Chores"
+                                 :and (:tag "chore"
+                                       :todo "NEXT")
+                                 :and (:tag "chore"
+                                       :todo "TODO")
+                                 :and (:tag "chore"
+                                       :todo "WAITING")
+                                 :order 50)
+
+                                (:name "Teaching"
+                                 :and (:tag "teach"
+                                       :todo "NEXT")
+                                 :and (:tag "teach"
+                                       :todo "TODO")
+                                 :and (:tag "teach"
+                                       :todo "WAITING")
+                                 :order 80)
+
+                                (:name "Collaborations"
+                                 :and (:tag "collab"
+                                       :todo "NEXT")
+                                 :and (:tag "collab"
+                                       :todo "TODO")
+                                 :and (:tag "collab"
+                                       :todo "WAITING")
+                                 :order 95)
+                                ))))))
+              ("a" "Agenda"
+               ((agenda "" ((org-agenda-span 2)))
+                (alltodo ""
+                         ((org-agenda-overriding-header "")
+                          (org-agenda-show-inherited-tags )
+                          (org-super-agenda-groups
+                           '((:name "Inbox, unscheduled"
+                              :and (:scheduled nil)
+                              :order 1)
+                             (:name "Important, unscheduled"
+                              :and (:priority "A"
+                                    :scheduled nil)
+                              :order 2)
+
+                             (:name "Project-related, unscheduled"
+                              :and (:tag "project" :date nil :todo ("STARTED" "WAITING" "TODO"))
+                              :order 3)
+                             (:name "Waiting"
+                              :and (:todo "WAITING"
+                                    :scheduled nil)
+                              :order 4)
+                             (:discard (:todo "SOMEDAY"
+                                        :category "cooking"
+                                        :date t))
+                             (:name "Unscheduled"
+                              :scheduled nil
+                              :order 5)
+                             (:discard (:anything t))
+                             )
+                           )))
+                ;; (tags-todo "TODO=\"TODO\"-project-cooking-routine-errands-shopping-video-evilplans"
+                ;;            ((org-agenda-skip-function 'my-org-agenda-skip-scheduled)
+                ;;             (org-agenda-prefix-format "%-6e ")
+                ;;             (org-agenda-overriding-header "Unscheduled TODO entries: ")
+                ;;             (org-agenda-sorting-strategy '(priority-down effort-up tag-up category-keep))))
+                ))
+              ;; show all emacs tasks, with the top-most entry as NEXT, then TODO, then WAITING
+              ("e" "Emacs" tags "emacs"
+               ((org-super-agenda-groups
+                 '((:name "Next Action"
+                    :todo "NEXT"
+                    :order 1)
+                   (:name "TODOs"
+                    :todo "TODO"
+                    :order 2)))))
+              ("i" "Inbox" alltodo ""
+               ((org-agenda-files '("~/sync/orgzly/Inbox.org" "~/sync/orgzly/computer-inbox.org"))))
+
+              ;; quick tasks, with NEXT first, but limited to five entries
+              ;; then show all todo ENTRIES
+              ;; finally, show everything else
+              ("q" "Quick tasks" alltodo ""
+               ((org-agenda-overriding-header "")
+                (org-super-agenda-groups
+                 '((:name "Next Action"
+                    :take (5 (:and (:todo "NEXT"
+                                    :effort< "0:30")))
+                    :order 1)
+                   (:name "TODOs"
+                    :and (:todo "TODO"
+                          :effort< "0:30")
+                    :order 2)
+                   (:name "Everything else"
+                    :and (:not (:todo "TODO")
+                          :effort< "0:30")
+                    :discard (:anything t)
+                    :order 3)))))
+              ("0" "Unestimated tasks" tags-todo "EFFORT=\"\"")
+              ("d" "Timeline for today" ((agenda "" ))
+               ((org-agenda-ndays 1)
+                (org-agenda-show-log t)
+                (org-agenda-log-mode-items '(clock closed))
+                (org-agenda-clockreport-mode t)
+                (org-agenda-entry-types '())))
+              ("." "Waiting for" todo "WAITING")
+              )))
+
 
 ;;; org-timeblock for scheduling todos
 (use-package org-timeblock)
