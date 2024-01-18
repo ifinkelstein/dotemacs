@@ -22,7 +22,7 @@
          ("C-k"      . vertico-next-group      )
          ("<escape>" . minibuffer-keyboard-quit)
          ("M-TAB"    . minibuffer-complete)
-         ("M-RET"    . minibuffer-force-complete-and-exit))
+         ("M-RET"    . vertico-exit-input))
   :hook (emacs-startup . vertico-mode)
   :config
   ;; Cycle through candidates
