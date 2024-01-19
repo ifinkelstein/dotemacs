@@ -103,7 +103,7 @@
    '("F" . my+flycheck-keys)
    '("i" . cpm/find-files-setup-config-directory)
    '("I" . cpm/search-setup-config-files)
-   ;;'("J" . crux-top-join-line)
+   ;; '("J" . crux-top-join-line)
    '("j" . avy-goto-word-1)
    '("J" . avy-goto-char-timer)
    '("k" . consult-yank-from-kill-ring)

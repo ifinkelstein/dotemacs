@@ -449,6 +449,7 @@ Within those groups, sort by date and priority."
                                 :order 1))) ))
                 ;; use org-super-agenda to organize all agenda items in a bucket
                 (alltodo "" ((org-use-tag-inheritance t)
+                             (org-agenda-dim-blocked-tasks nil) ;; speeds up agenda generation
                              (org-agenda-show-inherited-tags 'always) ;; makes sure org-super-agenda can search tags
                              (org-agenda-overriding-header "")
                              (org-super-agenda-groups
@@ -456,57 +457,75 @@ Within those groups, sort by date and priority."
                                  :tag "inbox"
                                  :order 10)
                                 (:name "Lab and Administrative"
-                                 :and (:tag "lab"
+                                 :and (:category "Lab"
                                        :todo "NEXT")
-                                 :and (:tag "lab"
+                                 :and (:category "Lab"
                                        :todo "TODO")
-                                 :and (:tag "lab"
+                                 :and (:category "Lab"
                                        :todo "WAITING")
                                  :order 20)
 
                                 (:name "Grants"
-                                 :and (:tag "grant"
+                                 :and (:category "Grants"
                                        :todo "NEXT")
-                                 :and (:tag "grant"
+                                 :and (:category "Grants"
                                        :todo "TODO")
-                                 :and (:tag "grant"
+                                 :and (:category "Grants"
                                        :todo "WAITING")
                                  :order 30)
 
                                 (:name "Projects"
-                                 :and (:tag "project"
+                                 :and (:category "Project"
                                        :todo "NEXT")
-                                 :and (:tag "project"
+                                 :and (:category "Project"
                                        :todo "TODO")
-                                 :and (:tag "project"
+                                 :and (:category "Project"
                                        :todo "WAITING")
                                  :order 40)
 
                                 ;; chores--only next or TODO
                                 (:name "Chores"
-                                 :and (:tag "chore"
+                                 :and (:category "Chores"
                                        :todo "NEXT")
-                                 :and (:tag "chore"
+                                 :and (:category "Chores"
                                        :todo "TODO")
-                                 :and (:tag "chore"
+                                 :and (:category "Chores"
                                        :todo "WAITING")
                                  :order 50)
 
-                                (:name "Teaching"
-                                 :and (:tag "teach"
+                                (:name "Career"
+                                 :and (:category "Career"
                                        :todo "NEXT")
-                                 :and (:tag "teach"
+                                 :and (:category "Career"
                                        :todo "TODO")
-                                 :and (:tag "teach"
+                                 :and (:category "Career"
+                                       :todo "WAITING")
+                                 :order 60)
+
+                                (:name "Family"
+                                 :and (:category "Family"
+                                       :todo "NEXT")
+                                 :and (:category "Family"
+                                       :todo "TODO")
+                                 :and (:category "Family"
+                                       :todo "WAITING")
+                                 :order 70)
+
+                                (:name "Teaching"
+                                 :and (:category "Teach"
+                                       :todo "NEXT")
+                                 :and (:category "Teach"
+                                       :todo "TODO")
+                                 :and (:category "Teach"
                                        :todo "WAITING")
                                  :order 80)
 
                                 (:name "Collaborations"
-                                 :and (:tag "collab"
+                                 :and (:category "collab"
                                        :todo "NEXT")
-                                 :and (:tag "collab"
+                                 :and (:category "collab"
                                        :todo "TODO")
-                                 :and (:tag "collab"
+                                 :and (:category "collab"
                                        :todo "WAITING")
                                  :order 95)
                                 ))))))
