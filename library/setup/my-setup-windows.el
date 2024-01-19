@@ -42,7 +42,8 @@
 (defun my-other-window ()
   (interactive)
   (other-window 1))
-(bind-key* "C-c C-o" 'my-other-window)
+;; (bind-key* "C-c C-o" 'my-other-window) ;; interferes with org-open-link
+
 
 
 ;; Easy window movement by key
