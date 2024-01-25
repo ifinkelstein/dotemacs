@@ -810,7 +810,17 @@ the query (for links starting with \"query:\")."
   (advice-add 'mu4e-mark-at-point :after #'mu4e-mark-at-point-advice)
 
 
-;;;; Miscellaneous helper :functions
+;;;; Miscellaneous helper functions
+  (defun my-email-message-to-kill-ring ()
+    "Yank the current message text into the kill ring"
+    (interactive)
+    (when (mu4e-is-mode-or-derived-p 'gnus-article-mode)
+      (save-excursion
+        (let ((start (message-goto-body))
+              (end (point-max)))
+          (kill-ring-save start end)))))
+
+
   (defun my-email-to-kill-ring ()
     "Prompt user to search for an email address. Save selected ones to the kill ring.
 

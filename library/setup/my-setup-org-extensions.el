@@ -338,34 +338,36 @@ use 'server-force-delete' and 'server-mode' to restart."
 ;; search org files with a query language org-ql
 (use-package org-ql
   :after (consult org) ;; for org agenda searches
-  :commands (org-ql-find org-ql-find-in-agenda my-consult-org-ql-agenda-jump org-ql-view)
-  :config
-  (defun my-org-agenda-next ()
-    "Show the agenda block, followed by NEXT tasks in every project.
-The NEXT tasks are sorted by priority."
-    (interactive)
-    (org-ql-search (org-agenda-files)
-      '(and (or (ts-active :on today)
-                (deadline auto)
-                (scheduled :to today))
-            (not (done)))
-      :title "My Agenda View"
-      ;; The `org-super-agenda-groups' setting is used automatically when set, or it
-      ;; may be overriden by specifying it here:
-      :super-groups '((:name "bla"
-                       :tag "writing")
-                      (:todo ("NEXT" "TODO")
-                       :order 7)
-                      (:name "Personal"
-                       :habit t
-                       :tag "personal"
-                       :order 3)
-                      (:todo "WAITING"
-                       :order 6)
-                      (:priority "A" :order 1)
-                      (:priority "B" :order 2)
+  :defer 3)
 
-                      (:priority "C" :order 2))))
+;;;; org-ql associated functions
+(defun my-org-agenda-next ()
+  "Show the agenda block, followed by NEXT tasks in every project.
+The NEXT tasks are sorted by priority."
+  (interactive)
+  (org-ql-search (org-agenda-files)
+    '(and (or (ts-active :on today)
+              (deadline auto)
+              (scheduled :to today))
+          (not (done)))
+    :title "My Agenda View"
+    ;; The `org-super-agenda-groups' setting is used automatically when set, or it
+    ;; may be overriden by specifying it here:
+    :super-groups '((:name "bla"
+                     :tag "writing")
+                    (:todo ("NEXT" "TODO")
+                     :order 7)
+                    (:name "Personal"
+                     :habit t
+                     :tag "personal"
+                     :order 3)
+                    (:todo "WAITING"
+                     :order 6)
+                    (:priority "A" :order 1)
+                    (:priority "B" :order 2)
+
+                    (:priority "C" :order 2))))
+
   ;; inspiration for the functions below from here:
   ;; https://sachachua.com/blog/2024/01/using-consult-and-org-ql-to-search-my-org-mode-agenda-files-and-sort-the-results-to-prioritize-heading-matches/
   (defun my-consult-org-ql-agenda-jump ()
@@ -389,32 +391,32 @@ The NEXT tasks are sorted by priority."
         (org-fold-show-context 'agenda)
         (run-hooks 'org-agenda-after-show-hook))))
 
-  (defun my-consult-org-ql-agenda-format (o)
-    (propertize
-     (org-ql-view--format-element o)
-     'consult--candidate (org-element-property :org-hd-marker o)))
+(defun my-consult-org-ql-agenda-format (o)
+  (propertize
+   (org-ql-view--format-element o)
+   'consult--candidate (org-element-property :org-hd-marker o)))
 
-  (defun my-consult-org-ql-agenda-match (string)
-    "Return candidates that match STRING.
+(defun my-consult-org-ql-agenda-match (string)
+  "Return candidates that match STRING.
 Sort heading matches first, followed by other matches.
 Within those groups, sort by date and priority."
-    (let* ((query (org-ql--query-string-to-sexp string))
-           (sort '(date reverse priority))
-           (heading-query (-tree-map (lambda (x) (if (eq x 'rifle) 'heading x)) query))
-           (matched-heading
-            (mapcar #'my-consult-org-ql-agenda-format
-                    (org-ql-select 'org-agenda-files heading-query
-                      :action 'element-with-markers
-                      :sort sort)))
-           (all-matches
-            (mapcar #'my-consult-org-ql-agenda-format
-                    (org-ql-select 'org-agenda-files query
-                      :action 'element-with-markers
-                      :sort sort))))
-      (append
-       matched-heading
-       (seq-difference all-matches matched-heading))))
-  ) ;; org-ql
+  (let* ((query (org-ql--query-string-to-sexp string))
+         (sort '(date reverse priority))
+         (heading-query (-tree-map (lambda (x) (if (eq x 'rifle) 'heading x)) query))
+         (matched-heading
+          (mapcar #'my-consult-org-ql-agenda-format
+                  (org-ql-select 'org-agenda-files heading-query
+                    :action 'element-with-markers
+                    :sort sort)))
+         (all-matches
+          (mapcar #'my-consult-org-ql-agenda-format
+                  (org-ql-select 'org-agenda-files query
+                    :action 'element-with-markers
+                    :sort sort))))
+    (append
+     matched-heading
+     (seq-difference all-matches matched-heading))))
+
 ;;; org-sticky-header
 (use-package org-sticky-header
   :hook (org-mode . org-sticky-header-mode)
@@ -635,7 +637,18 @@ Within those groups, sort by date and priority."
 (use-package toc-org
   :hook ((org-mode . toc-org-mode)
          (markdown-mode . toc-org-mode)))
-
+;;; org-clock-convenience
+;; additional clocking functions for agenda view
+(use-package org-clock-convenience
+  :disabled TODO:not sure this works or is worth it
+  :after (org)
+  :commands (org-clock-convenience-goto-ts
+             org-clock-convenience-goto-last-clockout
+             org-clock-convenience-timestamp-up
+             org-clock-convenience-timestamp-down)
+  :bind (:map org-agenda-mode-map
+   	     ("<S-up>" . org-clock-convenience-timestamp-up)
+   	     ("<S-down>" . org-clock-convenience-timestamp-down)))
 ;;; valign
 ;; package for nice vertical table alignment with variable width fonts
 ;; note: performance suffers for multiple tables or when there are >100 entries in a single table

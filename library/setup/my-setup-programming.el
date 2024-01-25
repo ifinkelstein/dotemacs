@@ -49,15 +49,15 @@
 ;; TODO: Add  hydra or transient to expose more embrace commander commands
 (use-package embrace
   ;; :bind (("C-M-s-#" . embrace-commander))
+  :hook ((org-mode . embrace-org-mode-hook)
+         (markdown-mode . embrace-markdown-mode-hook))
   :config
-  (add-hook 'org-mode-hook 'embrace-org-mode-hook)
   (defun embrace-markdown-mode-hook ()
     (dolist (lst '((?* "*" . "*")
                    (?\ "\\" . "\\")
                    (?$ "$" . "$")
                    (?/ "/" . "/")))
-      (embrace-add-pair (car lst) (cadr lst) (cddr lst))))
-  (add-hook 'markdown-mode-hook 'embrace-markdown-mode-hook))
+      (embrace-add-pair (car lst) (cadr lst) (cddr lst)))))
 
 ;;;;; Structural Editing: Edit & Traverse Delimiters
 ;; TODO: Write a transient for puni bindings
@@ -532,6 +532,14 @@ If this doesn't work, then the file can be reduced further in Adobe Acrobat."
      "Reduce PDF file size"
      "  gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile=\"<<fne>>.reduced.pdf\" \"<<f>>\""
      :utils "gs"))
+
+  (defun dwim-shell-commands-converst-to-docx ()
+    "Convert file(s) to docx using custom template."
+    (interactive)
+    (dwim-shell-command-on-marked-files
+     "Convert to DOCX"
+     "pandoc --reference-doc '/Users/ilya/Work/80-89 other writing/80 letter-templates/generic-word-template.docx' -i '<<f>>' -o '<<fne>>.docx'"
+     :utils "pandoc"))
 
   (defun dwim-shell-commands-pdf-to-txt ()
     "Convert pdf to txt."

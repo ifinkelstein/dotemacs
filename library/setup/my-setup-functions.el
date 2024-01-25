@@ -91,6 +91,24 @@
 (put 'ns-print-buffer 'disabled t)
 (put 'suspend-frame 'disabled t)
 
+;;;; Package management
+
+;; https://emacsredux.com/blog/2020/09/12/reinstalling-emacs-packages/
+(defun my-reinstall-package (pkg)
+  "Reinstall the Emacs package PKG.
+
+First, prompts the user to select a package to reinstall from the list
+of installed packages. Then unloads the currently loaded features of the
+selected package, reinstalls the package, and finally requires the package
+to ensure it is loaded into the current Emacs session.
+
+PKG is the package symbol selected by the user."
+
+  (interactive (list (intern (completing-read "Reinstall package: " (mapcar #'car package-alist)))))
+  (unload-feature pkg)
+  (package-reinstall pkg)
+  (require pkg))
+
 ;;;; CRUX
 ;; A Collection of Ridiculously Useful eXtensions for Emacs. Crux bundles many
 ;; useful interactive commands to enhance your overall Emacs experience. Most of

@@ -151,7 +151,10 @@ questions.  Otherwise use completion to select the tab."
                            :as #'buffer-name)))
 
     "Set workspace buffer list for consult-buffer."))
-
+;;;; burly to manage emacs
+(use-package burly
+  :config
+  (burly-tabs-mode))
 ;;;; tabgo -- avy keys for switching between tabs
 (use-package tabgo
   :vc (:fetcher github :repo isamert/tabgo.el)

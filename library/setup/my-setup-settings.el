@@ -333,6 +333,38 @@
   ;; Note that the default is x100), but this seems too high.
   (setq undo-outer-limit 1006632960))
 
+;;;;; vundo -- visual undo
+;; TODO: test this out some more
+(use-package vundo
+  ;; :custom
+  ;; (vundo-glyph-alist vundo-unicode-symbols)
+  ;; (vundo-compact-display t)
+  :config
+  (set-face-attribute 'vundo-default nil :family "Symbola")
+  (set-face-attribute 'vundo-node nil :foreground "grey60")
+  (set-face-attribute 'vundo-stem nil :foreground "grey60")
+  (set-face-attribute 'vundo-highlight nil :inherit 'unspecified :foreground 'unspecified) ; Don’t change the face (change only the character).
+  (set-face-attribute 'vundo-saved nil :foreground "black") ; REVIEW (bug?): Saving a node that wasn’t saved and then saving another strips the first one of the ‘vundo-saved’ face (it’s displayed as if it was never saved).
+  (set-face-attribute 'vundo-last-saved nil :underline t))
+;;;;; undu-fu
+;; The changes compared Emacs undo are as follows:
+;; - Redo will not pass the initial undo action.
+;; - Redo will not undo (unlike Emacs redo which traverses previous undo/redo steps).
+;; - These constraints can be temporarily disabled by pressing C-g before undo or redo.
+(use-package undo-fu
+  :config
+  (global-unset-key (kbd "s-z"))
+  (global-set-key   (kbd "s-z")   'undo-fu-only-undo)
+  (global-set-key   (kbd "s-S-z") 'undo-fu-only-redo))
+
+;; remember undo/redo across sessions
+;; https://codeberg.org/ideasman42/emacs-undo-fu-session
+(use-package undo-fu-session
+  :custom
+  (undo-fu-session-directory my-var-dir)
+  (undo-fu-session-incompatible-files '("/COMMIT_EDITMSG\\'" "/git-rebase-todo\\'")))
+(undo-fu-session-global-mode)
+
 ;;;; Multisession
 
 (use-package multisession

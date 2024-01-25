@@ -125,8 +125,9 @@ emacs-version string on the kill ring."
 
 ;; org settings
 (setq org-directory "/Users/ilya/Work/org/"
+      org-cal-directory "/Users/ilya/Work/org/cal"
       org-default-notes-file (concat org-directory "inbox.org")
-      org-agenda-files (list org-directory))
+      org-agenda-files (list org-directory org-cal-directory))
 
 
 

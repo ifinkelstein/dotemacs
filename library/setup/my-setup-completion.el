@@ -204,15 +204,22 @@
          ("C-S-o" . embark-act)
          ("C-J"   . embark-switch-to-live-occur)
          ("M-q"   . embark-occur-toggle-view)
+         ;; https://www.reddit.com/r/emacs/comments/19ec8v5/weekly_tips_tricks_c_thread/
+         ;; see if this works, not clear that its doing anything
+         :map minibuffer-local-map
+         ("C-SPC" . (lambda ()
+            (interactive)
+            (embark-select)
+            (vertico-next)))
          :map completion-list-mode-map
-         (";" . embark-act)
-         :map embark-file-map
-         ("x" . consult-file-externally)
-         ("O" . xah-open-in-external-app)
-         ;; When using the Embark package, you can bind `marginalia-cycle' as an Embark action
-         :map embark-general-map
-         ("A"  . marginalia-cycle)
-         ("G" . ijf-embark-google-search))
+          (";" . embark-act)
+          :map embark-file-map
+          ("x" . consult-file-externally)
+          ("O" . xah-open-in-external-app)
+          ;; When using the Embark package, you can bind `marginalia-cycle' as an Embark action
+          :map embark-general-map
+          ("A"  . marginalia-cycle)
+          ("G" . ijf-embark-google-search))
   :init
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)

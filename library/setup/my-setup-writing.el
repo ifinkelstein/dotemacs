@@ -129,6 +129,10 @@ Version 2017-06-02"
   :custom
   (flyspell-correct-interface #'flyspell-correct-completing-read))
 
+;; use avy for flyspell corrections
+(use-package flyspell-correct-avy-menu
+  :after flyspell-correct)
+
 (with-eval-after-load 'hydra
   ;; keybinding is SPC-b S
   (defhydra hydra-spelling (:color blue)
@@ -285,6 +289,21 @@ Version 2017-06-02"
 ;; macro: delete backslashes in paragraph to cleanup markdown conversion
 (fset 'my-md-delete-backslash
       (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item (quote ("\361\361f\\x" 0 "%d")) arg)))
+;;;; Writeroom mode
+(use-package writeroom-mode
+  :custom
+  ;; solve weird bug in fullscreen mode
+  (writeroom-fullscreen-effect 'maximized)
+  :config
+
+  ;; disable tab bar mode in writeroom mode
+  (defun my-writeroom-theme (arg)
+    (cond
+     ((= arg 1)
+      (tab-bar-mode -1))
+     ((= arg -1)
+      (tab-bar-mode 1))))
+  (add-to-list 'writeroom-global-effects 'my-writeroom-theme))
 
 ;;;; Olivetti
 ;; this package isn't extreme/opinionated as writeroom-mode

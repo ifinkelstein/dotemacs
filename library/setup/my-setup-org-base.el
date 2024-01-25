@@ -575,8 +575,11 @@ Switch projects and subprojects from NEXT back to TODO"
   :ensure nil
   :after org
   :custom
-  (org-refile-targets '((nil :maxlevel . 9)
-                        (org-agenda-files :maxlevel . 8)))
+  ;; first entry points to current buffer
+  ;; tricky syntax help here:
+  ;; https://www.reddit.com/r/orgmode/comments/u320fj/add_directory_instead_of_individual_files_to/
+  (org-refile-targets `((nil :maxlevel . 9)
+                        (,(directory-files org-directory 'full (rx ".org" eos)) :maxlevel . 8)))
   (org-refile-use-cache t)  ;; use cache for org refile
   (org-refile-use-outline-path 'file)
   (org-outline-path-complete-in-steps nil)

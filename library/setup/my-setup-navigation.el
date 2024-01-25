@@ -289,6 +289,27 @@
     (avy-action-kill-whole-line pt)
     (save-excursion (yank)) t)
 
+  ;; additional useful avy actions
+  ;; https://github.com/abo-abo/avy/issues/312
+  (defun avy-goto-symbol-at-point (&optional arg)
+    "Jump to a visible occurance of symbol-at-point.
+The window scope is determined by `avy-all-windows' (ARG negates it)."
+    (interactive "P")
+    (let ((avy-all-windows (if arg
+                               (not avy-all-windows)
+                             avy-all-windows)))
+      (avy-with avy-goto-symbol-at-point
+        (avy-process
+         (avy--regex-candidates (regexp-quote (thing-at-point 'symbol t)))))))
+
+;; additional useful avy actions
+  ;; https://github.com/abo-abo/avy/issues/312
+  (defun avy-goto-string (string)
+    "Jump to a visible occurace of string."
+    (interactive (list (read-from-minibuffer "String: " nil nil nil nil (thing-at-point 'symbol t)))
+    (avy-with avy-goto-string
+      (avy-process
+       (avy--regex-candidates (regexp-quote string))))))
   ) ;;use-package avy
 
 ;;;; Link-Hint

@@ -90,6 +90,18 @@
              (new-name (concat file-dir (add-todays-date-remove-old name) "." ext)))
         (rename-file file new-name)))))
 
+(defun my-dired-copy-marked-files-add-date ()
+  "Copy marked file(s) and add today's date in dired buffer."
+  (interactive)
+  (let* ((files (dired-get-marked-files)))
+    (dolist (file files)
+      (let* ((file-dir (file-name-directory file))
+             (file-name (file-name-nondirectory file))
+             (name (file-name-sans-extension file-name))
+             (ext (file-name-extension file-name))
+             (new-name (concat file-dir (add-todays-date-remove-old name) "." ext)))
+        (copy-file file new-name)))))
+
 (defun xah-open-in-external-app (&optional @fname)
   "Open the current file or dired/dirvish-marked files in external app.
 When called in emacs lisp, if @fname is given, open that.

@@ -103,7 +103,11 @@
                            ("ZZZ"   . "#FF0000")
 	                       ("FIXME"  . "#FF0000")
                            ("todo"  . "#A020F0")
-	                       ("TODO"  . "#A020F0"))))
+	                       ("TODO"  . "#A020F0")))
+  :config
+  (global-hl-todo-mode))
+
+(use-package consult-todo)
 ;; hydra for TODOs
 (with-eval-after-load 'hydra
   (defhydra my-hydra-todo

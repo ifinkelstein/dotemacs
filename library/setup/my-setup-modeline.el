@@ -45,6 +45,7 @@
   (lambda-line-symbol-position 0.1)
   :custom-face
   (lambda-line-visual-bell ((t (:background "red3"))))
+  (org-agenda-clocking ((t (:foreground "maroon" :underline t))))
   :config
   (lambda-line-mode)
   (lambda-line-visual-bell-config)
