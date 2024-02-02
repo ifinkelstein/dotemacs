@@ -586,8 +586,6 @@ the query (for links starting with \"query:\")."
   (setq mu4e-contexts
         (list
          ;; Work account(s). First one is considered default for picking policies
-
-
          (make-mu4e-context
           :name "Lab"
           :match-func
@@ -820,6 +818,15 @@ the query (for links starting with \"query:\")."
               (end (point-max)))
           (kill-ring-save start end)))))
 
+  (defun my-mu4e-yank-message ()
+    "Yank the current message text into the kill ring"
+    ;; TODO: make sure cursor is in mu4e-view mode
+    (interactive)
+
+    (save-excursion
+      (let ((start (message-goto-body))
+            (end (point-max)))
+        (kill-ring-save start end))))
 
   (defun my-email-to-kill-ring ()
     "Prompt user to search for an email address. Save selected ones to the kill ring.

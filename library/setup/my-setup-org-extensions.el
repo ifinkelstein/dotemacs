@@ -333,12 +333,16 @@ use 'server-force-delete' and 'server-mode' to restart."
         (t
          (message "No clock"))
         ))
+;;; org-extra-emphasis
+;; easier highlighting in org
+(use-package org-extra-emphasis
+  :vc (:fetcher github :repo QiangF/org-extra-emphasis))
 
 ;;; org-ql
 ;; search org files with a query language org-ql
 (use-package org-ql
-  :after (consult org) ;; for org agenda searches
-  :defer 3)
+  :after (org) ;; for org agenda searches
+  :demand t)
 
 ;;;; org-ql associated functions
 (defun my-org-agenda-next ()
@@ -368,28 +372,30 @@ The NEXT tasks are sorted by priority."
 
                     (:priority "C" :order 2))))
 
-  ;; inspiration for the functions below from here:
-  ;; https://sachachua.com/blog/2024/01/using-consult-and-org-ql-to-search-my-org-mode-agenda-files-and-sort-the-results-to-prioritize-heading-matches/
-  (defun my-consult-org-ql-agenda-jump ()
-    "Search agenda files with preview."
-    (interactive)
-    (let* ((marker (consult--read
-                    (consult--dynamic-collection
-                     #'my-consult-org-ql-agenda-match)
-                    :state (consult--jump-state)
-                    :category 'consult-org-heading
-                    :prompt "Heading: "
-                    :sort nil
-                    :lookup #'consult--lookup-candidate))
-           (buffer (marker-buffer marker))
-           (pos (marker-position marker)))
-      ;; based on org-agenda-switch-to
-      (unless buffer (user-error "Trying to switch to non-existent buffer"))
-      (pop-to-buffer-same-window buffer)
-      (goto-char pos)
-      (when (derived-mode-p 'org-mode)
-        (org-fold-show-context 'agenda)
-        (run-hooks 'org-agenda-after-show-hook))))
+;; inspiration for the functions below from here:
+;; https://sachachua.com/blog/2024/01/using-consult-and-org-ql-to-search-my-org-mode-agenda-files-and-sort-the-results-to-prioritize-heading-matches/
+(defun my-consult-org-ql-agenda-jump ()
+  "Search agenda files with preview."
+  (interactive)
+  (require 'org-ql-search) ;; this will hopefully avoid loading errors
+
+  (let* ((marker (consult--read
+                  (consult--dynamic-collection
+                   #'my-consult-org-ql-agenda-match)
+                  :state (consult--jump-state)
+                  :category 'consult-org-heading
+                  :prompt "Heading: "
+                  :sort nil
+                  :lookup #'consult--lookup-candidate))
+         (buffer (marker-buffer marker))
+         (pos (marker-position marker)))
+    ;; based on org-agenda-switch-to
+    (unless buffer (user-error "Trying to switch to non-existent buffer"))
+    (pop-to-buffer-same-window buffer)
+    (goto-char pos)
+    (when (derived-mode-p 'org-mode)
+      (org-fold-show-context 'agenda)
+      (run-hooks 'org-agenda-after-show-hook))))
 
 (defun my-consult-org-ql-agenda-format (o)
   (propertize

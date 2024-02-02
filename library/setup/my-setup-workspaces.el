@@ -51,21 +51,22 @@
 
 ;;;;;; Open Agenda as Workspace
 (defun my-open-agenda-in-workspace ()
-  "Open agenda in its own workspace"
+  "Open agenda in its own workspace. Create workspace, if necessary"
   (interactive)
+  ;; load required functions
+  (require 'org)
+  (require 'org-super-agenda)
   (if (member "Agenda" (tabspaces--list-tabspaces))
       (progn
-        (tab-bar-switch-to-tab "Agenda")
-        (switch-to-buffer "*Org Agenda*")
-        (org-agenda-redo)
-        (delete-other-windows))
+        (tab-bar-switch-to-tab "Agenda"))
     (progn
       (tab-bar-new-tab)
       (tab-bar-rename-tab "Agenda")
-      (require 'org)
-      (require 'org-super-agenda)
-      (require 'mu4e)
-      (org-agenda nil "z"))))
+      (tab-move-to 1)))
+  ;; load the inbox, gtd, and agenda
+  (my-goto-gtd.org)
+  (my-goto-inbox.org)
+  (org-agenda nil "z"))
 
 ;;;;; Open emacs.d in Workspace
 (defun my-open-emacsd-in-workspace ()

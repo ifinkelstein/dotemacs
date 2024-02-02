@@ -99,7 +99,9 @@ Version 2017-06-02"
   ;; (setq mermaid-flags "run -u 1000 -v /tmp:/tmp ghcr.io/mermaid-js/mermaid-cli/mermaid-cli:latest")
   (setq mermaid-mmdc-location "mmdc")
   (setq mermaid-flags "")
-  (setq mermaid-output-format ".pdf"))
+  ;; SVG export doesn't work
+  ;; https://github.com/mermaid-js/mermaid/issues/2102
+  (setq mermaid-output-format ".pdf") )
 
 ;;;; Spelling
 (use-package ispell
@@ -289,6 +291,18 @@ Version 2017-06-02"
 ;; macro: delete backslashes in paragraph to cleanup markdown conversion
 (fset 'my-md-delete-backslash
       (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item (quote ("\361\361f\\x" 0 "%d")) arg)))
+;;;; Dictionary
+;; built in
+(use-package dictionary
+  :ensure nil
+  :bind ("M-#" . dictionary-lookup-definition)
+  :custom
+  (dictionary-server "dict.org"))
+
+;;;; anki-org
+;; instructions:
+;; https://github.com/eyeinsky/org-anki
+(use-package org-anki)
 ;;;; Writeroom mode
 (use-package writeroom-mode
   :custom
