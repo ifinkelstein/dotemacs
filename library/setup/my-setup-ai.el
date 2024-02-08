@@ -16,6 +16,39 @@
 
   ;; gptel helper functions
 
+  (defun my-convert-pdf-to-org-and-open ()
+    "If current buffer is a PDF, convert it to plain text using pdftotext and open it with .org extension.
+The goal is to use this with GPTel to query PDF files via an LLM."q
+    (interactive)
+    (cond ((derived-mode-p 'pdf-view-mode) ;; Replace pdf-view-mode with doc-view-mode if necessary
+           (let* ((pdf-file (buffer-file-name))
+                  (base-name (file-name-sans-extension pdf-file))
+                  (org-file (concat base-name ".org"))
+                  (command (format "pdftotext '%s' '%s'"
+                                   (shell-quote-argument pdf-file)
+                                   (shell-quote-argument org-file))))
+             (unless (executable-find "pdftotext")
+               (error "The pdftotext command is not available"))
+             (if (and pdf-file (file-exists-p pdf-file))
+                 (progn
+                   ;; Execute pdftotext command
+                   (message "Converting '%s' to text..." pdf-file)
+                   (shell-command command)
+                   (when (file-exists-p org-file)
+                     (message "Conversion successful. Opening '%s'..." org-file)
+                     (find-file org-file)
+                     (goto-char (point-min))
+                     (insert ":PROPERTIES: \n"
+                             ":GPTEL_MODEL: gpt-4-1106-preview\n"
+                             ":GPTEL_BACKEND: ChatGPT\n"
+                             ":END:\n"
+                             "* Summarizes the top ten findings of the research paper\n"
+                             "** Manuscript text:\n")
+                     (goto-char (point-max))))
+               (error "No file associated with this buffer or file doesn't exist")))
+           (t
+            (error "Not in a PDF buffer!")))))
+
   ;; useful
   (defun my-gptel-reply-to-message (prompt)
     "Prompt the user for input and sends it along with the current buffer's contents to GPT-4 for a reply.

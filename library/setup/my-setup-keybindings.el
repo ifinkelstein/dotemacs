@@ -89,7 +89,7 @@
    '("'" . embark-act)
    '("\"" . embark-dwim)
    '("a" . my-open-agenda-in-workspace)
-   '("A" . consult-org-agenda)
+   '("A" . my+AI-keys)
    '("b" . my+buffer-keys)
    ;; '("c" . my+comment-wrap-keys)
    '("c" . org-capture)
@@ -243,6 +243,17 @@
 
 
 ;;;; Personal Keybindings by Group
+;;;;; AI helper Keys
+(bind-keys :prefix-map my+AI-keys
+           :prefix (concat my-prefix " A")
+           ("A" . gptel)
+           ("a" . gptel-menu)
+           ("b" . my-gptel-process-message)
+           ("D" . rk/select-default-audio-device)
+           ("d" . whisper-run)
+           ("i" . my-gptel-ical-from-message)
+           ("R" . my-gptel-reply-to-message))
+
 ;;;;; Buffer Keys
 (bind-keys :prefix-map my+buffer-keys
            :prefix (concat my-prefix " b")

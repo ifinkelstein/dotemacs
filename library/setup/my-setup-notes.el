@@ -111,6 +111,7 @@ Marked 2 is a mac app that renders markdown."
 
   ;; make embark-export use dired for notes
   (setf (alist-get consult-notes-category embark-exporters-alist) #'embark-export-dired))
+
 ;;; Provide Notes
 (provide 'my-setup-notes)
 ;;; my-setup-notes.el ends here

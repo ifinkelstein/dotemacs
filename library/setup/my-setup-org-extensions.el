@@ -628,15 +628,33 @@ Within those groups, sort by date and priority."
   ;;  :foreground "green"
   ;;  :background "green")
 
-  ;; set the org-transclusion-source face to show transclusion
+  (set-face-attribute
+   'org-transclusion nil
+   :background "#f5f5dc")
+
   (set-face-attribute
    'org-transclusion-source nil
-   :foreground "green"
-   :background "green"))
+   :foreground nil
+   :background "#f5f5dc"))
 
 ;;; Org-Web-Tools
 ;; Download snapshots of websites straight into an org file
 (use-package org-web-tools)
+
+;;; org-pandoc-import
+;; never leave org again!
+;; on-the-fly convert to org and back
+(use-package org-pandoc-import
+  :vc (org-pandoc-import :url "https://github.com/tecosaur/org-pandoc-import"
+                         :lisp-dir ("preprocessors/" "filters/"))
+  :config
+  ;; automatically convert various files to org mode when visiting them, say in Dired.
+  ;; NOTE: may not be what I want. Try it out and see.
+  (require 'org-pandoc-import-transient)
+  (org-pandoc-import-transient-mode)
+  )
+
+
 
 ;;; TOC-Org
 ;; export TOCs in org and markdown files for GitHub
@@ -646,15 +664,15 @@ Within those groups, sort by date and priority."
 ;;; org-clock-convenience
 ;; additional clocking functions for agenda view
 (use-package org-clock-convenience
-  :disabled TODO:not sure this works or is worth it
-  :after (org)
-  :commands (org-clock-convenience-goto-ts
-             org-clock-convenience-goto-last-clockout
-             org-clock-convenience-timestamp-up
-             org-clock-convenience-timestamp-down)
-  :bind (:map org-agenda-mode-map
-   	     ("<S-up>" . org-clock-convenience-timestamp-up)
-   	     ("<S-down>" . org-clock-convenience-timestamp-down)))
+:disabled TODO:not sure this works or is worth it
+:after (org)
+:commands (org-clock-convenience-goto-ts
+           org-clock-convenience-goto-last-clockout
+           org-clock-convenience-timestamp-up
+           org-clock-convenience-timestamp-down)
+:bind (:map org-agenda-mode-map
+   	   ("<S-up>" . org-clock-convenience-timestamp-up)
+   	   ("<S-down>" . org-clock-convenience-timestamp-down)))
 ;;; valign
 ;; package for nice vertical table alignment with variable width fonts
 ;; note: performance suffers for multiple tables or when there are >100 entries in a single table

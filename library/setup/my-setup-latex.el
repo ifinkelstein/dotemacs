@@ -50,7 +50,8 @@
   (TeX-parse-self t) ;; this should auto-detect when biber is needed for C-c C-a
 
   ;; for navigation menu
-  (reftex-toc-split-windows-fraction 0.15)
+  (reftex-toc-split-windows-fraction 0.35)
+  (reftex-toc-split-windows-horizontally t)
 
   ;; disable reftex from prompting for how to cite
   (reftex-ref-macro-prompt nil)

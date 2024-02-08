@@ -212,6 +212,8 @@ Version 2022-09-14"
 
 ;;;; Dirvish (an improved Dired)
 (use-package dirvish
+  :vc (dirvish :url "https://github.com/alexluigit/dirvish"
+               :lisp-dir "extensions/")
   :after dired
   :init
   (dirvish-override-dired-mode)

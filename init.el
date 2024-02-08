@@ -184,8 +184,8 @@ emacs-version string on the kill ring."
                     ;; Writing modules
                     'my-setup-writing
                     'my-setup-notes
-                    ;; 'my-setup-citation
                     'my-setup-latex
+                    'my-setup-citations
 
                     ;; Shell & Terminal
                     ;; 'my-setup-shell
