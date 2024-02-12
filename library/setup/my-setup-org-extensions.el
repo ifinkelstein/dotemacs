@@ -634,7 +634,6 @@ Within those groups, sort by date and priority."
 
   (set-face-attribute
    'org-transclusion-source nil
-   :foreground nil
    :background "#f5f5dc"))
 
 ;;; Org-Web-Tools
