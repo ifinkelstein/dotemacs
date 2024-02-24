@@ -663,20 +663,21 @@ Within those groups, sort by date and priority."
 ;;; org-clock-convenience
 ;; additional clocking functions for agenda view
 (use-package org-clock-convenience
-:disabled TODO:not sure this works or is worth it
-:after (org)
-:commands (org-clock-convenience-goto-ts
-           org-clock-convenience-goto-last-clockout
-           org-clock-convenience-timestamp-up
-           org-clock-convenience-timestamp-down)
-:bind (:map org-agenda-mode-map
-   	   ("<S-up>" . org-clock-convenience-timestamp-up)
-   	   ("<S-down>" . org-clock-convenience-timestamp-down)))
+  :disabled TODO:not sure this works or is worth it
+  :after (org)
+  :commands (org-clock-convenience-goto-ts
+             org-clock-convenience-goto-last-clockout
+             org-clock-convenience-timestamp-up
+             org-clock-convenience-timestamp-down)
+  :bind (:map org-agenda-mode-map
+   	     ("<S-up>" . org-clock-convenience-timestamp-up)
+   	     ("<S-down>" . org-clock-convenience-timestamp-down)))
 ;;; valign
 ;; package for nice vertical table alignment with variable width fonts
 ;; note: performance suffers for multiple tables or when there are >100 entries in a single table
+;; I decided to turn this off in general, and toggle in on as buffer-local in some org files
 (use-package valign
-  :hook (org-mode . valign-mode)
+  ;; :hook (org-mode . valign-mode)
   :custom
   (valign-fancy-bar t))
 
