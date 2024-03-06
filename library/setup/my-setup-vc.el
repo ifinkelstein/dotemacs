@@ -59,8 +59,15 @@
   ;; no magit header line as it conflicts w/bespoke-modeline
   (advice-add 'magit-set-header-line-format :override #'ignore)
   ;; display magit setting
-  (setq magit-display-buffer-function #'my-display-magit-in-other-window)
+  ;; (setq magit-display-buffer-function #'my-diplay-magit-in-other-window)
   ;; (setq magit-display-buffer-function #'my-magit-display-buffer-pop-up-frame)
+
+  ;; make magit full frame and restore frame config after
+  ;; https://takeonrules.com/2024/03/01/quality-of-life-improvement-for-entering-and-exiting-magit/
+  (setq magit-display-buffer-function
+        #'magit-display-buffer-fullframe-status-v1)
+  (setq magit-bury-buffer-function
+        #'magit-restore-window-configuration)
   )
 
 ;; optional: display magit status in new frame

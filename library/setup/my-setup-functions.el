@@ -536,6 +536,29 @@ will be killed."
 (add-hook 'find-file-not-found-functions #'make-parent-directory)
 
 ;;;; Text Functions
+;;;;; Move text to bottom of buffer
+;; Adapted from palimpsest package
+(defun my-move-region-to-dest (start end dest)
+  "Move text between START and END to buffer's desired position, otherwise known as DEST."
+  (let ((count (count-words-region start end)))
+    (save-excursion
+      (kill-region start end)
+      (goto-char (funcall dest))
+      ;; (insert palimpsest-prefix)
+      (yank)
+      (newline))
+    (push-mark (point))
+    (message "Moved %s words" count)))
+
+;; Custom move region to bottom
+;; Adapted from palimpsest package
+(defun my-move-region-to-bottom (start end)
+  "Move text between START and END to bottom of buffer."
+  (interactive "r")
+  (if (use-region-p)
+      (palimpsest-move-region-to-dest start end 'point-max)
+    (message "No region selected")))
+
 ;;;;; Fill Paragraph
 (defun my-fill-paragraph ()
   "if in an org buffer use org-fill-paragraph; else use fill-paragraph"

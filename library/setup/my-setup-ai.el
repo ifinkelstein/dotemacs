@@ -57,8 +57,10 @@ PROMPT is the input provided by the user. The model 'gpt-4-1106-preview' is used
     (setq gptel-model "gpt-4-1106-preview")
     (message (concat "Sending query using " gptel-model))
     (gptel-request
-        (concat prompt
-                "Do not include a subject line. Respond to the messabe below:"
+        (concat "\nRespond using the guidance below as a busy professor. I will specify a few command line-style instructions at the start of my guidance, separated by a ';'. The level of verbosity, {v}, is on a five point scale with 'v1' being very short but polite and 'v5' being very verbose, very polite but not obsequeous. I will use 'v1' to 'v5' notation for verbosity at the start of the guidance below. The use of emojis, {e}, is on a five point scale with e1 means ZERO emojis and e5 means many emojis. Use emojis from the following set: {🦄, 🌈, ☺️, 🙏, ✨, 🌞, 🎉} to highlight positive emotions. This message IS VERY IMPORTANT TO ME so reply AS BEST AS YOU CAN and I will be GRATEFUL AND HAPPY. If you do not do a great job and follow the verbosity tag, I WILL LOSE MY JOB AND MAY DIE. If I do not specify anything, assume 'v1' andn 'e1'. If I s Do not include a subject line."
+                "\n: Guidance: "
+                prompt
+                "\n If this is an email, sign off with 'Kind Regards, \nIlya' Respond to the message below:"
                 (buffer-string))
       :buffer (current-buffer)
       :system   "You are a helpful executive assistant. Use short, concise, professional, positive tone."
@@ -69,6 +71,7 @@ PROMPT is the input provided by the user. The model 'gpt-4-1106-preview' is used
           (let ((filename (concat "~/Downloads/" (format-time-string "%Y-%m-%d_%H-%M-%S") ".org")))
             (switch-to-buffer (generate-new-buffer filename))
             (insert response)
+            (kill-new response) ;; save response to kill ring
             (write-file filename))))))
 
   (defun my-gptel-ical-from-message ()

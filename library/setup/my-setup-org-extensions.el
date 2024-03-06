@@ -681,6 +681,10 @@ Within those groups, sort by date and priority."
   :custom
   (valign-fancy-bar t))
 
+;;; org-bookmark-heading
+;;Use the standard Emacs bookmark commands, C-x r m, etc, to mark org headings
+(use-package org-bookmark-heading)
+
 ;;; Provide Org Extensions
 (provide 'my-setup-org-extensions)
 ;;; my-setup-org-extensions.el ends here

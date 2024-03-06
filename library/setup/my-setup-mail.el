@@ -165,6 +165,11 @@
                '("Cal" . ijf-mu4e-view-import-ics-file) t)
   (add-to-list 'mu4e-view-actions
                '("Cal" . ijf-mu4e-view-import-ics-file) t)
+  (add-to-list 'mu4e-view-actions
+               '("quit" . (lambda (msg)
+                            (interactive)
+                            (message "Do Nothing"))) t)
+
 ;;;; Viewing
 ;;;;; Header View Functions
   (defun mu4e-get-account (msg)
