@@ -5,24 +5,26 @@
 
 ;;; Code
 
-;;;; Mu4e
+;;; Mu4e
+;; Note: mu4e 1.12 now relies heavily on gnus for how it processes messages.
+;; In addition, lots of internal function names have changed.
+;; So I am going to spend a bit of time cleaning up my mu4e config to reduce some new friction points
+;; This will not be backward compatible with prior versions of mu4e
+
 (use-package mu4e
   :ensure nil
-  :load-path "/opt/homebrew/Cellar/mu/1.10.8/share/emacs/site-lisp/mu/mu4e"
-  ;; :straight (:type nil :local-repo "/opt/homebrew/Cellar/mu/1.10.8/share/emacs/site-lisp/mu/mu4e" :pre-build ())
+  :load-path "/opt/homebrew/Cellar/mu/1.12.2/share/emacs/site-lisp/mu/mu4e"
+
   :commands (mu4e mu4e-compose-new mu4e-update-mail-and-index)
   :bind (:map mu4e-view-mode-map
          ("f" . link-hint-open-link))  ;; Firefox tridactyl-like bindings
   :config
-  ;; remove icalendar integration so I can save ICS files directly to my Calendar app
-  ;; from mu4e manual: https://www.djcbsoftware.nl/code/mu/mu4e/iCalendar.html
-  ;; (require 'mu4e-icalendar)
-  ;; (mu4e-icalendar-setup)
-
   ;; Finding the binary (installed w/homebrew)
   (setq mu4e-mu-binary (executable-find "mu"))
-  (setq  message-citation-line-format "On %Y-%m-%d at %R %Z, %f wrote...") ;; fix bug in some Outlook clients
-  (mu4e-toggle-logging) ;;turn on for error logging buffer
+
+  ;; fix bug in some Outlook clients
+  (setq  message-citation-line-format "On %Y-%m-%d at %R %Z, %f wrote...") 
+  ;; (mu4e-toggle-logging) ;;turn on for error logging buffer
 
   ;;change keybindings to look more like elfeed
   ;; in headers view, "r" for read messages, "u" for unread messages
@@ -39,6 +41,7 @@
     ("u" . mu4e-view-mark-for-unread)
     ("!" . mu4e-view-mark-for-refile)
     ("?" . mu4e-view-mark-for-unmark))
+
 ;;;; Syncing
   ;; Maildir
   (setq mu4e-maildir "~/Mail")
@@ -52,123 +55,124 @@
   ;; dreaded "UID is N beyond highest assigned" error.
   ;; See this link for more info: https://stackoverflow.com/a/43461973
   (setq mu4e-change-filenames-when-moving t)
-  ;; Refresh mail using mbsync every 5 minutes
-  (setq mu4e-update-interval (* 5 60))
+  ;; Refresh mail using mbsync every 2 minutes
+  (setq mu4e-update-interval (* 2 60))
 
 ;;;; Attachments
   ;; Set default dir
   (setq mu4e-attachment-dir (concat (getenv "HOME") "/Downloads/_Mail"))
-  ;; Save all attachments to specified dir without asking about each one
-  (setq mu4e-save-multiple-attachments-without-asking t)
+  ;; TODO: Fix the function below so all attachements work
   (bind-key "e" #'mu4e-views-mu4e-save-all-attachments mu4e-headers-mode-map)
+
   ;; use Dired to attach files via C-c <RET> C-a
   ;; https://www.djcbsoftware.nl/code/mu/mu4e/Dired.html
   (add-hook 'dired-mode-hook 'turn-on-gnus-dired-mode)
   (add-hook 'mu4e-compose-mode-hook
-            (defun ijf-mu4e-compose-settings ()
+            (defun my-mu4e-compose-settings ()
               "My settings for message comoposition"
-              (ijf-mu4e-add-cc-bcc)
-              (ijf-swap-email-from-field)
+              (my-mu4e-add-cc-bcc)
+              (my-swap-email-from-field)
               (auto-fill-mode -1)
               (hl-line-mode -1)
               ;; (org-msg-goto-body)
               ))
 
-  (defun ijf-mu4e-view-import-ics-file (&optional arg)
-    "Save the text/calendar file(s)  of a message in
-    `mu4e-attachment-dir'. Open with calendar app."
-    (interactive)
-    (when (and (eq major-mode 'mu4e-view-mode)
-               (derived-mode-p 'gnus-article-mode))
-      (let ((parts (mu4e--view-gather-mime-parts))
-            file ;; initialize with nil
-            )
-        ;; body of let
-        (dolist (part parts) ;; cycle through every element in parts alist
-          ;; body of dolist
-          (when (assoc "text/calendar" (cdr part))
-            ;; save ics file with date-time-stamp in filename in mu4e-attachment-dir
-            (setq file (expand-file-name (concat (format-time-string "%Y%m%d_%H-%M-%S_cal") ".ics") mu4e-attachment-dir))
-            (mm-save-part-to-file (cdr part) file)
-            ;; (debug)
-            ;; assuming I'm on a Mac (see xah-open-in-external-app for a better implementation)
-            ;; open this ics file with open app
-            (shell-command (concat "open " (shell-quote-argument file)))
-            )
-          ))
-      ))
+  ;; TODO: Need to update to new mu4e
+  ;; (defun my-mu4e-view-import-ics-file (&optional arg)
+  ;;   "Save the text/calendar file(s)  of a message in
+  ;;   `mu4e-attachment-dir'. Open with calendar app."
+  ;;   (interactive)
+  ;;   (when (and (eq major-mode 'mu4e-view-mode)
+  ;;              (derived-mode-p 'gnus-article-mode))
+  ;;     (let ((parts (mu4e-view-mime-parts))
+  ;;           file ;; initialize with nil
+  ;;           )
+  ;;       ;; body of let
+  ;;       (dolist (part parts) ;; cycle through every element in parts alist
+  ;;         ;; body of dolist
+  ;;         (when (assoc "text/calendar" (cdr part))
+  ;;           ;; save ics file with date-time-stamp in filename in mu4e-attachment-dir
+  ;;           (setq file (expand-file-name (concat (format-time-string "%Y%m%d_%H-%M-%S_cal") ".ics") mu4e-attachment-dir))
+  ;;           (mm-save-part-to-file (cdr part) file)
+  ;;           ;; (debug)
+  ;;           ;; assuming I'm on a Mac (see xah-open-in-external-app for a better implementation)
+  ;;           ;; open this ics file with open app
+  ;;           (shell-command (concat "open " (shell-quote-argument file)))
+  ;;           )
+  ;;         )))) ;; defun my-mu4e-view-import-ics-file (&optional arg)
 
-  (defun ed/mu4e-view-save-all-attachments (&optional arg)
-    "Save all attachments of a given message.
-    If ARG is nil, all attachments will be saved in
-    `mu4e-attachment-dir'. When non-nil, user will be prompted to
-    choose a specific directory where to save all the files.
-    If the directory doesn't exist, user will be prompted to create it and parents."
-    (interactive "P")
-    (when (and (eq major-mode 'mu4e-view-mode)
-               (derived-mode-p 'gnus-article-mode))
-      (let ((parts (mu4e--view-gather-mime-parts))
-            (handles '())
-            (files '())
-            (directory (if arg
-                           (read-directory-name "Save: ")
-                         mu4e-attachment-dir)))
-        ;; create directory if one doesn't exist
-        (if (not (file-directory-p directory))
-            (make-directory directory t))
-        (dolist (part parts)
-          (let ((fname (or (cdr (assoc 'filename (assoc "attachment" (cdr part))))
-                           (cl-loop for item in part
-                                    for name = (and (listp item) (assoc-default 'name item))
-                                    thereis (and (stringp name) name)))))
-            (when fname
-              (push `(,fname . ,(cdr part)) handles)
-              (push fname files))))
-        (if files
-            (progn
-              (cl-loop for (f . h) in handles
-                       when (member f files)
-                       do (mm-save-part-to-file
-                           h (let ((file (expand-file-name f directory)))
-                               (if (file-exists-p file)
-                                   (let (newname (count 1))
-                                     (while (and
-                                             (setq newname
-                                                   (format "%s-%s%s"
-                                                           (file-name-sans-extension file)
-                                                           count
-                                                           (file-name-extension file t)))
-                                             (file-exists-p newname))
-                                       (cl-incf count))
-                                     newname)
-                                 file)))))
-          (mu4e-message "No attached files found")))))
+  ;; TODO: Need to update to new mu4e
+  ;; possibly relevant: https://emacs.stackexchange.com/questions/25045/how-can-i-easily-download-save-an-attachment-in-mu4e
+  ;; (defun ed/mu4e-view-save-all-attachments (&optional arg)
+  ;;   "Save all attachments of a given message.
+  ;;   If ARG is nil, all attachments will be saved in
+  ;;   `mu4e-attachment-dir'. When non-nil, user will be prompted to
+  ;;   choose a specific directory where to save all the files.
+  ;;   If the directory doesn't exist, user will be prompted to create it and parents."
+  ;;   (interactive "P")
+  ;;   (when (and (eq major-mode 'mu4e-view-mode)
+  ;;              (derived-mode-p 'gnus-article-mode))
+  ;;     (let ((parts (mu4e--view-gather-mime-parts))
+  ;;           (handles '())
+  ;;           (files '())
+  ;;           (directory (if arg
+  ;;                          (read-directory-name "Save: ")
+  ;;                        mu4e-attachment-dir)))
+  ;;       ;; create directory if one doesn't exist
+  ;;       (if (not (file-directory-p directory))
+  ;;           (make-directory directory t))
+  ;;       (dolist (part parts)
+  ;;         (let ((fname (or (cdr (assoc 'filename (assoc "attachment" (cdr part))))
+  ;;                          (cl-loop for item in part
+  ;;                                   for name = (and (listp item) (assoc-default 'name item))
+  ;;                                   thereis (and (stringp name) name)))))
+  ;;           (when fname
+  ;;             (push `(,fname . ,(cdr part)) handles)
+  ;;             (push fname files))))
+  ;;       (if files
+  ;;           (progn
+  ;;             (cl-loop for (f . h) in handles
+  ;;                      when (member f files)
+  ;;                      do (mm-save-part-to-file
+  ;;                          h (let ((file (expand-file-name f directory)))
+  ;;                              (if (file-exists-p file)
+  ;;                                  (let (newname (count 1))
+  ;;                                    (while (and
+  ;;                                            (setq newname
+  ;;                                                  (format "%s-%s%s"
+  ;;                                                          (file-name-sans-extension file)
+  ;;                                                          count
+  ;;                                                          (file-name-extension file t)))
+  ;;                                            (file-exists-p newname))
+  ;;                                      (cl-incf count))
+  ;;                                    newname)
+  ;;                                file)))))
+  ;;         (mu4e-message "No attached files found")))))
 
-  (defun ijf-mu4e-search-for-sender (&optional msg)
+  (defun my-mu4e-search-for-sender (&optional msg)
     "Find mails sent from SENDER."
     (mu4e-search (concat "from:" (nth 1 (flatten-list (mu4e-message-field msg :from))))))
 
   ;; define 'z' as the shortcut
   (add-to-list 'mu4e-view-actions
-               '("zsearch for sender" . ijf-mu4e-search-for-sender) t)
+               '("zsearch for sender" . my-mu4e-search-for-sender) t)
 
   (add-to-list 'mu4e-headers-actions
-               '("zsearch for sender" . ijf-mu4e-search-for-sender) t)
+               '("zsearch for sender" . my-mu4e-search-for-sender) t)
 
-  ;; (define-key mu4e-view-mode-map "a" #'ed/mu4e-view-save-all-attachments)
-  (add-to-list 'mu4e-headers-actions
-               '("export" . ed/mu4e-view-save-all-attachments) t)
-  (add-to-list 'mu4e-view-actions
-               '("export" . ed/mu4e-view-save-all-attachments) t)
 
-  (add-to-list 'mu4e-headers-actions
-               '("Cal" . ijf-mu4e-view-import-ics-file) t)
-  (add-to-list 'mu4e-view-actions
-               '("Cal" . ijf-mu4e-view-import-ics-file) t)
-  (add-to-list 'mu4e-view-actions
-               '("quit" . (lambda (msg)
-                            (interactive)
-                            (message "Do Nothing"))) t)
+
+  ;; disabled until parent function is fixed or I learn to live with native gnus commands
+  ;; (add-to-list 'mu4e-headers-actions
+  ;;              '("export" . ed/mu4e-view-save-all-attachments) t)
+  ;; (add-to-list 'mu4e-view-actions
+  ;;              '("export" . ed/mu4e-view-save-all-attachments) t)
+
+  ;; disabled until parent function is fixed or I learn to live with native gnus commands
+  ;; (add-to-list 'mu4e-headers-actions
+  ;;              '("Cal" . my-mu4e-view-import-ics-file) t)
+  ;; (add-to-list 'mu4e-view-actions
+  ;;              '("Cal" . my-mu4e-view-import-ics-file) t)
 
 ;;;; Viewing
 ;;;;; Header View Functions
@@ -185,55 +189,55 @@
   (defun mu4e-get-mailbox (msg)
     (format "%s|%s" (mu4e-get-account msg) (mu4e-get-maildir msg)))
 
-  (defun mu4e-headers-tag (text tag face help query)
-    "Make a clickable button with specified FACE displaying TEXT.
-    When hovered, HELP is displayed. When clicked, mu4e QUERY is executed."
-    (let ((map (make-sparse-keymap)))
-      (set-keymap-parent map 'mu4e-headers-mode-map)
-      (define-key map [mouse-1] `(lambda ()
-                                   (interactive) (mu4e-headers-search ,query)))
-      (concat
-       (propertize text
-                   'display tag
-                   'face face
-                   'mouse-face `(:foreground ,bespoke-salient)
-                   'local-map map
-                   'help-echo `(lambda (window _object _point)
-                                 (let (message-log-max) (message ,help))))
-       " ")))
+  ;; (defun mu4e-headers-tag (text tag face help query)
+  ;;   "Make a clickable button with specified FACE displaying TEXT.
+  ;;   When hovered, HELP is displayed. When clicked, mu4e QUERY is executed."
+  ;;   (let ((map (make-sparse-keymap)))
+  ;;     (set-keymap-parent map 'mu4e-headers-mode-map)
+  ;;     (define-key map [mouse-1] `(lambda ()
+  ;;                                  (interactive) (mu4e-headers-search ,query)))
+  ;;     (concat
+  ;;      (propertize text
+  ;;                  'display tag
+  ;;                  'face face
+  ;;                  'mouse-face `(:foreground ,bespoke-salient)
+  ;;                  'local-map map
+  ;;                  'help-echo `(lambda (window _object _point)
+  ;;                                (let (message-log-max) (message ,help))))
+  ;;      " ")))
 
   ;; Buttons
-  (defun mu4e-headers-button (text face help query)
-    "Make a clickable button with specified FACE displaying TEXT.
-    When hovered, HELP is displayed. When clicked, mu4e QUERY is executed."
-    (let ((map (make-sparse-keymap)))
-      (set-keymap-parent map 'mu4e-headers-mode-map)
-      (define-key map [mouse-1] `(lambda ()
-                                   (interactive) (mu4e-headers-search ,query)))
-      (propertize text
-                  'face face
-                  'mouse-face `(:foreground ,bespoke-background
-                                :background ,bespoke-faded)
-                  'local-map map
-                  'help-echo `(lambda (window _object _point)
-                                (let (message-log-max) (message ,help))))))
+  ;; (defun mu4e-headers-button (text face help query)
+  ;;   "Make a clickable button with specified FACE displaying TEXT.
+  ;;   When hovered, HELP is displayed. When clicked, mu4e QUERY is executed."
+  ;;   (let ((map (make-sparse-keymap)))
+  ;;     (set-keymap-parent map 'mu4e-headers-mode-map)
+  ;;     (define-key map [mouse-1] `(lambda ()
+  ;;                                  (interactive) (mu4e-headers-search ,query)))
+  ;;     (propertize text
+  ;;                 'face face
+  ;;                 'mouse-face `(:foreground ,bespoke-background
+  ;;                               :background ,bespoke-faded)
+  ;;                 'local-map map
+  ;;                 'help-echo `(lambda (window _object _point)
+  ;;                               (let (message-log-max) (message ,help))))))
 
-  (defun mu4e-headers-date-button (date face)
-    (concat
-     (mu4e-headers-button (format-time-string "%d" date)
-                          face
-                          (format-time-string "Mails from %d %B %Y" date)
-                          (format-time-string "date:%Y%m%d" date))
-     (propertize "/" 'face face)
-     (mu4e-headers-button (format-time-string "%m" date)
-                          face
-                          (format-time-string "Mails from %B %Y" date)
-                          (format-time-string "date:%Y%m" date))
-     (propertize "/" 'face face)
-     (mu4e-headers-button (format-time-string "%Y" date)
-                          face
-                          (format-time-string "Mails from %Y" date)
-                          (format-time-string "date:%Y" date))))
+  ;; (defun mu4e-headers-date-button (date face)
+  ;;   (concat
+  ;;    (mu4e-headers-button (format-time-string "%d" date)
+  ;;                         face
+  ;;                         (format-time-string "Mails from %d %B %Y" date)
+  ;;                         (format-time-string "date:%Y%m%d" date))
+  ;;    (propertize "/" 'face face)
+  ;;    (mu4e-headers-button (format-time-string "%m" date)
+  ;;                         face
+  ;;                         (format-time-string "Mails from %B %Y" date)
+  ;;                         (format-time-string "date:%Y%m" date))
+  ;;    (propertize "/" 'face face)
+  ;;    (mu4e-headers-button (format-time-string "%Y" date)
+  ;;                         face
+  ;;                         (format-time-string "Mails from %Y" date)
+  ;;                         (format-time-string "date:%Y" date))))
   ;; Relative dates
   (defun mu4e-headers-is-today (date)
     (= (- (time-to-days (current-time)) (time-to-days date)) 0))
@@ -324,7 +328,7 @@
 
 ;;;;; Useful functions and actions
 
-  (defun ijf-mu4e-last-month ()
+  (defun my-mu4e-last-month ()
     "Return the last year-month as a string for mu searches.
 
 Note: this function is actually not necessary because I learned how to use mu find better"
@@ -346,7 +350,7 @@ Note: this function is actually not necessary because I learned how to use mu fi
 
   ;; define 'x' as the shortcut
   (add-to-list 'mu4e-view-actions
-               '("Xsearch for sender" . ijf-mu4e-search-for-sender) t)
+               '("Xsearch for sender" . my-mu4e-search-for-sender) t)
 
 
   ;; create org link to message
@@ -382,13 +386,26 @@ the query (for links starting with \"query:\")."
   (setq mu4e-user-mail-address-list '("ilya@finkelsteinlab.org"
                                       "ifinkelstein@cm.utexas.edu"))
 
-  ;; Disable Compose in new frame
-  (setq mu4e-compose-in-new-frame nil)
+  ;; Compose in new buffer (can make 'window for new window)
+  (setq mu4e-compose-switch nil)
 
   ;; Don't keep message compose buffers around after sending:
   (setq message-kill-buffer-on-exit t)
   ;;; Make sure plain text mails flow correctly for recipients
   (setq mu4e-compose-format-flowed t)
+
+  ;; where reply should be positioned
+  (setopt message-cite-reply-position 'above)
+
+  ;; strip off signatures when replying to message (not sure what this does)
+  (setopt message-cite-function #'message-cite-original-without-signature)
+
+  ;; TODO: remove mime part buttons. Appears impossible for now
+  ;; https://github.com/djcb/mu/issues/2639
+
+  ;; forward HTML messages correctly
+  (setopt message-forward-as-mime t)
+
 
   ;; Only ask if a context hasn't been previously picked
   (setq mu4e-compose-context-policy 'ask-if-none)
@@ -403,7 +420,7 @@ the query (for links starting with \"query:\")."
   ;; Filtering function to remove annoying composition auto-completes
   ;; https://emacs.stackexchange.com/questions/47789/how-to-remove-email-address-from-local-database-in-mu4e
   ;; https://www.djcbsoftware.nl/code/mu/mu4e/Contact-functions.html
-  (defun ijf-mu4e-contact-filter (addr)
+  (defun my-mu4e-contact-filter (addr)
     "Remove annoying completions from the email autocomplete. Uses regex to identify offending emails."
     (cond
      ;; remove unwanted auto-completes
@@ -424,16 +441,16 @@ the query (for links starting with \"query:\")."
      ;;  (replace-regexp-in-string "jonh smiht" "John Smith" contact))
      (t addr)))
 
-  (setq mu4e-contact-process-function 'ijf-mu4e-contact-filter)
+  (setq mu4e-contact-process-function 'my-mu4e-contact-filter)
 
   ;;tweak the composition window to include CC and BCC
-  (defun ijf-mu4e-add-cc-bcc ()
+  (defun my-mu4e-add-cc-bcc ()
     "Add CC and BCC to all new e-mails"
     (interactive)
     "Add a Cc: & Bcc: header."
     (save-excursion (message-add-header "Cc: \nBcc: \n")))
 
-  (defun ijf-swap-email-from-field ()
+  (defun my-swap-email-from-field ()
     "Swap from field in emails to ilya@finkelsteinlab.org to redirect e-mails to that account"
     (interactive)
     (save-excursion
@@ -442,20 +459,20 @@ the query (for links starting with \"query:\")."
       (insert "From: " (message-make-from "Ilya Finkelstein" "ilya@finkelsteinlab.org") "\n")))
 
   ;; a few helper functions to navigate & copy message fields quickly
-  (defun ijf-copy-email-address-at-point ()
+  (defun my-copy-email-address-at-point ()
     "If there is one, copy the e-mail address at point to the kill-ring."
     (interactive)
     (when-let ((addr (thing-at-point 'email)))
       (kill-new addr)))
 
-  ;; (defun ijf-msg-goto-to-field ()
+  ;; (defun my-msg-goto-to-field ()
   ;;   "Move point to the beginning of the To field."
   ;;   (interactive)
   ;;   (goto-char (point-min))
   ;;   (search-forward "To: " nil t)
   ;;   (goto-char (match-end 0)))
 
-  ;; (defun ijf-msg-goto-cc-field ()
+  ;; (defun my-msg-goto-cc-field ()
   ;;   "Move point to the beginning of the To field."
   ;;   (interactive)
   ;;   (goto-char (point-min))
@@ -489,7 +506,7 @@ the query (for links starting with \"query:\")."
   ;; Move messages to trash
   ;; See https://rakhim.org/fastmail-setup-with-emacs-mu4e-and-mbsync-on-macos/
   ;; FIXME: This wont work since I have two email accounts
-  ;; (fset 'cpm-ijf-swap-email-from-field-email-move-to-trash "mTrash")
+  ;; (fset 'cpm-my-swap-email-from-field-email-move-to-trash "mTrash")
   ;; (define-key mu4e-headers-mode-map (kbd "d") 'cpm--email-move-to-trash)
   ;; (define-key mu4e-view-mode-map (kbd "d") 'cpm--email-move-to-trash)
 
@@ -641,7 +658,7 @@ the query (for links starting with \"query:\")."
 
   ;; Helpful discussion at
   ;; https://github.com/daviwil/emacs-from-scratch/blob/master/show-notes/Emacs-Mail-05.org
-  (defun ijf/capture-mail-gtd (msg)
+  (defun my/capture-mail-gtd (msg)
     "Capture message as a TODO item"
     (interactive)
     (call-interactively 'org-store-link)
@@ -649,9 +666,9 @@ the query (for links starting with \"query:\")."
 
   ;; Add custom actions for our capture templates
   (add-to-list 'mu4e-headers-actions
-               '("todo" . ijf/capture-mail-gtd ) t)
+               '("todo" . my/capture-mail-gtd ) t)
   (add-to-list 'mu4e-view-actions
-               '("todo" . ijf/capture-mail-gtd) t)
+               '("todo" . my/capture-mail-gtd) t)
   ;; (add-to-list 'mu4e-headers-actions
   ;;              '("respond" . cpm/capture-mail-respond) t)
   ;; (add-to-list 'mu4e-view-actions
@@ -662,7 +679,7 @@ the query (for links starting with \"query:\")."
   ;;              '("Remind" . cpm/capture-mail-remind) t)
   ;; hydra to improve rapid navigation between composition fields
 
-  (defhydra ijf-hydra-jump-to-email-fields (:color blue)
+  (defhydra my-hydra-jump-to-email-fields (:color blue)
     "[t]o [f]rom [c]c [b]cc [s]ubject [m]essage [a]ttach [d]ired"
     ("t" message-goto-to)
     ("f" message-goto-from)
@@ -672,26 +689,26 @@ the query (for links starting with \"query:\")."
     ("m" message-goto-body)
     ("a" mml-attach-file)
     ("d" dired-other-window))
-  (define-key message-mode-map (kbd "C-c f") 'ijf-hydra-jump-to-email-fields/body)
+  (define-key message-mode-map (kbd "C-c f") 'my-hydra-jump-to-email-fields/body)
 
   ;; copy fields to kill ring
-  (defun ijf-copy-email-field-to-kill-ring (FIELD)
+  (defun my-copy-email-field-to-kill-ring (FIELD)
     "Copy FIELD from the open org-msg buffer to the kill-ring"
     (interactive "P")
     (kill-new
      (message-fetch-field FIELD)))
 
-  (defhydra ijf-hydra-copy-email-fields-to-kill-ring (:color blue)
+  (defhydra my-hydra-copy-email-fields-to-kill-ring (:color blue)
     "[t]o [f]rom [c]c [b]cc [s]ubject"
-    ("t" (ijf-copy-email-field-to-kill-ring "To"))
-    ("f" (ijf-copy-email-field-to-kill-ring "From"))
-    ("c" (ijf-copy-email-field-to-kill-ring "Cc"))
-    ("b" (ijf-copy-email-field-to-kill-ring "Bcc"))
-    ("s" (ijf-copy-email-field-to-kill-ring "Subject")))
-  (define-key message-mode-map (kbd "C-c w") 'ijf-hydra-copy-email-fields-to-kill-ring/body)
+    ("t" (my-copy-email-field-to-kill-ring "To"))
+    ("f" (my-copy-email-field-to-kill-ring "From"))
+    ("c" (my-copy-email-field-to-kill-ring "Cc"))
+    ("b" (my-copy-email-field-to-kill-ring "Bcc"))
+    ("s" (my-copy-email-field-to-kill-ring "Subject")))
+  (define-key message-mode-map (kbd "C-c w") 'my-hydra-copy-email-fields-to-kill-ring/body)
 
 ;;;;; Mail Custom Bookmarks/Searches
-  (setq ijf-mu4e-inboxes "(maildir:/UT/Inbox OR maildir:/Lab/Inbox OR maildir:/gmail-test/Inbox)")
+  (setq my-mu4e-inboxes "(maildir:/UT/Inbox OR maildir:/Lab/Inbox OR maildir:/gmail-test/Inbox)")
 
   ;;disable threading in search results
   (setq mu4e-headers-show-threads nil)
@@ -700,23 +717,23 @@ the query (for links starting with \"query:\")."
   (setq mu4e-bookmarks
         '((:name "Unread"
            :query (lambda ()
-                    (concat "flag:unread AND NOT flag:trashed AND " ijf-mu4e-inboxes))
+                    (concat "flag:unread AND NOT flag:trashed AND " my-mu4e-inboxes))
            :key ?u)
           (:name "Today"
            :query (lambda ()
-                    (concat "NOT flag:trashed AND date:today..now AND " ijf-mu4e-inboxes))
+                    (concat "NOT flag:trashed AND date:today..now AND " my-mu4e-inboxes))
            :key ?t)
           (:name "New This Week"
            :query (lambda ()
-                    (concat "flag:unread NOT flag:trashed AND date:1w..now AND " ijf-mu4e-inboxes))
+                    (concat "flag:unread NOT flag:trashed AND date:1w..now AND " my-mu4e-inboxes))
            :key ?w)
           (:name "New This Month"
            :query (lambda ()
-                    (concat "flag:unread NOT flag:trashed AND date:1m..now AND " ijf-mu4e-inboxes))
+                    (concat "flag:unread NOT flag:trashed AND date:1m..now AND " my-mu4e-inboxes))
            :key ?m)
           (:name "New Last Month"
            :query (lambda ()
-                    (concat "flag:unread NOT flag:trashed AND date:2m..1m AND " ijf-mu4e-inboxes))
+                    (concat "flag:unread NOT flag:trashed AND date:2m..1m AND " my-mu4e-inboxes))
            :key ?M)
           (:name "From Julie"
            :query "from:Julie Glasser"
@@ -730,15 +747,15 @@ the query (for links starting with \"query:\")."
            :key ?J)
           ))
 
-  ;; (defun ijf-mu4e-bookmark-num-days-old-query (days-old)
+  ;; (defun my-mu4e-bookmark-num-days-old-query (days-old)
   ;;   (interactive (list (read-number "Show days old messages: " 7)))
   ;;   (let ((start-date (subtract-time (current-time) (days-to-time days-old))))
   ;;     (concat "date:"
-  ;;             (format-time-string "%Y%m%d" start-date) " AND " ijf-mu4e-inboxes)))
+  ;;             (format-time-string "%Y%m%d" start-date) " AND " my-mu4e-inboxes)))
 
   ;; (add-to-list 'mu4e-bookmarks
   ;;              `(:name  "Inbox messages in the last 7 days"
-  ;;                :query ,(lambda () (call-interactively 'ijf-mu4e-bookmark-num-days-old-query))
+  ;;                :query ,(lambda () (call-interactively 'my-mu4e-bookmark-num-days-old-query))
   ;;                :key  ?o) t)
 
 ;;;; Maildirs
@@ -845,7 +862,7 @@ select one email at a time.
       (message "Copied %s to the clipboard" email)
       (kill-new email)))
 
-  (defun ijf-mu4e-view-overlay-attachment-icons (&optional msg)
+  (defun my-mu4e-view-overlay-attachment-icons (&optional msg)
     "Add file-specific icon overlay for each attachment type in mu4e-view mode."
     (when (and (eq major-mode 'mu4e-view-mode)
                (derived-mode-p 'gnus-article-mode))
@@ -870,7 +887,7 @@ select one email at a time.
                 (overlay-put overlay 'attachment-icon t)
                 (overlay-put overlay 'after-string (all-the-icons-icon-for-file fname)))
               ))))))
-  (advice-add 'mu4e-view :after #'ijf-mu4e-view-overlay-attachment-icons)
+  (advice-add 'mu4e-view :after #'my-mu4e-view-overlay-attachment-icons)
 
   ;; Updating
   (bind-key "u" #'mu4e-update-index mu4e-main-mode-map)
@@ -888,20 +905,20 @@ select one email at a time.
       (call-interactively 'org-store-link)))
 
   ;; Go to unread. Only show unread mail from main inbox.
-  (defvar ijf-mu4e-unread-query "flag:unread AND NOT flag:trashed AND (maildir:/UT/Inbox OR maildir:/Lab/Inbox OR maildir:/gmail-test/Inbox)")
+  (defvar my-mu4e-unread-query "flag:unread AND NOT flag:trashed AND (maildir:/UT/Inbox OR maildir:/Lab/Inbox OR maildir:/gmail-test/Inbox)")
 
-  (defun ijf-go-to-unread-mail ()
+  (defun my-go-to-unread-mail ()
     (interactive)
     (if (member "Email" (tabspaces--list-tabspaces))
         (progn
           (tab-bar-switch-to-tab "Email")
-          (mu4e-headers-search ijf-mu4e-unread-query))
+          (mu4e-headers-search my-mu4e-unread-query))
       (progn
         (tabspaces-create-workspace)
         (tab-bar-rename-tab "Email")
         (find-file (concat org-directory "inbox.org"))
         (mu4e)
-        (mu4e-headers-search ijf-mu4e-unread-query))))
+        (mu4e-headers-search my-mu4e-unread-query))))
   ;; Go to inbox
   (defvar cpm-mu4e-inbox-query
     "(maildir:/UT/Inbox OR maildir:/Lab/Inbox OR maildir:/gmail-test/Inbox)")
@@ -918,7 +935,7 @@ select one email at a time.
         (mu4e)
         (mu4e-headers-search cpm-mu4e-inbox-query))))
   ;; search email inbox
-  (defun ijf/search-all-mail ()
+  (defun my/search-all-mail ()
     (interactive)
     (if (member "Email" (tabspaces--list-tabspaces))
         (progn
@@ -932,19 +949,33 @@ select one email at a time.
   )
 ;;;; End Mu4e
 
-;;;; Using Org & HTML (Org-Msg)
+;;; Using Org & HTML (Org-Msg)
 (use-package org-msg
   :after (mu4e)
+  :ensure nil
+  :load-path "/Users/ilya/.config/.emacs/org-msg-patch"
+  ;; :disabled t
   ;; avoid pesky org ASCII Export buffer
   ;; https://github.com/jeremy-compostella/org-msg/issues/169
   :preface
   (defun org-msg-no-temp-buffer (orig-fun &rest args)
     "Advice to set `org-export-show-temporary-export-buffer' to `nil'."
     (let ((org-export-show-temporary-export-buffer nil))
-      (apply orig-fun args)))
+      (apply orig-fun args)) )
 
   :hook ((mu4e-compose-pre . org-msg-mode))
   :config
+
+  ;;make org-msg work with mu4e 1.12
+  (defun my--ensure-text-not-read-only (orig &rest args)
+    (let ((inhibit-read-only t))
+      (remove-text-properties (point-min) (point-max) '(read-only nil))
+      (apply orig args)))
+
+  (advice-add 'message-send :around #'my--ensure-text-not-read-only)
+
+
+
   ;; avoid pesky org ASCII Export buffer
   ;; https://github.com/jeremy-compostella/org-msg/issues/169
   (advice-add 'org-msg-preview :around #'org-msg-no-temp-buffer)
@@ -989,18 +1020,21 @@ select one email at a time.
       (remove-hook 'auto-save-hook #'cpm/full-auto-save t)))
   (add-hook 'org-msg-edit-mode-hook #'cpm/org-msg-hooks)
 
+  ;; TODO: I'll need to fix this later bc mu4e internals have changed
   ;; advise the mu4e core function mu4e~compose-handler so that it doesn't move cursor to start of message body when replying or forwarding messages
-  (defun ijf-reply-fwd-advice (orig &rest args)
-    "Move cursor to the start of the reply in org-msg mode"
-    ;; first run the mu4e function
-    (apply orig args)
-    ;; then, move the cursor to the body if its a reply (but not new composition)
-    ;; NOTE: first element in "args" holds the type of email that's being composed.
-    ;; default behavior for new and forwarded email is to start in the "to" field
-    (if (member (car args) '(reply edit))
-        (org-msg-goto-body)))
+  ;; (defun my-reply-fwd-advice (orig &rest args)
+  ;;   "Move cursor to the start of the reply in org-msg mode"
+  ;;   ;; first run the mu4e function
+  ;;   (apply orig args)
+  ;;   ;; then, move the cursor to the body if its a reply (but not new composition)
+  ;;   ;; NOTE: first element in "args" holds the type of email that's being composed.
+  ;;   ;; default behavior for new and forwarded email is to start in the "to" field
+  ;;   (if (member (car args) '(reply edit))
+  ;;       (org-msg-goto-body)))
+  ;; (advice-add 'mu4e~compose-handler :around #'my-reply-fwd-advice)
 
-  (defun ijf-mu4e-add-attachment-icons ()
+
+  (defun my-mu4e-add-attachment-icons ()
     "Add icons to the properties drawer to indicate the type of attachments
 Requires all-the-icons as a dependency"
     (interactive)
@@ -1020,7 +1054,7 @@ Requires all-the-icons as a dependency"
             ;; (message overlay-icons)
             )))))
 
-  (defun ijf-mu4e-remove-attachment-icons ()
+  (defun my-mu4e-remove-attachment-icons ()
     "Remove all icon overlays."
     (save-restriction
       (widen)
@@ -1031,25 +1065,22 @@ Requires all-the-icons as a dependency"
              (overlays-in (point-min) (point-max))
              ))))
 
-  (defun ijf-mu4e-reset-attachment-icons (orig-fun &rest args)
+  (defun my-mu4e-reset-attachment-icons (orig-fun &rest args)
     "Reset overlays for attachment icons"
     (apply orig-fun args)
-    (ijf-mu4e-remove-attachment-icons)
-    (ijf-mu4e-add-attachment-icons))
+    (my-mu4e-remove-attachment-icons)
+    (my-mu4e-add-attachment-icons))
 
-  (advice-add 'org-msg-attach-attach :around #'ijf-mu4e-reset-attachment-icons)
-  (advice-add 'org-msg-dired-attach :around #'ijf-mu4e-reset-attachment-icons)
-  (advice-add 'org-msg-attach-delete :around #'ijf-mu4e-reset-attachment-icons)
-
-  (advice-add 'mu4e~compose-handler :around #'ijf-reply-fwd-advice)
-  (define-key org-msg-edit-mode-map (kbd "C-c f") 'ijf-hydra-jump-to-email-fields/body)
-  (define-key org-msg-edit-mode-map (kbd "C-c w") 'ijf-hydra-copy-email-fields-to-kill-RING/BODY)
-  (define-key org-msg-edit-mode-map (kbd "C-c w") 'ijf-hydra-copy-email-fields-to-kill-RING/BODY)
+  (advice-add 'org-msg-attach-attach :around #'my-mu4e-reset-attachment-icons)
+  (advice-add 'org-msg-dired-attach :around #'my-mu4e-reset-attachment-icons)
+  (advice-add 'org-msg-attach-delete :around #'my-mu4e-reset-attachment-icons)
+  (define-key org-msg-edit-mode-map (kbd "C-c f") 'my-hydra-jump-to-email-fields/body)
+  (define-key org-msg-edit-mode-map (kbd "C-c w") 'my-hydra-copy-email-fields-to-kill-RING/BODY)
 
   )
 
 ;;;;;; Helper functions
-(defun ijf-mu4e-queries-help ()
+(defun my-mu4e-queries-help ()
   "Look up search syntax"
   (interactive)
   (split-window-vertically)
@@ -1057,14 +1088,14 @@ Requires all-the-icons as a dependency"
   (search-forward "FIELDS"))
 
 ;; TODO: incomplete. need to think of what I really want here
-(defun ijf-daily-email-progress ()
+(defun my-daily-email-progress ()
   "Plot my daily, weekly, and monthly email progress.
 A shell script queries mu every five minutes via the xbar app."
   (interactive "P")
   (let (file "/Users/ilya/Work/01-09 meta/01 productivity/email-inbox-count-log.csv")
     ))
 
-;;;; Email Addressing
+;;; Email Addressing
 ;; function to return first name of email recipients
 ;; used by yasnippet
 ;; inspired by
@@ -1106,7 +1137,7 @@ A shell script queries mu every five minutes via the xbar app."
                    (setq email-name email-name2))
                  )))
     email-name))
-;;;; Colors for header view
+;;; Colors for header view
 (use-package mu4e-column-faces
   :after mu4e
   :custom-face
