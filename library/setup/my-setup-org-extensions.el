@@ -643,15 +643,14 @@ Within those groups, sort by date and priority."
 ;;; org-pandoc-import
 ;; never leave org again!
 ;; on-the-fly convert to org and back
-(use-package org-pandoc-import
-  :vc (org-pandoc-import :url "https://github.com/tecosaur/org-pandoc-import"
-                         :lisp-dir ("preprocessors/" "filters/"))
-  :config
-  ;; automatically convert various files to org mode when visiting them, say in Dired.
-  ;; NOTE: may not be what I want. Try it out and see.
-  (require 'org-pandoc-import-transient)
-  (org-pandoc-import-transient-mode)
-  )
+;; (use-package org-pandoc-import
+;;   :vc (org-pandoc-import :url "https://github.com/tecosaur/org-pandoc-import"
+;;                          :lisp-dir ("preprocessors/" "filters/"))
+;;   :config
+;;   ;; automatically convert various files to org mode when visiting them, say in Dired.
+;;   ;; NOTE: may not be what I want. Try it out and see.
+;;   (require 'org-pandoc-import-transient)
+;;   (org-pandoc-import-transient-mode) )
 
 
 

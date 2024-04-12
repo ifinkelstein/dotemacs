@@ -71,8 +71,8 @@
   ;; move via visual lines
   (line-move-visual t)
   ;; reduce mark ring
-  (global-mark-ring-max 8)
-  (mark-ring-max 8))
+  (global-mark-ring-max 256)
+  (mark-ring-max 256))
 
 ;;;;; Line Numbers
 (use-package display-line-numbers
@@ -179,7 +179,7 @@
          backup-by-copying t               ; don't clobber symlinks
          version-control t                 ; version numbers for backup files
          delete-old-versions t             ; delete excess backup files silently
-         kept-old-versions 0               ; oldest versions to keep when a new numbered backup is made
+         kept-old-versions 2               ; oldest versions to keep when a new numbered backup is made
          kept-new-versions 10              ; newest versions to keep when a new numbered backup is made
          vc-make-backup-files t            ; backup versioned files, which Emacs does not do by default
          )

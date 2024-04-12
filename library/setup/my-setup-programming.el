@@ -514,6 +514,24 @@ Lisp function does not specify a special indentation."
              (kill-buffer buffer))
          (switch-to-buffer buffer)))))
 
+  (defun dwim-shell-commands-docx-to-org ()
+    "Convert docx(s)) to org."
+    (interactive)
+    (dwim-shell-command-on-marked-files
+     "docx to org"
+     "pandoc --from=docx --to=org '<<f>>' > '<<fne>>.org'"
+     :extensions "docx"
+     :utils "pandoc"))
+
+  (defun dwim-shell-commands-docx-to-pdf ()
+    "Convert docx(s) to pdf (via latex)."
+    (interactive)
+    (dwim-shell-command-on-marked-files
+     "docx to pdf (via latex)"
+     "pandoc -t latex '<<f>>' -o '<<fne>>.pdf'"
+     :extensions "docx" ;; brew install mactex
+     :utils "pdflatex"))
+
   (defun dwim-shell-commands-xls-to-csv ()
     (interactive)
     (dwim-shell-command-on-marked-files

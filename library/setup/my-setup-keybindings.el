@@ -127,7 +127,7 @@
    '("w" . my+window-keys)
    '("W" . my+workspace-keys)
    '("y" . yas-minor-mode-map)
-   '("z" . my-org-capture-todo))
+   '("z" . avy-zap-up-to-char-dwim))
 
 
   (meow-normal-define-key
@@ -236,8 +236,54 @@
   (setq meow-goto-line-function 'consult-goto-line)
   (meow-thing-register 'angle '(regexp "<" ">") '(regexp "<" ">"))
   (add-to-list 'meow-char-thing-table '(?a . angle))
+
+  ;; https://aatmunbaxi.netlify.app/comp/configuring_meow_friendly_latex/
+  ;; NOTE: uses AucTEX latex mode; not sure if works when AucTEX isn't loaded
+  ;; (require 'auctex)
+  (meow-thing-register 'latex-env
+                       'my-LaTeX-mark-inside-environment
+                       'LaTeX-mark-environment)
+  (add-to-list 'meow-char-thing-table '(?E . latex-env))
+
+  (meow-thing-register 'math '(regexp "\\$" "\\$") '(regexp "\\$" "\\$"))
+  (add-to-list 'meow-char-thing-table '(?m . math))
+
   (add-to-list 'meow-char-thing-table (cons ?{ 'paragraph))
   (add-to-list 'meow-char-thing-table (cons ?} 'paragraph))
+
+  ;; https://github.com/meow-edit/meow/issues/552
+  (defun my-meow-extend-to-end-of-thing (thing)
+    "Extend selection to the end of THING."
+    (interactive (list (meow-thing-prompt "Extend to end of: ")))
+    (if (not (use-region-p))
+        (meow-end-of-thing thing)
+      (save-window-excursion
+        (let ((back (equal 'backward (meow--thing-get-direction 'end)))
+              (bounds (meow--parse-inner-of-thing-char thing)))
+          (let ((beg (min (point) (mark))))
+            (when bounds
+              (thread-first
+                (meow--make-selection '(select . transient)
+                                      (if back (cdr bounds) beg)
+                                      (if back beg (cdr bounds)))
+                (meow--select))))))))
+
+  (defun my-meow-extend-to-beginning-of-thing (thing)
+    "Extend selection to the beginning of THING."
+    (interactive (list (meow-thing-prompt "Extend to beginning of: ")))
+    (if (not (use-region-p))
+        (meow-beginning-of-thing thing)
+      (save-window-excursion
+        (let ((back (equal 'backward (meow--thing-get-direction 'beginning)))
+              (bounds (meow--parse-inner-of-thing-char thing)))
+          (let ((end (max (point) (mark))))
+            (when bounds
+              (thread-first
+                (meow--make-selection '(select . transient)
+                                      (if back end (car bounds))
+                                      (if back (car bounds) end))
+                (meow--select))))))))
+
   (meow-setup)
   (meow-global-mode 1))
 
@@ -325,13 +371,22 @@
 (bind-keys :prefix-map my+file-keys
            :prefix (concat my-prefix " f")
            ("b" . consult-bookmark                 )
+           ("C" . my-dired-copy-marked-files-add-date              )
            ("f" . find-file                        )
            ("l" . consult-locate                   )
            ("o" . crux-open-with                   )
            ("s" . save-buffer                      )
            ("r" . consult-recent-file              )
+           ("R" . my-dired-rename-marked-files-add-date              )
            ("y" . my-show-and-copy-buffer-filename))
 
+
+;;;;; LaTeX Keybindings
+(bind-keys :prefix-map my+latex-keys
+           :prefix (concat my-prefix " L")
+           ("n" . LaTeX-narrow-to-environment              )
+           ("t" . reftex-toc              )
+           )
 
 ;;;;; Mail Keybindings
 (bind-keys :prefix-map my+mail-keys
@@ -423,7 +478,8 @@
 ;;;;; Spelling Keybindings
 (bind-keys :prefix-map my+spelling-keys
            :prefix (concat my-prefix " S")
-           ("b" . consult-flyspell          )
+           ("b" . ispell-buffer          )
+           ("B" . consult-flyspell          )
            ("h" . hydra-spelling/body       )
            ("n" . flyspell-correct-next     )
            ("p" . flyspell-correct-previous ))
@@ -445,6 +501,7 @@
            ("j" . my-forward-or-backward-sexp )
            ("k" . consult-yank-pop             )
            ("l" . selectrum-repeat             )
+           ("L" . consult-locate             )
            ("n" . consult-notes-search-all     )
            ("r" . vr/query-replace             )
            ("R" . substitute-target-in-buffer  )
@@ -531,15 +588,28 @@
 ;;;;; Workspace Keybindings
 (bind-keys :prefix-map my+workspace-keys
            :prefix (concat my-prefix " W")
+           ;; don't need to switch activities bc I use tabs
+           ;; ("<return>"  .  activities-switch)
+           ("A"  .  activities-resume)
            ("b"  .  tabspaces-switch-to-buffer)
+           ("B"  .  activities-switch-buffer)
            ("c"  .  tabspaces-clear-buffers)
            ("d"  .  tabspaces-close-workspace)
+           ("D"  .  activities-define)
+           ("G"  .  activities-revert)
            ("k"  .  tabspaces-kill-buffers-close-workspace)
+           ("K"  .  activities-kill)
+           ("L"  .  activities-list)
+           ("m"  .  my-move-tab-to)
+           ("N"  .  activities-new)
            ("o"  .  tabspaces-open-or-create-project-and-workspace)
            ("p"  .  tabspaces-project-switch-project-open-file)
            ("r"  .  tabspaces-remove-current-buffer)
-           ("R"  .  tabspaces-remove-selected-buffer)
-           ("s"  .  tabspaces-switch-or-create-workspace))
+           ;; ("R"  .  tabspaces-remove-selected-buffer)
+           ("s"  .  tabspaces-switch-or-create-workspace)
+           ("S"  .  (lambda ()
+                      (interactive)
+                      (activities-suspend (activities-current)))))
 
 ;;;; Which Key
 (use-package which-key

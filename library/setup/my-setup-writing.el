@@ -352,6 +352,11 @@ Version 2017-06-02"
      (symbol "left" "right")
      (symbol "yes" "no"))
     (latex-mode
+     (symbol "\small" "\tiny")
+     (symbol "draft" "final")
+     (symbol "disable" "enable"))
+    (LaTeX-mode
+     (symbol "\\small" "\\tiny")
      (symbol "draft" "final")
      (symbol "disable" "enable"))
     (symbol "true" "false")
@@ -408,9 +413,7 @@ Version 2017-06-02"
     (if paste (insert paste))
     (if (and (not nomode) mjmode) (ignore-errors (funcall mjmode)))
     (get-buffer bufname)))
-;;;; LaTeX
-;; configuration moved to my--latex.el
-;;;; TODO: languagetool for grammar checking
+;;;; grammar checking
 ;; This is apparently a non-trivial problem.
 
 ;; Some solutions for general text:
@@ -421,11 +424,53 @@ Version 2017-06-02"
 ;; https://github.com/cjl8zf/langtool-ignore-fonts
 ;; or
 ;; https://github.com/amperser/proselint
+(use-package langtool
+  :commands (langtool-check
+             langtool-check-done
+             langtool-show-message-at-point
+             langtool-correct-buffer)
+  :init (setq langtool-default-language "en-US")
+  :custom-face
+  ;; add subtle line under the error as opposed to the ugliness before
+  (langtool-errline ((t (:background nil :foreground nil :inherit 'flyspell-duplicate))))
 
-;; And for latex:
-;; https://github.com/sylvainhalle/textidote
-;; or this less favored solution:
-;; https://github.com/emacs-languagetool/lsp-ltex
+  :config
+  (setq langtool-java-user-arguments '("-Dfile.encoding=UTF-8"))
+  ;; disable some pesky rules
+  ;; MORFOLOGIK_RULE_EN_US -- spell checker, ispell has my dictionary
+  ;; EN_QUOTES -- smart quotes
+  ;; EN_DIACRITICS_REPLACE -- suggest diacritics (blase ->blasé )
+  ;; WANT -- ???
+  ;; other rules:
+  ;; https://community.languagetool.org/rule/list?lang=en
+  (setq langtool-user-arguments '("--disable" "MORFOLOGIK_RULE_EN_US,WANT,EN_QUOTES,EN_DIACRITICS_REPLACE"))
+  (unless (or langtool-bin
+              langtool-language-tool-jar
+              langtool-java-classpath)
+    (cond ((setq langtool-bin
+                 (or (executable-find "languagetool-commandline")
+                     (executable-find "languagetool"))))  ; for nixpkgs.languagetool
+          ((featurep :system 'macos)
+           (cond
+            ;; is user using home brew?
+            ((file-directory-p "/usr/local/Cellar/languagetool")
+             (setq langtool-language-tool-jar
+                   (locate-file "libexec/languagetool-commandline.jar"
+                                (doom-files-in "/usr/local/Cellar/languagetool"
+                                               :type 'dirs
+                                               :depth 2))))
+            ;; macports compatibility
+            ((file-directory-p "/opt/local/share/java/LanguageTool")
+             (setq langtool-java-classpath "/opt/local/share/java/LanguageTool/*"))))
+          ((featurep :system 'linux)
+           (setq langtool-java-classpath "/usr/share/languagetool:/usr/share/java/languagetool/*")))))
+
+
+;; Detects weasel words, passive voice and duplicates. Proselint would be a
+;; better choice.
+(use-package writegood-mode
+  :hook (org-mode markdown-mode rst-mode asciidoc-mode latex-mode LaTeX-mode))
+
 
 
 ;;; end my-setup-writing

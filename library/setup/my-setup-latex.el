@@ -8,23 +8,16 @@
 ;;; Code:
 (message "Setting up LaTeX settings...")
 
-;;;; Latex Packages
+
+;;; Latex Packages
+;; (require 'latex)
+;; (add-to-list 'auto-mode-alist '("\\.[tT]e[xX]\\'" . LaTeX-mode))
 ;; Basic settings
-(use-package LaTeX
+(use-package latex
+  :after tex
   :ensure auctex
-  :mode (("\\.tex\\'" . latex-mode)
-         ("\\.latex\\'" . latex-mode)
-         ("\\.tikz\\'" . latex-mode))
+  :mode ("\\.tex\\'" . LaTeX-mode)
   :commands (latex-mode LaTeX-mode plain-tex-mode)
-  :bind (:map LaTeX-mode-map
-         ("s-u" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "underline"))))
-         ("s-b" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "textbf"))))
-         ("s-i" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "emph"))))
-         ("s-h" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "highlight"))))
-         ("s-$" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "inline math"))))
-         ("s-d" . my-TeX-delete-current-macro)
-         ("M-i" . my-tab-to-tab-stop)
-         ("M-I" . my-tab-to-tab-stop-back))
   :hook ((LaTeX-mode . variable-pitch-mode)
          (LaTeX-mode . LaTeX-preview-setup)
          (LaTeX-mode . flyspell-mode)
@@ -33,9 +26,37 @@
          (LaTeX-mode . olivetti-mode)
          (LaTeX-mode . hl-todo-mode)
          (LaTeX-mode . turn-on-reftex)
-         (LaTeX-mode . electric-indent-local-mode) ;; trying to see if I like this mode
-
-         )
+         ;; (LaTeX-mode . lsp-bridge-mode) ;; not sure I need treesitter support
+         (LaTeX-mode . (lambda ()
+                         (TeX-fold-mode 1))) ;; enable hiding various things
+         (LaTeX-mode . electric-indent-local-mode)) ;; trying to see if I like this mode
+  :mode ("\\.tex\\'" . latex-mode)
+  ;; introduce dummy variables to silence compile and other warnings
+  ;; https://github.com/karthink/.emacs.d/blob/master/lisp/setup-latex.el
+  :defines (TeX-auto-save
+            TeX-parse-self
+            TeX-electric-escape
+            TeX-PDF-mode
+            TeX-source-correlate-method
+            TeX-newline-function
+            TeX-view-program-list
+            TeX-view-program-selection
+            TeX-mode-map)
+  :bind (:map LaTeX-mode-map
+         ("C-M-u" . LaTeX-backward-up-list)
+         ("C-M-e" . LaTeX-forward-environment)
+         ("C-M-a" . LaTeX-backward-environment)
+         ("M-RET" . LaTeX-insert-item)
+         ("s-u" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "underline"))))
+         ("s-b" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "textbf"))))
+         ("s-i" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "emph"))))
+         ("s-h" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "highlight"))))
+         ("s-$" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "inline math"))))
+         ("s-d" . my-TeX-delete-current-macro)
+         ("M-i" . my-tab-to-tab-stop)
+         ("M-I" . my-tab-to-tab-stop-back)
+         ("C-)" . puni-slurp-forward)
+         ("C-(" . puni-slurp-backward))
   ;; may want to disable these later
   ;; (add-hook 'LaTeX-mode-hook
   ;;           (lambda () (interactive)
@@ -47,8 +68,11 @@
   ;; https://emacs.stackexchange.com/questions/3083/how-to-indent-items-in-latex-auctex-itemize-environments
   (LaTeX-indent-level 4) ;; set reasonable indentation for lists
   (LaTeX-item-indent -2) ;; set reasonable indentation for lists
-  (TeX-parse-self t) ;; this should auto-detect when biber is needed for C-c C-a
 
+  (TeX-error-overview-open-after-TeX-run nil) ; do not open the error overview automatically after running TeX.
+
+  (TeX-parse-self t) ;; this should auto-detect when biber is needed for C-c C-a
+  (TeX-electric-escape t) ; offer auto-completion when I type /
   ;; for navigation menu
   (reftex-toc-split-windows-fraction 0.35)
   (reftex-toc-split-windows-horizontally t)
@@ -65,11 +89,15 @@
 
   ;; click on a PDF to see the TeX source
   (TeX-source-correlate-mode t)
+  ;; (setq-default TeX-source-correlate-start-server t)
+
+  (TeX-newline-function 'reindent-then-newline-and-indent)
 
   ;; this sets the TeX engine to pdfLatex because xelatex was giving me problems with PDF figures.
   ;; this seems to work by using PdfLatex engine
   (TeX-engine 'xetex)
-  (TeX-auto-save nil)
+
+  (TeX-auto-save t) ;; save style info w/ buffer (?)
   (TeX-save-query nil)
   (TeX-PDF-mode t)
   (TeX-master nil)
@@ -141,9 +169,121 @@ return `nil'."
     (add-to-list 'TeX-view-program-list
                  '("PDF Tools" TeX-pdf-tools-sync-view)))
   (add-to-list 'TeX-view-program-selection
-               '(output-pdf "PDF Tools"))
+               '(output-pdf "PDF Tools"))) ;;auctex use-package
 
-  ) ;;auctex use-package
+
+;; (use-package tex-fold
+;;   :after latex
+;;   :defer
+;;   :custom-face
+;;   (TeX-fold-folded-face ((t (:inherit shadow))))
+;;   (TeX-fold-unfolded-face ((t (:background unspecified))))
+;;   :bind (:map text-mode-map
+;;          ("M-g r" . my/next-reference-or-label)
+;;          ("M-g R" . my/previous-reference-or-label)
+;;          :map LaTeX-mode-map
+;;          ("M-g r" . my/next-reference-or-label))
+;;   :config
+
+;;   (defun my/next-reference-or-label (_arg)
+;;     (interactive "p")
+;;     (let* ((prop))
+;;       (pcase-let
+;;           ((`(,_ . ,ov)
+;;             (get-char-property-and-overlay (point) 'TeX-fold-type)))
+;;         (when ov (TeX-fold-hide-item ov)))
+;;       (save-excursion
+;;         (and (setq prop (text-property-search-forward
+;;                          'face nil
+;;                          (lambda (_ val)
+;;                            (memq val '(font-lock-constant-face org-cite)))
+;;                          t))))
+;;       (if prop
+;;           (progn (goto-char (prop-match-beginning prop))
+;;                  (when (and (derived-mode-p 'org-mode) (org-invisible-p))
+;;                    (org-fold-show-context 'link-search))
+;;                  (when eldoc-mode (eldoc--invoke-strategy t))
+;;                  (pcase-let
+;;                      ((`(,_ . ,ov)
+;;                        (get-char-property-and-overlay (point) 'TeX-fold-type)))
+;;                    (when ov (TeX-fold-show-item ov))))
+;;         (message "No more references/labels."))))
+
+;;   (defun my/previous-reference-or-label (_arg)
+;;     (interactive "p")
+;;     (let ((p))
+;;       (save-excursion
+;;         (and (text-property-search-backward
+;;               'face nil
+;;               (lambda (_ val)
+;;                 (memq val '(font-lock-constant-face org-cite
+;;                                                     TeX-fold-folded-face)))
+;;               t)
+;;              (setq p (point))))
+;;       (pcase-let
+;;           ((`(,_ . ,ov)
+;;             (get-char-property-and-overlay (point) 'TeX-fold-type)))
+;;         (when ov (TeX-fold-hide-item ov)))
+;;       (when p
+;;         (goto-char p)
+;;         (when (and (derived-mode-p 'org-mode) (org-invisible-p))
+;;           (org-fold-show-context 'link-search))
+;;         (when eldoc-mode (eldoc--invoke-strategy t)))
+;;       (pcase-let
+;;           ((`(,_ . ,ov)
+;;             (get-char-property-and-overlay (point) 'TeX-fold-type)))
+;;         (when ov (TeX-fold-show-item ov)))))
+
+;;   (defvar-keymap my/TeX-ref-map
+;;     :repeat t
+;;     "r" 'my/next-reference-or-label
+;;     "R" 'my/previous-reference-or-label
+;;     "n" 'my/next-reference-or-label
+;;     "p" 'my/previous-reference-or-label)
+
+;;   (setq ;; TeX-fold-folded-face '((t (:height 1.0 :foreground "SlateBlue1")))
+;;    TeX-fold-auto nil
+;;    TeX-fold-type-list '(macro))    ;do not include "comment", fails in Org mode
+;;   (set-face-attribute 'TeX-fold-folded-face nil :foreground nil :inherit 'shadow)
+
+;;   ;; Custom folded display for labels and refs
+;;   (defun my/TeX-fold-ref (text)
+;;     (let* ((m (string-match "^\\([^:]+:\\)\\(.*\\)" text))
+;;            (cat (or (match-string 1 text) ""))
+;;            (ref (or (match-string 2 text) text)))
+;;       (setq ref
+;;             (if (> (length ref) 13)
+;;                 (concat (substring ref 0 6) "..." (substring ref -6))
+;;               ;; (concat "..." (substring ref -14))
+;;               ref))
+;;       (concat "[" (propertize cat 'face 'shadow) ref "]")))
+
+;;   (defun my/TeX-fold-label (&rest texts)
+;;     (cl-loop for text in texts
+;;              for m = (string-match "^\\([^:]+:\\)\\(.*\\)" text)
+;;              for cat = (or (match-string 1 text) "")
+;;              for ref = (or (match-string 2 text) text)
+;;              collect (concat "[" (propertize cat 'face 'shadow) ref "]") into labels
+;;              finally return (mapconcat #'identity labels ",")))
+;;   (setq-default TeX-fold-macro-spec-list
+;;                 '(("[f]" ("footnote" "marginpar"))
+;;                   (my/TeX-fold-label ("cite"))
+;;                   (my/TeX-fold-label ("label"))
+;;                   (my/TeX-fold-ref ("ref" "pageref" "eqref" "footref"))
+;;                   ("[i]" ("index" "glossary"))
+;;                   ("[1]:||*" ("item"))
+;;                   ("..." ("dots"))
+;;                   ("(C)" ("copyright"))
+;;                   ("(R)" ("textregistered"))
+;;                   ("TM"  ("texttrademark"))
+;;                   ;; (1 ("part" "chapter" "section" "subsection" "subsubsection"
+;;                   ;;     "paragraph" "subparagraph"
+;;                   ;;     "part*" "chapter*" "section*" "subsection*" "subsubsection*"
+;;                   ;;     "paragraph*" "subparagraph*"
+;;                   ;;     "emph" "textit" "textsl" "textmd" "textrm" "textsf" "texttt"
+;;                   ;;     "textbf" "textsc" "textup"))
+;;                   )))
+
 
 ;; (use-package preview
 ;;   :after auctex
@@ -153,12 +293,33 @@ return `nil'."
 ;;     (setq-default preview-scale 1.4
 ;;                   preview-scale-function '(lambda () (* (/ 10.0 (preview-document-pt)) preview-scale)))))
 
+
 (use-package reftex
   :after auctex
   :commands turn-on-reftex
-  :init
-  (setq reftex-plug-into-AUCTeX t))
+  :config
+  (setq reftex-plug-into-AUCTeX t)
+  (setq reftex-insert-label-flags '("sf" "sfte"))
+  ;; (setq reftex-ref-style-default-list '("Default" "AMSMath" "Cleveref"))
+  (setq reftex-use-multiple-selection-buffers t))
 
+(use-package consult-reftex
+  :vc (:fetcher github :repo "karthink/consult-reftex")
+  ;; :load-path "plugins/consult-reftex/"
+  :after (reftex consult embark)
+  :bind (:map reftex-mode-map
+         ("C-c )"   . consult-reftex-insert-reference)
+         ("C-c M-." . consult-reftex-goto-label)
+         :map org-mode-map
+         ("C-c (" . consult-reftex-goto-label)
+         ("C-c )"   . consult-reftex-insert-reference))
+  :config
+  (setq consult-reftex-preview-function
+        #'consult-reftex-make-window-preview
+        consult-reftex-preferred-style-order
+        '("\\eqref" "\\ref"))
+  (consult-customize consult-reftex-insert-reference
+                     :preview-key (list :debounce 0.3 'any)))
 (use-package bibtex
   :after auctex
   :defer t
@@ -646,42 +807,67 @@ return `nil'."
                                                  ("\\textcircledP" . 8471)
                                                  ("\\textreferencemark" . 8251)))))
 ;;;; after-load latex
-(with-eval-after-load 'latex
 
-;;;; Hooks
-  ;; variable pitch for latex authoring
-  (add-hook 'LaTeX-mode-hook #'variable-pitch-mode)
-  (add-hook 'LaTeX-mode-hook #'outline-minor-mode)
-  ;; fold blocks between comments using outline-minor-mode in TeX-mode
-  (setq TeX-outline-extra
-        '(("%%" 1)
-          ("%%%" 2)
-          ("%%%%" 3)))
+;; (with-eval-after-load 'latex
+;;   ;; TODO: move this into the use-package declaration
+;; ;;;; Hooks
+;;   ;; variable pitch for latex authoring
+;;   (add-hook 'LaTeX-mode-hook #'variable-pitch-mode)
+;;   (add-hook 'LaTeX-mode-hook #'outline-minor-mode)
+;;   ;; fold blocks between comments using outline-minor-mode in TeX-mode
+;;   (setq TeX-outline-extra
+;;         '(("%%" 1)
+;;           ("%%%" 2)
+;;           ("%%%%" 3)))
 
-  ;; click on a PDF to see the TeX source
-  (setq TeX-source-correlate-mode t)
-  ;; view generated PDF with `pdf-tools'.
-  (unless (assoc "PDF Tools" TeX-view-program-list)
-    (add-to-list 'TeX-view-program-list
-                 '("PDF Tools" TeX-pdf-tools-sync-view)))
-  (add-to-list 'TeX-view-program-selection
-               '(output-pdf "PDF Tools"))
 
-  ;; useful yasnippets for rapidly formatting text
-  (bind-keys
-   :map LaTeX-mode-map
-   ("s-u" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "underline"))))
-   ("s-b" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "textbf"))))
-   ("s-i" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "emph"))))
-   ("s-h" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "highlight"))))
-   ("s-$" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "inline math"))))
-   ("s-d" . mg-TeX-delete-current-macro)
-   ("M-i" . my-tab-to-tab-stop)
-   ("M-I" . my-tab-to-tab-stop-back)))
+
+;;   ;; view generated PDF with `pdf-tools'.
+;;   (unless (assoc "PDF Tools" TeX-view-program-list)
+;;     (add-to-list 'TeX-view-program-list
+;;                  '("PDF Tools" TeX-pdf-tools-sync-view)))
+;;   (add-to-list 'TeX-view-program-selection
+;;                '(output-pdf "PDF Tools"))
+
+;;   ;; useful yasnippets for rapidly formatting text
+;;   (bind-keys
+;;    :map LaTeX-mode-map
+;;    ("s-u" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "underline"))))
+;;    ("s-b" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "textbf"))))
+;;    ("s-i" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "emph"))))
+;;    ("s-h" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "highlight"))))
+;;    ("s-$" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "inline math"))))
+;;    ("s-d" . mg-TeX-delete-current-macro)
+;;    ("M-i" . my-tab-to-tab-stop)
+;;    ("M-I" . my-tab-to-tab-stop-back)))
 ;;; helpful functions
 ;; control how reftex toc shows up
 (add-to-list 'display-buffer-alist
              '("^\\*toc\\*" imenu-list-display-buffer))
+
+(defun my-LaTeX-mark-inside-environment ()
+  "Like `LaTeX-mark-environment' but marks the inside of the environment.
+Skips past [] and {} arguments to the environment.
+Adapted by the er/mark-LaTeX-inside-environment function"
+  (interactive)
+  (LaTeX-mark-environment)
+  (when (looking-at "\\\\begin{")
+    (forward-sexp 2)
+    ;; Assume these are arguments
+    (while (looking-at "[ \t\n]*[{[]")
+      (forward-sexp 1))
+    ;; Go to next line if there is nothing interesting on this one
+    (skip-syntax-forward " ") ;; newlines are ">" i.e. end comment
+    (when (looking-at "%\\|$")
+      (forward-line))
+    ;; Clean up the end portion
+    (exchange-point-and-mark)
+    (backward-sexp 2)
+    (skip-syntax-backward " ")
+    (exchange-point-and-mark)))
+
+
+
 
 ;; ref:
 ;; https://github.com/malb/emacs.d/blob/master/malb.org#latex-2

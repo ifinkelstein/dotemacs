@@ -12,7 +12,7 @@
 ;; Use Org from source rather than built in
 (use-package org
   :ensure nil
-  :commands (org-mode)
+  :commands (org-mode org-capture)
   :mode (("\\.org$" . org-mode))
   :hook ((org-mode . variable-pitch-mode))
   :bind
@@ -43,14 +43,12 @@
   ;; Load this before org-mode is loaded.
   ;; See https://emacs.stackexchange.com/q/54673/11934
   ;; https://emacs.stackexchange.com/q/54632/11934
-
   (setq org-emphasis-regexp-components
         '("-—[:space:]('\"{["
           "\] - [:space:].,:!?;'\")}\\["
           "[:space:]"
           "."
           1))
-
   :custom
   ;; Aesthetics & UI
   (org-auto-align-tags nil) ;; don't auto-align tags
@@ -126,6 +124,13 @@
   ;; Setup further org config
   )
 
+
+;;;; org-capture
+(use-package org-capture
+  :ensure nil
+  :bind
+  (:map org-capture-mode-map
+   ("<s-return>" . end-of-buffer)))
 ;;;; Org Agenda
 (use-package org-agenda
   :ensure nil
@@ -293,7 +298,7 @@
       `(
         ("f" "Firefox Bookmark"
          entry (file+headline org-default-notes-file "Inbox")
-         "* TODO %i %?\n Reference: %(grab-mac-link 'firefox 'org)\n:PROPERTIES:\n:Created: %U\n:END:\n"
+         "* TODO %i %?\n:PROPERTIES:\n:Created: %U\n:END:\nReference: %(grab-mac-link 'firefox 'org)\n"
          :prepend t
          :empty-lines 1
          :created t)
@@ -311,7 +316,7 @@
          :created t)  ; template
         ("m" "Mail todo"
          entry (file+headline org-default-notes-file "Mail")
-         "* TODO %i%? \nLink: %a\n:PROPERTIES:\n:Created: %U\n:END:\n"
+         "* TODO %i%? \n:PROPERTIES:\n:Created: %U\n:END:\nLink: %a\n"
          :prepend t
          :created t
          :empty-lines 1)
@@ -513,12 +518,12 @@ Switch projects and subprojects from NEXT back to TODO"
     (setq org-mac-grab-Evernote-app-p nil))
 
 ;;;; Template expansion
-;; These are invoked with C-c C-,
-(setq new-structure-template-alist
-      '(("el" . "src emacs-lisp")
-        ("b" . "src bash")))
-(dolist (ele new-structure-template-alist)
-  (add-to-list 'org-structure-template-alist ele)))
+  ;; These are invoked with C-c C-,
+  (setq new-structure-template-alist
+        '(("el" . "src emacs-lisp")
+          ("b" . "src bash")))
+  (dolist (ele new-structure-template-alist)
+    (add-to-list 'org-structure-template-alist ele)))
 
 ;;;; TODO Keywords and tags
 ;; tags, in alphabetical order

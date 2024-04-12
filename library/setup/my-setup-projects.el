@@ -111,6 +111,31 @@ Git repo is cloned to directory set by `my-user-elisp-dir'."
                                      (user-error (format "%s\n%s" command output))))))
     (set-process-filter proc #'comint-output-filter)))
 
+;;; activities
+(use-package activities
+  :vc (:fetcher github :repo alphapapa/activities.el)
+  :init
+  (activities-mode)
+  (activities-tabs-mode)
+  ;; Prevent `edebug' default bindings from interfering.
+  (setq edebug-inhibit-emacs-lisp-mode-bindings t)
+
+  ;; fix a bug w/ mu4e
+  ;; https://github.com/alphapapa/activities.el/issues/55
+  ;; may be fixed in later mu4e versions
+  (define-advice mu4e--view-render-buffer (:after (&rest _) unset-bookmark-make-record-function)
+    (kill-local-variable 'bookmark-make-record-function))
+
+  :bind
+  (("C-x C-a C-n" . activities-new)
+   ("C-x C-a C-d" . activities-define)
+   ("C-x C-a C-a" . activities-resume)
+   ("C-x C-a C-s" . activities-suspend)
+   ("C-x C-a C-k" . activities-kill)
+   ("C-x C-a RET" . activities-switch)
+   ("C-x C-a b" . activities-switch-buffer)
+   ("C-x C-a g" . activities-revert)
+   ("C-x C-a l" . activities-list)))
 ;;; End my-projects.el
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

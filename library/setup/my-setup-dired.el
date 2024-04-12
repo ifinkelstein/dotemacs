@@ -79,28 +79,36 @@
      (t (concat str "." today)))))
 
 (defun my-dired-rename-marked-files-add-date ()
-  "Add a date to marked files in dired buffer."
+  "Add a date to marked files in dired buffer.
+Check to make sure in dired major mode."
   (interactive)
-  (let* ((files (dired-get-marked-files)))
-    (dolist (file files)
-      (let* ((file-dir (file-name-directory file))
-             (file-name (file-name-nondirectory file))
-             (name (file-name-sans-extension file-name))
-             (ext (file-name-extension file-name))
-             (new-name (concat file-dir (add-todays-date-remove-old name) "." ext)))
-        (rename-file file new-name)))))
+  (if (eq major-mode 'dired-mode)
+      (progn
+        (let* ((files (dired-get-marked-files)))
+          (dolist (file files)
+            (let* ((file-dir (file-name-directory file))
+                   (file-name (file-name-nondirectory file))
+                   (name (file-name-sans-extension file-name))
+                   (ext (file-name-extension file-name))
+                   (new-name (concat file-dir (add-todays-date-remove-old name) "." ext)))
+              (rename-file file new-name))))))
+  (message "Not in Dired mode."))
 
 (defun my-dired-copy-marked-files-add-date ()
-  "Copy marked file(s) and add today's date in dired buffer."
+  "Copy marked file(s) and add today's date in dired buffer.
+Check to make sure in dired major mode."
   (interactive)
-  (let* ((files (dired-get-marked-files)))
-    (dolist (file files)
-      (let* ((file-dir (file-name-directory file))
-             (file-name (file-name-nondirectory file))
-             (name (file-name-sans-extension file-name))
-             (ext (file-name-extension file-name))
-             (new-name (concat file-dir (add-todays-date-remove-old name) "." ext)))
-        (copy-file file new-name)))))
+  (if (eq major-mode 'dired-mode)
+      (progn
+        (let* ((files (dired-get-marked-files)))
+          (dolist (file files)
+            (let* ((file-dir (file-name-directory file))
+                   (file-name (file-name-nondirectory file))
+                   (name (file-name-sans-extension file-name))
+                   (ext (file-name-extension file-name))
+                   (new-name (concat file-dir (add-todays-date-remove-old name) "." ext)))
+              (copy-file file new-name)))))
+    (message "Not in Dired mode.")))
 
 (defun xah-open-in-external-app (&optional @fname)
   "Open the current file or dired/dirvish-marked files in external app.
@@ -216,6 +224,7 @@ Version 2022-09-14"
                :lisp-dir "extensions/")
   :after dired
   :init
+  (require 'dirvish)
   (dirvish-override-dired-mode)
   :custom
   (dirvish-quick-access-entries ; It's a :custom option
