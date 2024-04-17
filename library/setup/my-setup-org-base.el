@@ -14,7 +14,8 @@
   :ensure nil
   :commands (org-mode org-capture)
   :mode (("\\.org$" . org-mode))
-  :hook ((org-mode . variable-pitch-mode))
+  :hook ((org-mode . variable-pitch-mode)
+         (org-mode . unpackaged/org-table-face-mode))
   :bind
   (:map global-map
    ("C-c a" . org-agenda)
@@ -29,6 +30,7 @@
    ("M-E" . org-shiftup)
    ("M-I" . org-shiftright)
    ("M-M" . org-shiftleft)
+   ("<s-return>" . unpackaged/org-return-dwim) ;; skip property drawer in headings
    ;; easily emphasize text
    ("s-b" . (lambda () (interactive) (org-emphasize-dwim ?*)))
    ("s-i" . (lambda () (interactive) (org-emphasize-dwim ?/)))
@@ -130,7 +132,7 @@
   :ensure nil
   :bind
   (:map org-capture-mode-map
-   ("<s-return>" . end-of-buffer)))
+   ("<s-return>" . unpackaged/org-return-dwim)))
 ;;;; Org Agenda
 (use-package org-agenda
   :ensure nil

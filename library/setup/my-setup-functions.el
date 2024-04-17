@@ -536,6 +536,13 @@ will be killed."
 (add-hook 'find-file-not-found-functions #'make-parent-directory)
 
 ;;;; Text Functions
+;;;;; Narrow/Widen
+;; https://github.com/ultronozm/emacsd/blob/main/init-latex.el
+(defun my-widen-first (orig-fun &rest args)
+  (save-restriction
+    (widen)
+    (apply orig-fun args)))
+
 ;;;;; Move text to bottom of buffer
 ;; Adapted from palimpsest package
 (defun my-move-region-to-dest (start end dest)
@@ -890,6 +897,178 @@ will be killed."
 (add-hook 'kill-emacs-query-functions #'my--quit)
 
 ;;;; Org functions
+;; https://github.com/alphapapa/unpackaged.el
+(define-minor-mode unpackaged/org-table-face-mode
+  "Apply `org-table' face family to all text in Org tables.
+Useful for forcibly applying the face to portions of table data
+that might have a different face, which could affect alignment."
+  :global nil
+  (let ((keywords '((unpackaged/org-table-face-matcher 0 'org-table))))
+    (if unpackaged/org-table-face-mode
+        (font-lock-add-keywords nil keywords 'append)
+      (font-lock-remove-keywords nil keywords))
+    (font-lock-flush)))
+
+(cl-defun unpackaged/org-table-face-matcher
+    (limit &optional (face `(:family ,(face-attribute 'org-table :family))))
+  "Apply FACE to entire Org tables.
+A `font-lock-keywords' function that searches up to LIMIT."
+  (cl-flet* ((find-face (face &optional limit not)
+                        ;; Return next position up to LIMIT that has FACE, or doesn't if NOT.
+                        (cl-loop with prev-pos
+                                 with pos = (point)
+                                 while (not (eobp))
+                                 do (setf pos (next-single-property-change pos 'face nil limit))
+                                 while (and pos (not (equal pos prev-pos)))
+                                 for face-at = (get-text-property pos 'face)
+                                 for face-matches-p = (or (eq face-at face)
+                                                          (when (listp face-at)
+                                                            (member face face-at)))
+                                 when (or (and not (not face-matches-p))
+                                          face-matches-p)
+                                 return pos
+                                 do (setf prev-pos pos)))
+             (apply-face-from (pos face)
+                              (unless (eobp)
+                                (let* ((property-at-start (get-text-property pos 'face))
+                                       (table-face-start (if (or (eq property-at-start 'org-table)
+                                                                 (when (listp property-at-start)
+                                                                   (member 'org-table property-at-start)))
+                                                             (point)
+                                                           (find-face 'org-table limit)))
+                                       table-face-end)
+                                  (when table-face-start
+                                    (goto-char table-face-start)
+                                    (setf table-face-end (line-end-position))
+                                    (add-face-text-property table-face-start table-face-end face)
+                                    (goto-char table-face-end))))))
+    (cl-loop with applied-p
+             for applied = (apply-face-from (point) face)
+             when applied
+             do (setf applied-p t)
+             while applied
+             finally return applied-p)))
+
+(defun unpackaged/org-attach-download (url)
+  "Download file at URL and attach with `org-attach'.
+Interactively, look for URL at point, in X clipboard, and in
+kill-ring, prompting if not found.  With prefix, prompt for URL."
+  (interactive (list (if current-prefix-arg
+                         (read-string "URL: ")
+                       (or (org-element-property :raw-link (org-element-context))
+                           (org-web-tools--get-first-url)
+                           (read-string "URL: ")))))
+  (when (yes-or-no-p (concat "Attach file at URL: " url))
+    (let* ((temp-dir (make-temp-file "org-attach-download-" 'dir))
+           (basename (file-name-nondirectory (directory-file-name url)))
+           (local-path (expand-file-name basename temp-dir))
+           size)
+      (unwind-protect
+          (progn
+            (url-copy-file url local-path 'ok-if-exists 'keep-time)
+            (setq size (file-size-human-readable
+                        (file-attribute-size
+                         (file-attributes local-path))))
+            (org-attach-attach local-path nil 'mv)
+            (message "Attached %s (%s)" url size))
+        (delete-directory temp-dir)))))
+
+(defun unpackaged/org-element-descendant-of (type element)
+  "Return non-nil if ELEMENT is a descendant of TYPE.
+TYPE should be an element type, like `item' or `paragraph'.
+ELEMENT should be a list like that returned by `org-element-context'."
+  ;; MAYBE: Use `org-element-lineage'.
+  (when-let* ((parent (org-element-property :parent element)))
+    (or (eq type (car parent))
+        (unpackaged/org-element-descendant-of type parent))))
+
+(defun unpackaged/org-return-dwim (&optional default)
+  "A helpful replacement for `org-return'.  With prefix, call `org-return'.
+
+On headings, move point to position after entry content.  In
+lists, insert a new item or end the list, with checkbox if
+appropriate.  In tables, insert a new row or end the table."
+  ;; Inspired by John Kitchin: http://kitchingroup.cheme.cmu.edu/blog/2017/04/09/A-better-return-in-org-mode/
+  (interactive "P")
+  (if default
+      (org-return)
+    (cond
+     ;; Act depending on context around point.
+
+     ;; NOTE: I prefer RET to not follow links, but by uncommenting this block, links will be
+     ;; followed.
+
+     ;; ((eq 'link (car (org-element-context)))
+     ;;  ;; Link: Open it.
+     ;;  (org-open-at-point-global))
+
+     ((org-at-heading-p)
+      ;; Heading: Move to position after entry content.
+      ;; NOTE: This is probably the most interesting feature of this function.
+      (let ((heading-start (org-entry-beginning-position)))
+        (goto-char (org-entry-end-position))
+        (cond ((and (org-at-heading-p)
+                    (= heading-start (org-entry-beginning-position)))
+               ;; Entry ends on its heading; add newline after
+               (end-of-line)
+               (insert "\n\n"))
+              (t
+               ;; Entry ends after its heading; back up
+               (forward-line -1)
+               (end-of-line)
+               (when (org-at-heading-p)
+                 ;; At the same heading
+                 (forward-line)
+                 (insert "\n")
+                 (forward-line -1))
+               ;; FIXME: looking-back is supposed to be called with more arguments.
+               (while (not (looking-back (rx (repeat 3 (seq (optional blank) "\n")))))
+                 (insert "\n"))
+               (forward-line -1)))))
+
+     ((org-at-item-checkbox-p)
+      ;; Checkbox: Insert new item with checkbox.
+      (org-insert-todo-heading nil))
+
+     ((org-in-item-p)
+      ;; Plain list.  Yes, this gets a little complicated...
+      (let ((context (org-element-context)))
+        (if (or (eq 'plain-list (car context))  ; First item in list
+                (and (eq 'item (car context))
+                     (not (eq (org-element-property :contents-begin context)
+                              (org-element-property :contents-end context))))
+                (unpackaged/org-element-descendant-of 'item context))  ; Element in list item, e.g. a link
+            ;; Non-empty item: Add new item.
+            (org-insert-item)
+          ;; Empty item: Close the list.
+          ;; TODO: Do this with org functions rather than operating on the text. Can't seem to find the right function.
+          (delete-region (line-beginning-position) (line-end-position))
+          (insert "\n"))))
+
+     ((when (fboundp 'org-inlinetask-in-task-p)
+        (org-inlinetask-in-task-p))
+      ;; Inline task: Don't insert a new heading.
+      (org-return))
+
+     ((org-at-table-p)
+      (cond ((save-excursion
+               (beginning-of-line)
+               ;; See `org-table-next-field'.
+               (cl-loop with end = (line-end-position)
+                        for cell = (org-element-table-cell-parser)
+                        always (equal (org-element-property :contents-begin cell)
+                                      (org-element-property :contents-end cell))
+                        while (re-search-forward "|" end t)))
+             ;; Empty row: end the table.
+             (delete-region (line-beginning-position) (line-end-position))
+             (org-return))
+            (t
+             ;; Non-empty row: call `org-return'.
+             (org-return))))
+     (t
+      ;; All other cases: call `org-return'.
+      (org-return)))))
+
 ;; search through an org file headings using a simple interface
 (defun org-goto-interactive ()
   (interactive)

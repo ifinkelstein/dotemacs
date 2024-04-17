@@ -616,7 +616,9 @@ Within those groups, sort by date and priority."
 
 
 ;;; org-timeblock for scheduling todos
-(use-package org-timeblock)
+;; schedule the day
+(use-package org-timeblock
+  :after org)
 
 ;;; org-transclusion
 (use-package org-transclusion

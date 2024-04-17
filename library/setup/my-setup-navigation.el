@@ -155,7 +155,7 @@
   ;;change how many seconds to wait for char timeout
   (avy-timeout-seconds 0.3)
   ;; may need to inactivate some avy jump keys if I have too many actions
-  (avy-keys '(?a ?r ?s ?t ?g ?m ?n ?e ?i ?o))
+  (avy-keys '(?a ?r ?s ?t ?g ?m ?n ?e ?i ?o ?'))
   (avy-dispatch-alist '((?w . avy-action-mark)
                         ;; (?i . avy-action-ispell)
                         (?z . avy-action-zap-to-char)
@@ -172,6 +172,7 @@
 
                         (?k . avy-action-kill-word-jump)
                         (?K . avy-action-kill-sentence-jump)
+                        (?F . avy-action-mark-to-char)
 
                         ;; (?w . avy-action-easy-copy)
                         ;; (?c . avy-action-kill-stay)
@@ -209,11 +210,10 @@
   (defun avy-action-mark-to-char (pt)
     (activate-mark)
     (goto-char (+ 1 pt)))
-  (setf (alist-get ?M avy-dispatch-alist) 'avy-action-mark-to-char)
 
-  (defun avy-action-helpful (pt)
-    (avy-generic-command-action #'helpful-at-point))
-  (setf (alist-get ?H avy-dispatch-alist) 'avy-action-helpful)
+  ;; (defun avy-action-helpful (pt)
+  ;;   (avy-generic-command-action #'helpful-at-point))
+  ;; (setf (alist-get ?H avy-dispatch-alist) 'avy-action-helpful)
 
   (defun avy-action-flyspell (pt)
     (save-excursion
@@ -272,7 +272,7 @@
 
   (defun avy-action-kill-sentence-jump (pt)
     (goto-char pt)
-    (ijf-kill-sentence-dwim)
+    (my-kill-sentence-dwim)
     t)
 
   (defun avy-action-yank-whole-line (pt)
@@ -302,14 +302,14 @@ The window scope is determined by `avy-all-windows' (ARG negates it)."
         (avy-process
          (avy--regex-candidates (regexp-quote (thing-at-point 'symbol t)))))))
 
-;; additional useful avy actions
+  ;; additional useful avy actions
   ;; https://github.com/abo-abo/avy/issues/312
   (defun avy-goto-string (string)
     "Jump to a visible occurace of string."
     (interactive (list (read-from-minibuffer "String: " nil nil nil nil (thing-at-point 'symbol t)))
-    (avy-with avy-goto-string
-      (avy-process
-       (avy--regex-candidates (regexp-quote string))))))
+                 (avy-with avy-goto-string
+                   (avy-process
+                    (avy--regex-candidates (regexp-quote string))))))
   ) ;;use-package avy
 
 ;;;; Link-Hint

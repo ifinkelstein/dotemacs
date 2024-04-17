@@ -10,15 +10,16 @@
 
 
 ;;; Latex Packages
-;; (require 'latex)
-;; (add-to-list 'auto-mode-alist '("\\.[tT]e[xX]\\'" . LaTeX-mode))
 ;; Basic settings
+;; inspiration: https://jwiegley.github.io/use-package/keywords/#defer-demand
 (use-package latex
-  :after tex
   :ensure auctex
+  ;; :after tex
+  :demand ;; load everything immediately. otherwise LaTeX mode doesn't get recognized. maybe?
   :mode ("\\.tex\\'" . LaTeX-mode)
   :commands (latex-mode LaTeX-mode plain-tex-mode)
-  :hook ((LaTeX-mode . variable-pitch-mode)
+  :hook ((latex-mode . LaTeX-mode) ;; absurd that this needs to be added
+         (LaTeX-mode . variable-pitch-mode)
          (LaTeX-mode . LaTeX-preview-setup)
          (LaTeX-mode . flyspell-mode)
          (LaTeX-mode . outline-minor-mode) ;; clobbers TAB expansion of yas-snippets
@@ -102,6 +103,11 @@
   (TeX-PDF-mode t)
   (TeX-master nil)
   :config
+  (TeX-source-correlate-mode) ;; show where the errors are
+  (advice-add 'TeX-view :around #'my-widen-first) ; fixes bug in TeX-view
+  (put 'LaTeX-narrow-to-environment 'disabled nil) ;; disable warning when using this function
+  (add-to-list 'TeX-file-extensions "tex\\.~[0-9a-f]+~") ;; for backup files too
+
    ;;;; Helper functions
   ;; source: https://emacs.stackexchange.com/questions/6045/how-to-delete-a-latex-macro-while-preserving-its-text-content/7997#7997
   ;; more useful than C-c C-f C-d
