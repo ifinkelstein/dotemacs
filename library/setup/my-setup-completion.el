@@ -408,10 +408,8 @@ targets."
          ("C-x C-j" . consult-dir-jump-file)))
 
 ;;;; In-Buffer Completion
-;;;;; Corfu
+;;;;;;; Corfu
 (use-package corfu
-  :hook
-  (window-setup . global-corfu-mode)
   :bind
   (:map corfu-map
    ("C-j"      . corfu-next)
@@ -425,7 +423,10 @@ targets."
    ([tab] . corfu-insert))
   :custom
   ;; auto-complete
-  (corfu-auto t)
+  (corfu-auto t) ;; Enable auto completion
+  (corfu-auto-prefix 3)
+  (corfu-auto-delay 0.1)
+
   (corfu-min-width 25)
   (corfu-max-width 100)
   (corfu-count 10)
@@ -439,7 +440,10 @@ targets."
   (corfu-preview-current t)  ;; Preview current candidate?
   (corfu-preselect-first t)    ;; Preselect first candidate?
   (corfu-history-mode 1) ;; Use history for completion
-  (corfu-popupinfo-delay 1) ;; delay for info popup
+  (corfu-popupinfo-delay '(0.4 0.2)) ;; delay for info popup; (initial subsequent)
+  :init
+  (global-corfu-mode)
+
   :config
   ;; Enable Corfu completion for commands like M-: (eval-expression) or M-!
   ;; (shell-command)
@@ -450,8 +454,8 @@ targets."
       (corfu-mode 1)))
   (add-hook 'minibuffer-setup-hook #'corfu-enable-in-minibuffer)
   (add-hook 'eshell-mode-hook (lambda () (setq-local corfu-quit-no-match t
-                                                     corfu-quit-at-boundary t
-                                                     corfu-auto nil)))
+                                                corfu-quit-at-boundary t
+                                                corfu-auto nil)))
   ;; Avoid press RET twice in shell
   ;; https://github.com/minad/corfu#completing-in-the-eshell-or-shell
   (defun corfu-send-shell (&rest _)
@@ -481,7 +485,7 @@ targets."
   :bind (("M-/" . dabbrev-completion)
          ("C-M-/" . dabbrev-expand)))
 
-;;;;;; Corfu Extensions (Cape)
+;;;;;;;  Corfu Extensions (Cape)
 ;; Add extensions
 (use-package cape
   ;; Bind dedicated completion commands
@@ -502,6 +506,11 @@ targets."
          ("C-c p r" . cape-rfc1345))
   :init
   ;; Add `completion-at-point-functions', used by `completion-at-point'.
+  ;; this is a super-capf that combines two capf
+
+  (defalias 'cape-dabbrev+dict
+    (cape-capf-super #'cape-dabbrev #'cape-dict))
+  (add-to-list 'completion-at-point-functions #'cape-dabbrev+dict)
   (add-to-list 'completion-at-point-functions #'cape-file)
   (add-to-list 'completion-at-point-functions #'cape-tex)
   (add-to-list 'completion-at-point-functions #'cape-keyword)
