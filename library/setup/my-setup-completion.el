@@ -425,7 +425,7 @@ targets."
   ;; auto-complete
   (corfu-auto t) ;; Enable auto completion
   (corfu-auto-prefix 3)
-  (corfu-auto-delay 0.1)
+  (corfu-auto-delay 0.4)
 
   (corfu-min-width 25)
   (corfu-max-width 100)

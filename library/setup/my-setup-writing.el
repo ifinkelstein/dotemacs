@@ -54,14 +54,14 @@ Version 2017-06-02"
   (redraw-frame (selected-frame)))
 
 ;;;; substitute -- rapidly change search/replace in buffer
-(use-package  substitute
+(use-package substitute
   :config
   ;; Set this to nil if you do not like visual feedback on the matching
   ;; target.  Default is t.
   (setq substitute-highlight t)
 
   ;; Set this to t if you want to always treat the letter casing
-  ;; literally.  Otherwise each command accepts a `C-u' prefix
+
   ;; argument to do this on-demand.
   (setq substitute-fixed-letter-case t)
 

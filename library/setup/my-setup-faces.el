@@ -94,6 +94,7 @@
   (add-hook 'prog-mode-hook #'highlight-numbers-mode))
 
 (use-package hl-todo
+  :defer t
   :commands hl-todo-mode
   :hook ((prog-mode . hl-todo-mode)
          (markdown-mode . hl-todo-mode)

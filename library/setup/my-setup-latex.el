@@ -73,7 +73,7 @@
   (TeX-error-overview-open-after-TeX-run nil) ; do not open the error overview automatically after running TeX.
 
   (TeX-parse-self t) ;; this should auto-detect when biber is needed for C-c C-a
-  (TeX-electric-escape t) ; offer auto-completion when I type /
+  (TeX-electric-escape nil) ; if true, offer auto-completion when I type /
   ;; for navigation menu
   (reftex-toc-split-windows-fraction 0.35)
   (reftex-toc-split-windows-horizontally t)

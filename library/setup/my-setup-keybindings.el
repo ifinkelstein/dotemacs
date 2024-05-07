@@ -116,7 +116,7 @@
    `("p" . ,project-prefix-map)
    '("q" . my+quit-keys)
    '("r" . consult-register)
-   '("R" . consult-recent-file)
+   '("R" . point-to-register)
    '("s" . my+search-keys)
    '("S" . cpm/search-in-input-dir)
    '("t" . my-org-capture-todo)
@@ -238,15 +238,35 @@
   (add-to-list 'meow-char-thing-table '(?a . angle))
 
   ;; https://aatmunbaxi.netlify.app/comp/configuring_meow_friendly_latex/
-  ;; NOTE: uses AucTEX latex mode; not sure if works when AucTEX isn't loaded
-  ;; (require 'auctex)
+  ;; NOTE: uses AucTEX latex mode; doesn't work when AucTEX isn't loaded
+  (require 'auctex)
   (meow-thing-register 'latex-env
                        'my-LaTeX-mark-inside-environment
                        'LaTeX-mark-environment)
   (add-to-list 'meow-char-thing-table '(?E . latex-env))
 
-  (meow-thing-register 'math '(regexp "\\$" "\\$") '(regexp "\\$" "\\$"))
-  (add-to-list 'meow-char-thing-table '(?m . math))
+  ;; (meow-thing-register 'math '(regexp "\\$" "\\$") '(regexp "\\$" "\\$"))
+  ;; (add-to-list 'meow-char-thing-table '(?m . math))
+
+
+
+  (defun my-expand-org-babel-mark-block ()
+    (interactive)
+    (org-babel-mark-block)
+    ;; expand by one line on either side
+    (forward-line -1)
+    (exchange-point-and-mark)
+    (forward-line 1))
+
+  ;; remove the 'buffer' thing from meow-char-thing-table
+  ;; note: meow-char-thing-table is a dotted pair list
+  ;; (setq meow-char-thing-table (cl-remove-if (lambda (item) (= (car item) 98)) meow-char-thing-table))
+
+  (meow-thing-register 'src-block
+                       'org-babel-mark-block
+                       'my-expand-org-babel-mark-block)
+  (add-to-list 'meow-char-thing-table '(?B . src-block))
+
 
   (add-to-list 'meow-char-thing-table (cons ?{ 'paragraph))
   (add-to-list 'meow-char-thing-table (cons ?} 'paragraph))
@@ -378,13 +398,24 @@
            ("s" . save-buffer                      )
            ("r" . consult-recent-file              )
            ("R" . my-dired-rename-marked-files-add-date              )
+           ("W" . wdired-change-to-wdired-mode)
+
            ("y" . my-show-and-copy-buffer-filename))
 
 
 ;;;;; LaTeX Keybindings
 (bind-keys :prefix-map my+latex-keys
            :prefix (concat my-prefix " L")
+           ("c" . reftex-citation)
+           ("e" . LaTeX-environment )
+           ("E" . my-LaTeX-delete-environment )
+           ("f" . TeX-fold-dwim)
+           ("F" . TeX-fold-buffer)
+           ("m" . TeX-insert-macro )
+           ("M" . my-LaTeX-delete-macro )
+
            ("n" . LaTeX-narrow-to-environment              )
+           ("r" . reftex-reference)
            ("t" . reftex-toc              )
            )
 
@@ -452,6 +483,7 @@
            ("i" . org-mru-clock-in)
            ("I" . my-goto-inbox.org)
            ("k" . org-cut-subtree)
+           ("K" . my-org-kill-text-under-heading )
            ("l" . org-store-link)
            ("m" . org-menu)
            ("n" . my-narrow-or-widen-dwim)
