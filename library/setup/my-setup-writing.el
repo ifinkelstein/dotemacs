@@ -253,9 +253,14 @@ Version 2017-06-02"
          ("\\.md\\'"       . markdown-mode)
          ("README\\.md\\'" . gfm-mode))
   :bind (:map markdown-mode-map
-         ("s-*" . markdown-insert-list-item)
-         ("s-b" . markdown-insert-bold)
-         ("s-i" . markdown-insert-italic))
+         ("s-*"        . markdown-insert-list-item)
+         ("s-b"        . markdown-insert-bold)
+         ("s-i"        . markdown-insert-italic)
+         ("<M-right>"  . markdown-demote)
+         ("<M-left>"   . markdown-promote)
+         ("<M-up>"     . markdown-move-up)
+         ("<M-down>"   . markdown-move-down)
+         ("<C-return>" . markdown-insert-header-dwim))
   :config
   (setq markdown-enable-math nil
         markdown-enable-wiki-links t
@@ -264,7 +269,8 @@ Version 2017-06-02"
         markdown-footnote-location 'immediately
         markdown-unordered-list-item-prefix "-   "
         markdown-header-scaling t
-        markdown-use-pandoc-style-yaml-metadata t)
+        markdown-use-pandoc-style-yaml-metadata t
+        markdown-asymmetric-header t)
   (setq markdown-live-preview-window-function 'my--markdown-live-preview-window-xwidget)
 
   (defun my--markdown-live-preview-window-xwidget (file)
@@ -291,6 +297,7 @@ Version 2017-06-02"
 ;; macro: delete backslashes in paragraph to cleanup markdown conversion
 (fset 'my-md-delete-backslash
       (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item (quote ("\361\361f\\x" 0 "%d")) arg)))
+
 ;;;; Dictionary
 ;; built in
 (use-package dictionary
