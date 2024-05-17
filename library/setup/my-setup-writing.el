@@ -476,7 +476,9 @@ Version 2017-06-02"
 ;; Detects weasel words, passive voice and duplicates. Proselint would be a
 ;; better choice.
 (use-package writegood-mode
-  :hook (org-mode markdown-mode rst-mode asciidoc-mode latex-mode LaTeX-mode))
+  ;; disable auto-activation for now
+  ;; :hook (org-mode markdown-mode rst-mode asciidoc-mode latex-mode LaTeX-mode)
+  )
 
 
 

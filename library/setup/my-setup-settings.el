@@ -53,6 +53,8 @@
 
 (use-package emacs
   :ensure nil
+  :bind (:map global-map
+         ("s-o" . xah-open-in-external-app)) ;; open files in external app quickly
   :custom
   ;; Single space between sentences is more widespread than double
   (sentence-end-double-space nil))

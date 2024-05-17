@@ -20,6 +20,8 @@
          ("S" . xah-open-in-external-app))
   ;; "q" #'quit-window)
   :custom
+  ;; make sure git knows when a file is renamed
+  (dired-vc-rename-file t)
   ;; Like with ls, append "@" to file names if they're symlinks
   (dired-ls-F-marks-symlinks t)
   ;; don't ask about killing buffer visiting file

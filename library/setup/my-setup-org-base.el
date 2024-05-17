@@ -518,6 +518,13 @@ Switch projects and subprojects from NEXT back to TODO"
     (setq org-mac-grab-Skim-app-p nil)
     (setq org-mac-grab-qutebrowser-app-p nil)
     (setq org-mac-grab-Evernote-app-p nil))
+;;;; Change fonts/faces to fixed pitch
+  ;; checking this to see if tables look better
+  (dolist (face '(org-block org-table org-list-dt org-tag org-quote
+                            org-code org-link org-todo org-formula
+                            org-verbatim org-checkbox org-meta-line org-meta-line
+                            org-cite org-date org-hide))
+    (set-face-attribute face nil :inherit 'fixed-pitch))
 
 ;;;; Template expansion
   ;; These are invoked with C-c C-,

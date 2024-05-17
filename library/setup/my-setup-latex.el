@@ -177,7 +177,6 @@ return `nil'."
   (add-to-list 'TeX-view-program-selection
                '(output-pdf "PDF Tools"))) ;;auctex use-package
 
-
 ;; (use-package tex-fold
 ;;   :after latex
 ;;   :defer
