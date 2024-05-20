@@ -37,7 +37,11 @@
   (org-modern-label-border .25)
   ;; Note that these stars allow differentiation of levels
   ;; "①" "②" "③" "④" "⑤" "⑥" "⑦"
-  (org-modern-star ["⦶" "⦷" "⦹" "⊕" "⍟" "⊛" "⏣" "❂"]))
+  (org-modern-star ["⦶" "⦷" "⦹" "⊕" "⍟" "⊛" "⏣" "❂"])
+  :config
+  ;; change dates to fixed pitch so they don't screw up tables
+  (set-face-attribute 'org-modern-date-active nil :inherit 'fixed-pitch)
+  (set-face-attribute 'org-modern-date-inactive nil :inherit 'fixed-pitch))
 
 ;;; Org Autolist (Smart Lists)
 ;; Better list behavior
