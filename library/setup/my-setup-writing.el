@@ -101,9 +101,25 @@ Version 2017-06-02"
   (setq mermaid-flags "")
   ;; SVG export doesn't work
   ;; https://github.com/mermaid-js/mermaid/issues/2102
-  (setq mermaid-output-format ".pdf") )
+  (setq mermaid-ouormat ".pdf") )
 
 ;;;; Spelling
+
+;; jinx requires the enchant library
+;;  brew install enchant
+(use-package jinx
+  :hook (emacs-startup . global-jinx-mode)
+  :bind (("M-$" . jinx-correct))
+  :config
+  ;; useful vertico config
+  (with-eval-after-load 'vertico
+    (add-to-list 'vertico-multiform-categories
+                 '(jinx grid (vertico-grid-annotate . 20)))
+    (vertico-multiform-mode 1))
+
+  (setq jinx-languages "en")
+  (set-face-attribute 'jinx-misspelled nil :underline '(:color "#ffcc00" :style wave))))
+
 (use-package ispell
   :commands (ispell-word ispell-region ispell-buffer)
   :config

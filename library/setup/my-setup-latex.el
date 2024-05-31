@@ -103,6 +103,11 @@
   (TeX-PDF-mode t)
   (TeX-master nil)
   :config
+  ;; add additional useful macro commands
+  (TeX-add-symbols '("texttt" t)) ;; typewriter mode macro with single input
+
+
+
   (TeX-source-correlate-mode) ;; show where the errors are
   (advice-add 'TeX-view :around #'my-widen-first) ; fixes bug in TeX-view
   (put 'LaTeX-narrow-to-environment 'disabled nil) ;; disable warning when using this function

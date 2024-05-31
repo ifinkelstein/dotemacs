@@ -208,18 +208,18 @@
          ;; see if this works, not clear that its doing anything
          :map minibuffer-local-map
          ("C-SPC" . (lambda ()
-            (interactive)
-            (embark-select)
-            (vertico-next)))
+                      (interactive)
+                      (embark-select)
+                      (vertico-next)))
          :map completion-list-mode-map
-          (";" . embark-act)
-          :map embark-file-map
-          ("x" . consult-file-externally)
-          ("O" . xah-open-in-external-app)
-          ;; When using the Embark package, you can bind `marginalia-cycle' as an Embark action
-          :map embark-general-map
-          ("A"  . marginalia-cycle)
-          ("G" . ijf-embark-google-search))
+         (";" . embark-act)
+         :map embark-file-map
+         ("x" . consult-file-externally)
+         ("O" . xah-open-in-external-app)
+         ;; When using the Embark package, you can bind `marginalia-cycle' as an Embark action
+         :map embark-general-map
+         ("A"  . marginalia-cycle)
+         ("G" . ijf-embark-google-search))
   :init
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)
@@ -234,7 +234,7 @@
   (define-key embark-file-map (kbd "D") 'my-dired-here)
   (defun my-dired-here (file)
     "Open dired in this directory"
-    (dired (file-name-directory file)))
+    (dired (file-name-directory file))) ;; embark
 
   (define-key embark-file-map (kbd "g") 'my-consult-rg-here)
   (defun my-consult-rg-here (file)
@@ -341,6 +341,8 @@ targets."
   ;; Replace `multi-occur' with `consult-multi-occur', which is a drop-in replacement.
   (fset 'multi-occur #'consult-multi-occur)
   :config
+  ;; Narrowing lets you restrict results to certain groups of candidates
+  (setq consult-narrow-key "<")
   ;; Previewing
   ;; https://github.com/minad/consult#live-previews
   ;; This setting previews on any key but with a very short delay (.2 sec)

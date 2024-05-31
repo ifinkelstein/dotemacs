@@ -155,7 +155,7 @@
   ;;change how many seconds to wait for char timeout
   (avy-timeout-seconds 0.3)
   ;; may need to inactivate some avy jump keys if I have too many actions
-  (avy-keys '(?a ?r ?s ?t ?g ?m ?n ?e ?i ?o ?'))
+  (avy-keys '(?a ?r ?s ?t ?g ?m ?n ?e ?i ?o))
   (avy-dispatch-alist '((?w . avy-action-mark)
                         ;; (?i . avy-action-ispell)
                         (?z . avy-action-zap-to-char)
@@ -183,6 +183,8 @@
                         (?W . avy-action-copy-whole-line)
                         ;; (?M . avy-action-kill-whole-line)
                         (?Y . avy-action-yank-end-of-line)))
+
+
   :config
   ;; lots of useful actions
   ;; see: https://github.com/xl666/avy-conf/blob/main/avy.org
@@ -190,6 +192,22 @@
   ;; For generic actions
   ;; Like actions that only execute a command at point and stay
   ;; This is useful for more complex actions
+
+  ;; run this after loading embark
+  (with-eval-after-load 'embark
+    ;; Add the option to run embark when using avy
+    ;; ref: https://codeberg.org/ashton314/emacs-bedrock/src/branch/main/extras/base.el
+    (defun my-avy-action-embark (pt)
+      (unwind-protect
+          (save-excursion
+            (goto-char pt)
+            (embark-act))
+        (select-window
+         (cdr (ring-ref avy-ring 0))))
+      t)
+    ;; After invoking avy-goto-char-timer, hit "'" to run embark at the next
+    ;; candidate you select
+    (setf (alist-get ?' avy-dispatch-alist) 'my-avy-action-embark))
 
   (defun avy-generic-command-action (action-f)
     "Excecutes action-f at point and stays"

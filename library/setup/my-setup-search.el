@@ -9,6 +9,9 @@
 (message "Setting up search settings...")
 
 ;;; Search
+;;;; consult-ripgrep-all (rga)
+;; from this gist:https://gist.github.com/jthaman/c4eb411defc98f82cfd85c8c0d4c67e0#file-consult-ripgrep-all-el
+(load "/Users/ilya/.config/.emacs/library/consult-ripgrep-all.el")
 ;;;; Ag
 (use-package ag
   :defer 2

@@ -566,6 +566,24 @@ will be killed."
       (palimpsest-move-region-to-dest start end 'point-max)
     (message "No region selected")))
 
+(defun my-move-region-to-top (start end)
+  "Move text between START and END to top of buffer."
+  (interactive "r")
+  (if (use-region-p)
+      (palimpsest-move-region-to-dest start end 'point-min)
+    (message "No region selected")))
+
+(defun palimpsest-move-region-to-dest (start end dest)
+  "Move text between START and END to buffer's desired position, otherwise known as DEST."
+  (let ((count (count-words-region start end)))
+    (save-excursion
+      (kill-region start end)
+      (goto-char (funcall dest))
+      (yank)
+      (newline))
+    (push-mark (point))
+    (message "Moved %s words" count)))
+
 ;;;;; Fill Paragraph
 (defun my-fill-paragraph ()
   "if in an org buffer use org-fill-paragraph; else use fill-paragraph"
