@@ -118,7 +118,7 @@ Version 2017-06-02"
     (vertico-multiform-mode 1))
 
   (setq jinx-languages "en")
-  (set-face-attribute 'jinx-misspelled nil :underline '(:color "#ffcc00" :style wave))))
+  (set-face-attribute 'jinx-misspelled nil :underline '(:color "#ffcc00" :style wave)))
 
 (use-package ispell
   :commands (ispell-word ispell-region ispell-buffer)

@@ -146,7 +146,10 @@
   :bind   (("C-c C-j" . avy-resume)
            ("C-c j" . avy-goto-char-timer)
            ("s-J" . avy-goto-char-timer)
-           ("s-j" . avy-goto-word-1))
+           ("s-j" . avy-goto-word-1)
+           ;; use avy with isearch
+           (:map isearch-mode-map
+            ("C-j" . avy-isearch)))
 
   :custom
   (avy-all-windows 'all-frames)
@@ -155,7 +158,11 @@
   ;;change how many seconds to wait for char timeout
   (avy-timeout-seconds 0.3)
   ;; may need to inactivate some avy jump keys if I have too many actions
-  (avy-keys '(?a ?r ?s ?t ?g ?m ?n ?e ?i ?o))
+  (avy-keys '(?n ?e ?i ?o ?t ?s ?r ?a ?l ?u ?y ?p ?f ?w)) ;; old: ?a ?r ?s ?t ?g ?m ?n ?e ?i ?o
+  (avy-orders-alist
+   '((avy-goto-char . avy-order-closest)
+     (avy-goto-char-timer . avy-order-closest)
+     (avy-goto-line . avy-order-closest)))
   (avy-dispatch-alist '((?w . avy-action-mark)
                         ;; (?i . avy-action-ispell)
                         (?z . avy-action-zap-to-char)
@@ -367,6 +374,7 @@ The window scope is determined by `avy-all-windows' (ARG negates it)."
 ;; improves on Isearch
 (use-package ctrlf
   :bind ("s-f" . ctrlf-forward-default)
+  ;; :bind (:map ctrlf-mode-map ("C-j" . avy-isearch))
   :config
   (ctrlf-mode +1))
 

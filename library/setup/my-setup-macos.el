@@ -7,6 +7,12 @@
 
 ;;; Code:
 
+;;;; Opening files in preview
+(use-package image-mode
+  :ensure nil
+  ;; open images with "S" in image-mode
+  :bind (:map image-mode-map
+         ("S" . xah-open-in-external-app)))
 ;;;; Clipboad
 
 ;; Integrate with MacOS clipboard

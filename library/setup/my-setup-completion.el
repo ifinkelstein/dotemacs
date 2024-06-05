@@ -137,10 +137,26 @@
   :after vertico
   ;; More convenient directory navigation commands
   :bind (:map vertico-map
+         ("RET" . vertico-directory-enter)
          ("DEL" . vertico-directory-delete-char)
          ("M-DEL" . vertico-directory-delete-word))
   ;; Tidy shadowed file names
   :hook (rfn-eshadow-update-overlay . vertico-directory-tidy))
+
+(use-package vertico-multiform
+  :ensure nil
+  :after vertico
+  :config
+  ;; Enable vertico-multiform
+  (vertico-multiform-mode)
+
+  ;; Configure the display per command.
+  ;; Use a buffer with indices for imenu
+  ;; and a flat (Ido-like) menu for M-x.
+  (setq vertico-multiform-commands
+        '((consult-imenu buffer indexed)))
+  (setq vertico-multiform-commands nil))
+
 
 ;; A few more useful configurations...
 ;; Add prompt indicator to `completing-read-multiple'.
