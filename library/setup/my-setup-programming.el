@@ -475,6 +475,7 @@ Lisp function does not specify a special indentation."
 ;; convenient commands for working with the CLI
 (use-package dwim-shell-command
   :vc (:fetcher github :repo xenodium/dwim-shell-command)
+  :defer 30 ;; wait to load, but I want the dwim commands available
   :bind (([remap shell-command] . dwim-shell-command)
          :map dired-mode-map
          ([remap dired-do-async-shell-command] . dwim-shell-command)
@@ -558,9 +559,10 @@ Lisp function does not specify a special indentation."
     "Spool selected files to default printer."
     (interactive)
     (dwim-shell-command-on-marked-files
-     "Print file(s) to default printer"
-     "lp \"<<f>>\""
-     :utils "lp"))
+     "Print file(s) to default printer.
+man lpr to see options"
+     "lpr -o sides=two-sided-long-edge \"<<f>>\""
+     :utils "lpr"))
 
   (defun dwim-shell-command-ai-to-pdf ()
     "Convert AI files to PDF."

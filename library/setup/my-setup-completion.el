@@ -157,6 +157,16 @@
         '((consult-imenu buffer indexed)))
   (setq vertico-multiform-commands nil))
 
+;;avy-like quick keys navigation
+(use-package vertico-quick
+  :ensure nil
+  :after vertico
+  :bind (:map vertico-map
+         ("M-q" . vertico-quick-insert)
+         ("C-q" . vertico-quick-exit))
+  :custom
+  (vertico-quick1 "arstg")
+  (vertico-quick2 "neiom"))
 
 ;; A few more useful configurations...
 ;; Add prompt indicator to `completing-read-multiple'.

@@ -69,56 +69,49 @@ Version 2017-06-02"
   ;; given context.  We don't do it by default.
   (add-hook 'substitute-post-replace-functions #'substitute-report-operation))
 
-;;;; mermaid-cli for making charts quickly
-;; note that mermaid fails to render svg correctly so they don't look good
-;; https://github.com/mermaid-js/mermaid-cli/issues/112
-;; https://github.com/mermaid-js/mermaid/issues/2485
-;; solution: export to pdf
-;; config file location: /Users/ilya/.config/mermaid/config.json
-;; TODO: re-write using :bind and other canonical commands
-(use-package  mermaid-mode
-  :config
-  (setq mermaid-mode-map
-        (let ((map mermaid-mode-map))
-          (define-key map (kbd "C-c C-c") nil)
-          (define-key map (kbd "C-c C-f") nil)
-          (define-key map (kbd "C-c C-b") nil)
-          (define-key map (kbd "C-c C-r") nil)
-          (define-key map (kbd "C-c C-o") nil)
-          (define-key map (kbd "C-c C-d") nil)
-          (define-key map (kbd "C-c C-d c") 'mermaid-compile)
-          (define-key map (kbd "C-c C-d c") 'mermaid-compile)
-          (define-key map (kbd "C-c C-d f") 'mermaid-compile-file)
-          (define-key map (kbd "C-c C-d b") 'mermaid-compile-buffer)
-          (define-key map (kbd "C-c C-d r") 'mermaid-compile-region)
-          (define-key map (kbd "C-c C-d o") 'mermaid-open-browser)
-          (define-key map (kbd "C-c C-d d") 'mermaid-open-doc)
-          map))
-  ;; settings to run from a Docker container. Not needed since I installed CLI
-  ;; (setq mermaid-mmdc-location "docker")
-  ;; (setq mermaid-flags "run -u 1000 -v /tmp:/tmp ghcr.io/mermaid-js/mermaid-cli/mermaid-cli:latest")
-  (setq mermaid-mmdc-location "mmdc")
-  (setq mermaid-flags "")
-  ;; SVG export doesn't work
-  ;; https://github.com/mermaid-js/mermaid/issues/2102
-  (setq mermaid-ouormat ".pdf") )
-
 ;;;; Spelling
 
 ;; jinx requires the enchant library
 ;;  brew install enchant
+;; I am seeing lots of limitations as compared to aspell/ispell.
+;; e.g., lots of hacks to get it to work in latex
+;; may not be worth it to explore further
 (use-package jinx
   :hook (emacs-startup . global-jinx-mode)
   :bind (("M-$" . jinx-correct))
+  ;;        :map jinx-mode-map
+  ;;        ("M-i" . jinx--save-personal)
+  ;;        :map jinx-correct-map
+  ;;        ("M-i" . jinx--save-personal) )
   :config
+  ;; change keybinding for adding to dictionary
+  ;; (setq jinx--save-keys `((?. . ,#'jinx--save-personal)
+  ;;                         (?, . ,#'jinx--save-file)
+  ;;                         (?/ . ,#'jinx--save-session)))
+
   ;; useful vertico config
   (with-eval-after-load 'vertico
     (add-to-list 'vertico-multiform-categories
-                 '(jinx grid (vertico-grid-annotate . 20)))
+                 '(jinx grid (vertico-grid-annotate . 10)))
     (vertico-multiform-mode 1))
 
   (setq jinx-languages "en")
-  (set-face-attribute 'jinx-misspelled nil :underline '(:color "#ffcc00" :style wave)))
+  (set-face-attribute 'jinx-misspelled nil :underline '(:color "#00b3ff" :style wave))
+
+  ;; deal with AucTeX via this comment
+  ;; https://github.com/minad/jinx/issues/25
+
+  ;; first solution: find font faces in latex mode and add them to jinx-exclude-faces
+  (with-eval-after-load 'font-latex
+    (let* ((mode 'latex-mode)
+           (new-faces '(font-lock-constant-face)) ;; add additional faces here
+           (existing-entry (assoc mode jinx-exclude-faces)))
+      (if existing-entry
+          (setcdr existing-entry (append (cdr existing-entry) new-faces))
+        (setq jinx-exclude-faces (append jinx-exclude-faces (list (cons mode new-faces))))))
+    )
+
+  ) ;; use-package jinx
 
 (use-package ispell
   :commands (ispell-word ispell-region ispell-buffer)
@@ -199,6 +192,40 @@ Version 2017-06-02"
   (interactive)
   (flyspell-goto-next-error)
   (ispell-word))
+
+;;;; mermaid-cli for making charts quickly
+;; note that mermaid fails to render svg correctly so they don't look good
+;; https://github.com/mermaid-js/mermaid-cli/issues/112
+;; https://github.com/mermaid-js/mermaid/issues/2485
+;; solution: export to pdf
+;; config file location: /Users/ilya/.config/mermaid/config.json
+;; TODO: re-write using :bind and other canonical commands
+(use-package  mermaid-mode
+  :config
+  (setq mermaid-mode-map
+        (let ((map mermaid-mode-map))
+          (define-key map (kbd "C-c C-c") nil)
+          (define-key map (kbd "C-c C-f") nil)
+          (define-key map (kbd "C-c C-b") nil)
+          (define-key map (kbd "C-c C-r") nil)
+          (define-key map (kbd "C-c C-o") nil)
+          (define-key map (kbd "C-c C-d") nil)
+          (define-key map (kbd "C-c C-d c") 'mermaid-compile)
+          (define-key map (kbd "C-c C-d c") 'mermaid-compile)
+          (define-key map (kbd "C-c C-d f") 'mermaid-compile-file)
+          (define-key map (kbd "C-c C-d b") 'mermaid-compile-buffer)
+          (define-key map (kbd "C-c C-d r") 'mermaid-compile-region)
+          (define-key map (kbd "C-c C-d o") 'mermaid-open-browser)
+          (define-key map (kbd "C-c C-d d") 'mermaid-open-doc)
+          map))
+  ;; settings to run from a Docker container. Not needed since I installed CLI
+  ;; (setq mermaid-mmdc-location "docker")
+  ;; (setq mermaid-flags "run -u 1000 -v /tmp:/tmp ghcr.io/mermaid-js/mermaid-cli/mermaid-cli:latest")
+  (setq mermaid-mmdc-location "mmdc")
+  (setq mermaid-flags "")
+  ;; SVG export doesn't work
+  ;; https://github.com/mermaid-js/mermaid/issues/2102
+  (setq mermaid-ouormat ".pdf") )
 
 ;;;; Abbrev
 (use-package abbrev
@@ -436,6 +463,7 @@ Version 2017-06-02"
     (if paste (insert paste))
     (if (and (not nomode) mjmode) (ignore-errors (funcall mjmode)))
     (get-buffer bufname)))
+
 ;;;; grammar checking
 ;; This is apparently a non-trivial problem.
 
