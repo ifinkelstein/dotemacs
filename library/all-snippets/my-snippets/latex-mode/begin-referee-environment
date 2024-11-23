@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: begin-referee-environment
+# key: br
+# --
+\begin{referee}

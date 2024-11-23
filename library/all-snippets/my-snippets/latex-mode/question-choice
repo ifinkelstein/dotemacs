@@ -1,0 +1,8 @@
+# -*- mode: snippet -*-
+# name: question-choice
+# key: qc
+# type: command
+# --
+(if (region-active-p)
+    (yas-expand-snippet "\\choice[]{`yas-selected-text`}")
+  (yas-expand-snippet "\\choice[]{$0}"))

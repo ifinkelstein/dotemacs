@@ -1,0 +1,21 @@
+# -*- mode: snippet -*-
+# name: undergrad-rec-letter
+# key: undergradrecletter                                                                                                     # --
+\\textbf{RE: Letter of Support for $1 $2}
+
+
+Dear Colleagues:
+
+\\bigskip % Vertical whitespace
+
+%----------------------------------------------------------------------------------------
+%	LETTER CONTENT
+%----------------------------------------------------------------------------------------
+
+I am writing this letter of recommendation with my strongest support for $1 $2. $1 took my upper-division biochemistry course, Biophysical Methods, in the Spring $3 semester. This challenging course focuses on developing a fundamental understanding of the biophysical methods that undergird modern biology. This upper-level course covers biophysical methods that are used to characterize proteins, nucleic acids, and other biopolymers. We also learn to read, interpret, and discuss the primary scientific literature. As an example, here are some of the topics that I covered that year: separation of biomolecules, protein expression and purification, molecular weight determination, next generation DNA sequencing, mass spectrometry, electron microscopy, and structural biology. I should note that this isn't an exclusive list! In short, this is a challenging course that requires attendance, keeping up with modern scientific literature, and multiple oral presentations.
+
+Overall, $1 performed extremely well, ranking in the top $4 out of $5 students. This number masks $1’s overall achievement, as I started the semester with 50+ students. I do not inflate grades; a large segment of the class routinely scores at B- or lower. I would rank $1 in the top $6\\% of the 600+ Biochemistry undergraduates that I have taught at UT-Austin.
+
+$1 is an extraordinary student with exceptional curiosity, a logical and science-based mindset, and a grit to delve deep into complicated biochemical questions. They frequently stayed behind after class and wanted to discuss more about the lecture topics. They also performed extremely well on primary literature presentations. Perhaps most strikingly, $1 was eager to learn material that was clearly above and beyond what would be covered on the tests.
+
+In short, $1 is in the top $6\\% of undergraduates that I have encountered at UT-Austin. I have no reservations to recommend $1 for your program.

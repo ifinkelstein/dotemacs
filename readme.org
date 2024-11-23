@@ -1,0 +1,13 @@
+* Introduction
+This repository contains my personal Emacs configuration.
+
+I started this configuration on <2023-12-29 Fri> after using Emacs as a personal information management system, e-mail client, and writing environment for ~5 years.
+
+This configuration is a work in progress, and it will forever be a work in progress.
+
+Feel free to use this as an inspiration for your own configuration.
+
+
+* Inspiration
+
+

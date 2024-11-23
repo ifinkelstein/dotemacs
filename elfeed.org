@@ -1,0 +1,32 @@
+* Blogs                                                              :elfeed:
+** Emacs :emacs:
+*** [[http://www.reddit.com/r/emacs/new/.rss?sort=new][r/emacs]]
+*** [[https://planet.emacslife.com/atom.xml][Planet Emacs]]
+*** [[https://oneofus.la/have-emacs-will-hack/feed.xml][One of us]]
+*** [[http://oremacs.com/atom.xml][Oremacs]]
+*** [[http://pragmaticemacs.com/feed/][Pragmatic Emacs]]
+*** [[https://www.reddit.com/r/orgmode.rss][r/orgmode]]
+*** [[https://blog.tecosaur.com/tmio/rss.xml][Tecosau]]
+** Literature :lit:
+*** [[https://kill-the-newsletter.com/feeds/9v1p9tzxifsim9cb.xml][Sherlock Holmes]]
+** Humor :ignore:humor:
+*** [[https://www.reddit.com/r/Jokes/hot.rss][r/Jokes]]
+** Biotech :biotech:
+*** [[http://www.reddit.com/r/biotech/new/.rss?sort=new][r/biotech]]
+** Running :run:
+*** [[https://www.reddit.com/r/advancedrunning.rss][r/AdvancedRunning]]
+** Academics :academics:
+*** [[https://tratt.net/laurie/essays/entries.rss][Laurence Tratt]] :ignore:
+** Science
+*** [[https://blogs.sciencemag.org/pipeline/feed][In the pipeline]]
+** Writing :writing:
+*** [[https://www.helensword.com/helen-sword-blog?format=rss"][Helen Sword's Blog]]
+*** [[https://kill-the-newsletter.com/feeds/mcc8ko4l1zrjw998.xml][Helen Sword's Newsletter]] 
+** News :news:
+*** [[https://hnrss.org/frontpage][Hacker News]]
+** Comics :comics:
+*** [[https://xkcd.com/rss.xml][XKCD]]
+*** [[https://www.smbc-comics.com/rss.php][SMBC]]
+*** [[https://theoatmeal.com/feed/rss][The Oatmeal]]
+** Academics :academic:
+*** [[https://writepublishthrive.blogspot.com/feeds/posts/default][Rich Furman]]
