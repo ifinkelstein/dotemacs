@@ -3,36 +3,6 @@
 ;; I use mbsync and mu4e
 
 ;;; Code
-;;; Notmuch -- disabled
-
-;; some inspiration for configuring notmuch
-;; prot: https://github.com/protesilaos/dotfiles/blob/master/emacs/.emacs.d/prot-emacs-modules/prot-emacs-notmuch.el
-;; karthink:https://github.com/karthink/.emacs.d/blob/master/lisp/setup-email.el
-;; another: https://gist.github.com/vedang/26a94c459c46e45bc3a9ec935457c80f
-(use-package notmuch
-  :defer t
-  :disabled t
-
-  :config
-  ;; settings
-
-  ;; show HTML version first
-  (setq notmuch-multipart/alternative-discouraged '("text/plain" "text/html"))
-
-  ;; always reply from the same sender email
-  ;; ref: https://notmuchmail.org/emacstips/
-  (defadvice notmuch-mua-reply (around notmuch-fix-sender)
-    (let ((sender "Ilya Finkelstein <ilya@finkelsteinlab.org>"))
-      ad-do-it))
-  (ad-activate 'notmuch-mua-reply))
-
-;; save notmuch links in org-mode
-(use-package ol-notmuch
-  :after notmuch
-  :ensure t
-  :bind
-  ("C-c l" . org-store-link))
-
 ;;; Mu4e
 ;; Note: mu4e 1.12 now relies heavily on gnus for how it processes messages.
 ;; In addition, lots of internal function names have changed.

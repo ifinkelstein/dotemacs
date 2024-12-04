@@ -542,14 +542,13 @@ Switch projects and subprojects from NEXT back to TODO"
 
 ;;;; TODO Keywords and tags
 ;; tags, in alphabetical order
+;; note: emoji tags not supported yet
 (setq org-tag-alist '(("admin" . ?a)
                       ("class" . ?c)
-                      ("deep" . ?d)
                       ("email" . ?e)
                       ("errands" . ?r)
                       ("service" . ?u) ;; university and other service
-                      ("shallow" . ?s)
-                      ("travel" . ?t)
+                      ("tomorrow" . ?t)
                       ("writing" . ?w)))
 ;; useful for adding multiple tags to an entry
 (setq org-fast-tag-selection-single-key nil)

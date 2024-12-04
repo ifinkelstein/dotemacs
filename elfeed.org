@@ -7,6 +7,8 @@
 *** [[http://pragmaticemacs.com/feed/][Pragmatic Emacs]]
 *** [[https://www.reddit.com/r/orgmode.rss][r/orgmode]]
 *** [[https://blog.tecosaur.com/tmio/rss.xml][Tecosau]]
+** ML :ml:
+*** [[https://simonwillison.net/atom/everything/][Simon Willison’s Weblog]]
 ** Literature :lit:
 *** [[https://kill-the-newsletter.com/feeds/9v1p9tzxifsim9cb.xml][Sherlock Holmes]]
 ** Humor :ignore:humor:

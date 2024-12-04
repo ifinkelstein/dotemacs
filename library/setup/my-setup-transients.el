@@ -10,6 +10,18 @@
 (message "Setting up transient settings...")
 
 ;;;; Transient defaults
+;;;;; Casual Suite
+(use-package casual
+  :ensure t
+  :config
+  (eval-after-load 'dired
+    (define-key dired-mode-map (kbd "C-o") 'casual-dired-tmenu))
+
+  (eval-after-load 'org-agenda
+    (define-key org-agenda-mode-map (kbd "C-o") 'casual-agenda-tmenu))
+  )
+
+
 ;;;;; Transient Menus
 (use-package transient
   :ensure nil

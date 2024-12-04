@@ -452,7 +452,19 @@ Within those groups, sort by date and priority."
   ;; (setq org-super-agenda-groups nil)
   (org-super-agenda-mode))
 (setq org-agenda-custom-commands
-      (quote (("z" "Super View"
+      (quote (("f" "Focused"
+               ((alltodo "" ((org-use-tag-inheritance t)
+                             (org-agenda-dim-blocked-tasks nil) ;; speeds up agenda generation
+                             (org-agenda-show-inherited-tags 'always) ;; makes sure org-super-agenda can search tags
+                             (org-agenda-overriding-header "")
+                             (org-super-agenda-groups
+                              '((:name "Today's items"
+                                 :tag "tomorrow"
+                                 :order 10)
+                                (:discard (:anything t))
+                                ))))))
+
+              ("z" "Super View"
                ((agenda "" ((org-agenda-span 'day)
                             (org-super-agenda-groups
                              '((:name "Today"

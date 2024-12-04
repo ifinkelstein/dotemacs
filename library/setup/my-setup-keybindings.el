@@ -489,8 +489,6 @@
            ("c" . org-copy-subtree)
            ("C" . org-clock-cancel)
            ("e" . org-set-effort)
-           ("f" . (lambda () (interactive)
-                    (grab-mac-link-dwim 'firefox))) ;; re-define to avoid an anon function
            ("g" . org-clock-goto)
            ("G" . my-goto-gtd.org)
            ("j" . org-goto-interactive)
@@ -500,6 +498,8 @@
            ("k" . org-cut-subtree)
            ("K" . my-org-kill-text-under-heading )
            ("l" . org-store-link)
+           ("L" . (lambda () (interactive)
+                    (grab-mac-link-dwim 'firefox))) ;; re-define to avoid an anon function
            ("m" . org-menu)
            ("n" . my-narrow-or-widen-dwim)
            ("N" . org-mru-clock-show-narrowed)
@@ -603,6 +603,8 @@
            ("L" .  magit-log-buffer-file       )
            ("n" .  git-gutter:next-hunk        )
            ("p" .  git-gutter:previous-hunk    )
+           ("P" .  magit-pull-from-pushremote    )
+
            ;; quick commit file
            ("q" .  vc-next-action              )
            ("r" .  magit-reflog                )

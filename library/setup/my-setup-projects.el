@@ -61,15 +61,6 @@ to directory DIR."
   :config
   (setq bookmark-default-file (concat my-cache-dir "bookmarks")))
 
-;;;; casual-bookmarks for transient-based navigation
-(use-package casual-bookmarks
-  :after (bookmark)
-  :ensure t
-  :bind (:map bookmark-bmenu-mode-map
-         ("C-o" . casual-bookmarks-tmenu)
-         ("S" . casual-bookmarks-sortby-tmenu)
-         ("J" . bookmark-jump)))
-
 ;;; New Git Project
 (defun my-git-new-project ()
   "Initializes a new git repo and adds it to project.el's known projects."

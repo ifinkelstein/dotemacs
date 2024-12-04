@@ -395,6 +395,7 @@ Version 2017-06-02"
   ;; define useful word rotations
   (grugru-define-multiple
     (org-mode
+     (symbol "tomorrow" "today")
      (symbol "TODO" "NEXT" "DONE")
      (symbol "deep" "shallow"))
     (text-mode
@@ -409,6 +410,7 @@ Version 2017-06-02"
      (symbol "\\small" "\\tiny")
      (symbol "draft" "final")
      (symbol "disable" "enable"))
+    (symbol "enable" "disable")
     (symbol "true" "false")
     (symbol "yes" "no"))
   (grugru-highlight-mode))

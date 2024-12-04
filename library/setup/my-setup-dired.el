@@ -171,13 +171,7 @@ Version 2022-09-14"
 (use-package dired-quick-sort
   :bind (:map dired-mode-map
          ("s" . hydra-dired-quick-sort/body)))
-;;;; Casual Dired Transient Menus
-(use-package casual-dired
-  :ensure t
-  :bind (:map dired-mode-map
-         ("C-o" . #'casual-dired-tmenu)
-         ("s" . #'casual-dired-sort-by-tmenu)
-         ("/" . #'casual-dired-search-replace-tmenu)))
+
 ;;;; Dired Colors
 (use-package diredfl
   :hook (dired-mode . diredfl-global-mode))
