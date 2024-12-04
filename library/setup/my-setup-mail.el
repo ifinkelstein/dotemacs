@@ -3,6 +3,35 @@
 ;; I use mbsync and mu4e
 
 ;;; Code
+;;; Notmuch -- disabled
+
+;; some inspiration for configuring notmuch
+;; prot: https://github.com/protesilaos/dotfiles/blob/master/emacs/.emacs.d/prot-emacs-modules/prot-emacs-notmuch.el
+;; karthink:https://github.com/karthink/.emacs.d/blob/master/lisp/setup-email.el
+;; another: https://gist.github.com/vedang/26a94c459c46e45bc3a9ec935457c80f
+(use-package notmuch
+  :defer t
+  :disabled t
+
+  :config
+  ;; settings
+
+  ;; show HTML version first
+  (setq notmuch-multipart/alternative-discouraged '("text/plain" "text/html"))
+
+  ;; always reply from the same sender email
+  ;; ref: https://notmuchmail.org/emacstips/
+  (defadvice notmuch-mua-reply (around notmuch-fix-sender)
+    (let ((sender "Ilya Finkelstein <ilya@finkelsteinlab.org>"))
+      ad-do-it))
+  (ad-activate 'notmuch-mua-reply))
+
+;; save notmuch links in org-mode
+(use-package ol-notmuch
+  :after notmuch
+  :ensure t
+  :bind
+  ("C-c l" . org-store-link))
 
 ;;; Mu4e
 ;; Note: mu4e 1.12 now relies heavily on gnus for how it processes messages.
@@ -281,11 +310,174 @@ one is determined using `mu4e-attachment-dir'."
   (setq mu4e-speedbar-support t)
   (setq mu4e-use-fancy-chars t)
 
-  ;; disable seeing related messages in a thread. can be toggled with "W" in headers view
-  (setq mu4e-headers-include-related nil)
+  ;; enable seeing related messages in a thread.
+  ;; useful for searches: https://groups.google.com/g/mu-discuss/c/yWvilXfLunE
+  (setq mu4e-search-include-related t)
   (add-hook 'mu4e-view-mode-hook #'visual-line-mode)
 
 ;;;;; Useful functions and actions
+  ;; this function will remove all tags from a msg by erasing the mu4e-actions-tags-header-line
+  ;; based on mu4e-action-retag-message
+  (defun my-mu4e-remove-all-tags (msg)
+    "Remove all tags from MSG."
+    (interactive)
+    (let* ((path (mu4e-message-field msg :path))
+           (header  mu4e-action-tags-header)
+           (sep     (cond ((string= header "Keywords") ", ")
+                          ((string= header "X-Label") " ")
+                          ((string= header "X-Keywords") ", ")
+                          (t ", ")))
+           )
+      (if (not (mu4e--contains-line-matching (concat header ":.*") path))
+          ;; Add tags header just before the content
+          (mu4e--replace-first-line-matching
+           "^$" (concat header ": \n") path)
+
+        ;; replaces keywords, restricted to the header
+        (mu4e--replace-first-line-matching
+         (concat header ":.*")
+         (concat header ": ")
+         path))
+
+      (mu4e-message (concat "All tags removed."))
+      (mu4e--refresh-message path)))
+
+  ;; tag or untag one or many emails in header view. Can use '*' to act on multiple
+  (add-to-list 'mu4e-marks
+               '(tag
+                 :char       "g"
+                 :prompt     "gtag"
+                 :ask-target nil
+                 :action     (lambda (docid msg target)
+                               (mu4e-action-retag-message msg target))))
+
+  (add-to-list 'mu4e-marks
+               '(tag
+                 :char       "G"
+                 :prompt     "Guntag"
+                 :action     (lambda (docid msg target)
+                               (my-mu4e-remove-all-tags msg))))
+
+  (defun my-gptel-todo-from-mu4e-message (msg)
+    "Create a TODO in my inbox.org from an email or message."
+
+    (interactive)
+    (let* ((gptel-model "Claude:claude-3-5-haiku-20241022") ;; or: Claude:claude-3-5-sonnet-20241022
+           (path (mu4e-message-field msg :path))
+           (subject (mu4e-message-field msg :subject))
+           (body (mu4e-view-message-text msg)))
+      ;; (debug)
+
+      (call-interactively 'org-store-link) ;; store link to current location
+      ;; (message org-stored-links)
+      (gptel-request
+          (concat
+           "You are an intelligent email assistant for "
+           user-full-name "."
+           "Analyze summarize, and extract TODO items in this email thread, with special emphasis on the most recent messages. Focus on action items for "
+           user-full-name "."
+           "Provide a concise summary that:
+             1. Creates a TODO list of next action items.
+             2. Highlights any pending actions or time-sensitive matters
+             3. Identifies the most recent development or latest request (HIGHEST PRIORITY)
+             4. Provides essential context from earlier messages (if relevant)
+
+    Return your response as a valid JSON object with this exact structure:
+    {
+        \"title\": \"title of the email summary, very terse and use specific names or words\",
+        \"todo\": [\"point1\", \"point2\"],
+        \"summary\": \"Most recent email's key points, include deadlines or timelines here, if any. brief summary. Brief relevant history if needed\"
+    }
+
+    Keep the summary focused and prioritize the most recent communication while providing just enough context to understand the situation.
+
+    Do not include any other text or explanation - only return valid JSON.
+
+
+    TEXT TO SUMMARIZE:
+             <email>"
+           body
+           "</email>")
+
+        ;; :buffer (current-buffer) ;; not sure if I need this info
+        :system   "You are a helpful executive assistant that is very good and reading and providing executive summaries. respond only in valid json."
+        :context (list)
+        ;; :dry-run t
+        :callback
+        (lambda (response info)
+          (if (not response)
+              (message "gptel-quick failed with message: %s" (plist-get info :status))
+
+            (let* ((result (json-parse-string response :object-type 'plist :array-type 'list))
+                   (heading (format "%s" (plist-get result :title)))
+                   (todos (concat "- [ ] " (string-join (plist-get result :todo) "\n- [ ] ")))
+                   (summary (format "Summary: %s" (plist-get result :summary)))
+                   (org-capture-templates
+                    '(("t" "Todo"
+                       entry (file+headline org-default-notes-file "Mail")
+                       "* TODO %i \n:PROPERTIES:\n:Created: %U\n:END:\n%a\n%c%?"
+                       :prepend t
+                       :created t
+                       :immediate-finish t
+                       :empty-lines 1))))
+              (kill-new (concat "\n" todos "\n" summary "\n")) ;; move to kill-ring for org-capture
+              (org-capture-string heading "t")
+              (message (concat "Captured message: " heading))
+              ;; top link inserted by %a in org-capture
+              (when org-stored-links
+                (let* ((link (car org-stored-links))
+                       (path (car link))
+                       (desc (cadr link)))
+                  (org-insert-link nil path desc))))
+            ))) ;gptel-request
+      ;; add TODO and LLM tags to the email
+      (mu4e-action-retag-message msg "TODO, LLM") ;; mark the msg
+
+      ))
+
+  (add-to-list 'mu4e-view-actions
+	           '("Ttodo with LLM" . my-gptel-todo-from-mu4e-message) t)
+
+  (add-to-list 'mu4e-headers-actions
+	           '("Ttodo with LLM" . my-gptel-todo-from-mu4e-message) t)
+
+
+  ;; this function will remove all tags from a msg by erasing the mu4e-actions-tags-header-line
+  ;; based on mu4e-action-retag-message
+  (defun my-mu4e-remove-all-tags-message (msg)
+    "Remove all tags from MSG."
+    (interactive)
+    (let* ((path (mu4e-message-field msg :path))
+           (header  mu4e-action-tags-header)
+           (sep     (cond ((string= header "Keywords") ", ")
+                          ((string= header "X-Label") " ")
+                          ((string= header "X-Keywords") ", ")
+                          (t ", ")))
+           )
+      (if (not (mu4e--contains-line-matching (concat header ":.*") path))
+          ;; Add tags header just before the content
+          (mu4e--replace-first-line-matching
+           "^$" (concat header ": \n") path)
+        ;; replaces keywords, restricted to the header
+        (mu4e--replace-first-line-matching
+         (concat header ":.*")
+         (concat header ": ")
+         path))
+      (mu4e-message (concat "All tags removed."))
+      (mu4e--refresh-message path)))
+
+  (add-to-list 'mu4e-view-actions
+	           '("Rremove all tags" . my-mu4e-remove-all-tags-message) t)
+
+  (add-to-list 'mu4e-headers-actions
+	           '("Rremove all tags" . my-mu4e-remove-all-tags-message) t)
+
+  (add-to-list 'mu4e-view-actions
+	           '("retag message" . mu4e-action-retag-message) t)
+
+  (add-to-list 'mu4e-headers-actions
+	           '("retag message" . mu4e-action-retag-message) t)
+
 
   (defun my-mu4e-last-month ()
     "Return the last year-month as a string for mu searches.
