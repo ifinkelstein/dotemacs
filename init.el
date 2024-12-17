@@ -219,7 +219,9 @@ emacs-version string on the kill ring."
 (add-hook 'emacs-startup-hook (lambda ()
                                 (setq file-name-handler-alist my-file-name-handler-alist)
                                 ;; reset garbage collection
-                                (setq gc-cons-threshold 800000)
+                                ;; ref: https://www.reddit.com/r/emacs/comments/1h8879p/lowering_gcconsthreshold_could_help_relieve_gc/
+                                (setq gc-cons-percentage 0.2
+                                      gc-cons-threshold 80000000)
                                 ;; Startup time
                                 (message (format ";; ======================================================\n;; Emacs ready in %.2f seconds with %d garbage collections.\n;; ======================================================"
                                                  (float-time
