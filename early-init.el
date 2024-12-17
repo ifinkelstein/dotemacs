@@ -186,7 +186,8 @@ straight) and by `my-etc-dir' and `my-cache-dir'.")
         '(("elpa" . "https://elpa.gnu.org/packages/")
           ("elpa-devel" . "https://elpa.gnu.org/devel/")
           ("nongnu" . "https://elpa.nongnu.org/nongnu/")
-          ("melpa" . "https://melpa.org/packages/"))
+          ("melpa" . "https://melpa.org/packages/")
+          ("melpa-stable" . "https://stable.melpa.org/packages/"))
 
         ;; Highest number gets priority (what is not mentioned gets priority 0)
         package-archive-priorities
