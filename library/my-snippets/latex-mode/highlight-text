@@ -1,0 +1,8 @@
+# -*- mode: snippet -*-
+# name: highlight
+# key: hl
+# type: command
+# --
+(if (region-active-p)
+    (yas-expand-snippet "\\hl{`yas-selected-text`}")
+  (yas-expand-snippet "\\hl{$0}"))

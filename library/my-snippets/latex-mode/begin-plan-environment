@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: begin-plan-environment
+# key: bp
+# --
+\begin{plan}

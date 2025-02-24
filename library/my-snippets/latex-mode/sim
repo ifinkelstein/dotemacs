@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: insert-$\sim$
+# key: <sim
+# --
+\$\sim\$$0

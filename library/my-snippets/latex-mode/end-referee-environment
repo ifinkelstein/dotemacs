@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: end-referee-environment
+# key: er
+# --
+\end{referee}

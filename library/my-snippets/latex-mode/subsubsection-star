@@ -1,0 +1,9 @@
+# -*- mode: snippet -*-
+# name: subsubsection*
+# key: sss*
+# type: command
+# --
+
+(if (region-active-p)
+    (yas-expand-snippet "\\subsubsection*{`yas-selected-text`}")
+  (yas-expand-snippet "\\subsubsection*{$1}$0"))
