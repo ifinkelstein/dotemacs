@@ -1,5 +1,26 @@
 ;; my-setup-ai.el -*- lexical-binding: t -*-
 (message "Setting up AI packages...")
+;;* Aider interface for emacs
+(use-package aidermacs
+  :vc (:url "https://github.com/MatthewZMD/aidermacs" :rev :newest)
+  :bind (("C-c p" . aidermacs-transient-menu))
+
+  :config
+  ;; TODO: fix getting API key from gptel, which I think is the easiest
+  (if
+      (not (= (length (getenv "ANTHROPIC_API_KEY")) 108))
+      (setenv "ANTHROPIC_API_KEY" (my-get-anthropic-api-key)))
+  
+
+  
+                                        ; Enable minor mode for Aider files
+  (aidermacs-setup-minor-mode)
+
+  :custom
+                                        ; See the Configuration section below
+  (aidermacs-auto-commits t)
+  (aidermacs-use-architect-mode t)
+  (aidermacs-default-model "sonnet"))
 
 ;;* GPTel
 (use-package gptel
@@ -107,6 +128,16 @@ START and END, rather than by the position of point and mark."
       (replace-match ""))
     (buffer-string)))
 
+;; TODO: this is temp until gptel acquires claude 3.7 support natively
+(require 'gptel-anthropic)
+(unless (alist-get 'claude-3-7-sonnet-20250219 gptel--anthropic-models)
+  (add-to-list 'gptel--anthropic-models
+               '(claude-3-7-sonnet-20250219
+                 :description "Highest level of intelligence and capability" :capabilities
+                 (media tool-use cache)
+                 :mime-types
+                 ("image/jpeg" "image/png" "image/gif" "image/webp" "application/pdf")
+                 :context-window 200 :input-cost 3 :output-cost 15 :cutoff-date "2024-11")))
 
 ;;** GPTEl extending packages
 (use-package gptel-aibo
@@ -122,7 +153,7 @@ START and END, rather than by the position of point and mark."
 ;; (rk/select-default-audio-device)
 
 (use-package whisper
-  :vc (:url "https://github.com/natrys/whisper.el" )
+  :vc (:url "https://github.com/natrys/whisper.el"  :rev :newest :branch "master")
   :commands (whisper-run whisper-file rk/select-default-audio-device)
   :bind ("s-R" . whisper-run)
   :config

@@ -1040,7 +1040,7 @@ the current region, if a region is selected, or the current tree."
 ;; Text enclosed in !! is highlighted in yellow, and exported likewise
 ;; Text enclosed in !@ is displayed in red, and exported likewise
 ;; (use-package org-extra-emphasis
-;;   :vc (:url "https://github.com/QiangF/org-extra-emphasis/" :rev :newest)) 
+;;   :vc (:url "https://github.com/QiangF/org-extra-emphasis" :rev :newest)) 
 
 ;;* org-sticky-header
 (use-package org-sticky-header

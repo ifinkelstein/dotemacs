@@ -23,6 +23,16 @@
   :custom
   (dictionary-server "dict.org"))
 
+;; quick dictionary access
+;; To retrieve the word under the cursor and display its definition in a buffer:
+;; (quick-sdcv-search-at-point)
+;; To prompt the user for a word and display its definition in a buffer:
+;; (quick-sdcv-search-input)
+(use-package quick-sdcv
+  :custom
+  (quick-sdcv-dictionary-prefix-symbol "►")
+  (quick-sdcv-ellipsis " ▼ "))
+
 ;;* Spelling
 (use-package ispell
   :commands (ispell-word ispell-region ispell-buffer)

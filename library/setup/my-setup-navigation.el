@@ -97,6 +97,19 @@
   :bind (([remap move-beginning-of-line] . 'mwim-beginning)
 	     ([remap move-end-of-line] . 'mwim-end)))
 
+;;* Dogears for auto-bookmarks
+(use-package dogears
+  :bind (:map global-map
+              ("M-g d" . dogears-go)
+              ("M-g M-b" . dogears-back)
+              ("M-g M-f" . dogears-forward)
+              ("M-g M-d" . dogears-list)
+              ("M-g M-r" . dogears-remember)
+              ("M-g M-D" . dogears-sidebar))
+  :config
+  ;; auto-remember the place every 5 sec
+  (dogears-mode 1))
+
 ;;* avy
 (use-package avy
   :bind   (("C-c C-j" . avy-resume)
@@ -105,7 +118,7 @@
            ("s-j" . avy-goto-word-1)
            ;; use avy with isearch
            (:map isearch-mode-map
-            ("C-j" . avy-isearch)))
+                 ("C-j" . avy-isearch)))
 
   :custom
   (avy-all-windows 'all-frames)
