@@ -10,6 +10,10 @@ Space in the keyword matches any characters.
  \"|\" means OR operator in regexp.")
 
 (use-package emms
+  :bind
+  (:map global-map
+        ("M-M" . my-transient-emms))
+
   :custom
   (emms-source-beets-database "/Users/ilya/Media/Music/musiclibrary.db")
   (emms-player-list '(emms-player-mpv
