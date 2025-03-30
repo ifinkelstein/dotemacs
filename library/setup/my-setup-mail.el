@@ -620,18 +620,7 @@ the query (for links starting with \"query:\")."
     (kill-new
      (message-fetch-field FIELD)))
 
-  ;; TODO: syntax wrong and combine with other transient
-  ;; fix later
-  ;; (transient-define-prefix my-transient-copy-email-fields-to-kill-ring ()
-  ;;   "Copy email fields to kill ring"
-  ;;   ("t" (my-copy-email-field-to-kill-ring "To") "To")
-  ;;   ("f" (my-copy-email-field-to-kill-ring "From") "From")
-  ;;   ("c" (my-copy-email-field-to-kill-ring "Cc") "Cc")
-  ;;   ("b" (my-copy-email-field-to-kill-ring "Bcc") "Bcc")
-  ;;   ("s" (my-copy-email-field-to-kill-ring "Subject") "Subject")])
-  ;; (define-key message-mode-map (kbd "C-c w") 'my-hydra-copy-email-fields-to-kill-ring/body)
-
-
+  
   ;;disable threading in search results
   (setq mu4e-headers-show-threads nil)
 

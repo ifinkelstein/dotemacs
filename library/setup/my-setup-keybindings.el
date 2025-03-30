@@ -112,7 +112,7 @@
    '("k" . consult-yank-from-kill-ring)
    '("l" . vertico-repeat)
    '("L" . my-transient-latex)
-   '("M" . my-transient-mail)
+   '("M" . my-transient-email)
    '("n" . my-transient-notes)
    ;; '("N" . consult-notes-search-in-all-notes)
    '("o" . my-transient-org)
@@ -410,22 +410,36 @@
 
 
 ;;*** Mail Keybindings
-(transient-define-prefix my-transient-mail ()
-  "Mail commands"
-  ["Mail Actions"
-   ;; ("a" "Save Attachment" mu4e-view-save-attachment-multi)
-   ("c" "Compose New" (lambda ()
+(transient-define-prefix my-transient-email ()
+  "Mu4e main menu."
+  [["Main"
+    ("M" "Main screen"         (lambda ()
+                                 (interactive)
+                                 (my-open-email-in-workspace)))
+    ("U" "Update mail"         mu4e-update-mail-and-index)
+    ("M-q" "Quit"             mu4e-quit)]
+   ["Search"
+    ("b" "Bookmark"            mu4e-search-bookmark)
+    ("j" "Maildir"             mu4e-search-maildir)
+    ("c" "Choose query"        mu4e-search-query)
+    ("s" "Search"              mu4e-search)]
+   ["Composition"
+    ("C" "New"        (lambda ()
                         (interactive)
                         (my-open-email-in-workspace)
                         (mu4e-compose-new)))
-   ("e" "Email to Kill Ring" my-email-to-kill-ring)
-   ;; ("i" "Go to Mail Inbox" my-go-to-mail-inbox)
-   ("k" "Kill Update Mail" mu4e-kill-update-mail)
-   ("m" "Open Email in Workspace" my-open-email-in-workspace)
-   ("s" "Update Mail and Index" mu4e-update-mail-and-index)
-   ;; ("S" "Swiftbar Email Update" my-swiftbar-email-update)
-   ;; ("u" "Go to Mail Unread" my-go-to-mail-Unread)
+    ("R" "Reply"               mu4e-compose-reply)
+    ("W" "Reply-to-all"        mu4e-compose-wide-reply)
+    ("F" "Forward"             mu4e-compose-forward )
+    ;; only draft messages can be edited
+    ("E" "Edit draft"          mu4e-compose-edit)
+    ("S" "Supersede"           mu4e-compose-supersede)
+    ;; ("X" "Resend"          mu4e-compose-resend)
+    ]
+   ["Message"
+    ("e" "Email to Kill Ring" my-email-to-kill-ring)]
    ])
+
 
 ;;*** Notes (with org-roam)
 (transient-define-prefix my-transient-notes ()
