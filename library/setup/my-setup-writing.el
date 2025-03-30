@@ -19,7 +19,6 @@
 ;; built in
 (use-package dictionary
   :ensure nil
-  :bind ("M-#" . dictionary-lookup-definition)
   :custom
   (dictionary-server "dict.org"))
 
@@ -29,9 +28,12 @@
 ;; To prompt the user for a word and display its definition in a buffer:
 ;; (quick-sdcv-search-input)
 (use-package quick-sdcv
+  :bind ("M-#" . dictionary-lookup-definition)
   :custom
   (quick-sdcv-dictionary-prefix-symbol "►")
-  (quick-sdcv-ellipsis " ▼ "))
+  (quick-sdcv-ellipsis " ▼ ")
+  :config
+  (setq quick-sdcv-hist-size 100))
 
 ;;* Spelling
 (use-package ispell
