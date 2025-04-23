@@ -10,10 +10,7 @@
   (if
       (not (= (length (getenv "ANTHROPIC_API_KEY")) 108))
       (setenv "ANTHROPIC_API_KEY" (my-get-anthropic-api-key)))
-  
-
-  
-                                        ; Enable minor mode for Aider files
+  ;; Enable minor mode for Aider files
   (aidermacs-setup-minor-mode)
 
   :custom
@@ -156,14 +153,16 @@ START and END, rather than by the position of point and mark."
   :vc (:url "https://github.com/natrys/whisper.el"  :rev :newest :branch "master")
   :commands (whisper-run whisper-file rk/select-default-audio-device)
   :bind ("s-R" . whisper-run)
-  :config
-  (setq whisper-install-directory my-var-dir)
-  (setq whisper-model "base")
-  (setq whisper-language "en")
-  (setq whisper-translate nil)
-  (setq whisper--ffmpeg-input-device-name "Macbook Pro Microphone")
-  (setq whisper--ffmpeg-input-device (rk/find-device-matching whisper--ffmpeg-input-device-name :audio))
-  (setq whisper--ffmpeg-input-format "avfoundation"))
+  :custom
+  (whisper-install-directory my-var-dir)
+  (whisper-model "base")
+  (whisper-language "en")
+  (whisper-translate nil)
+  (whisper--ffmpeg-input-device-name "Macbook Pro Microphone")
+  (whisper--ffmpeg-input-device (rk/find-device-matching whisper--ffmpeg-input-device-name :audio))
+  (whisper--ffmpeg-input-format "avfoundation")
+  ;; move cursor to the end of the inserted text
+  (whisper-return-cursor-to-start nil))
 
 (defcustom rk/default-audio-device nil
   "The default audio device to use for whisper.el and outher audio processes."
@@ -239,6 +238,13 @@ Each list contains a list of cons cells, where the car is the device number and 
              do (push (cons (string-to-number (match-string 1 line)) (match-string 2 line)) audio-devices)
              finally return (list (nreverse video-devices) (nreverse audio-devices)))))
 
+;;* Semantic search with semext
+(use-package semext
+  :vc (:url "https://github.com/ahyatt/semext/"  :rev :newest :branch "master")
+  :init
+  (require 'llm-openai)
+  ;; Replace provider with whatever you want, see https://github.com/ahyatt/llm
+  (setopt semext-provider (make-llm-openai :key gptel-api-key :chat-model "gpt-4o-mini")))
 ;;* provide
 (provide 'my-setup-ai)
 ;; my-setup-ai.el ends here

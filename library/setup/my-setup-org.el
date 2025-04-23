@@ -103,7 +103,7 @@
   (org-src-fontify-natively t) ;; use lang-specific fontification
   (org-src-window-setup 'other-window) ;; edit source in other window
   (org-src-tab-acts-natively t) ;; use lang bindings
-  (org-confirm-babel-evaluate t) ;; confirm evaluation
+  (org-confirm-babel-evaluate nil) ;; confirm evaluation
 
   ;; org speed command
   (org-use-speed-commands t)
@@ -1242,6 +1242,17 @@ the current region, if a region is selected, or the current tree."
 
 
 ;;** org-babel
+
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '((python . t)))
+
+(setq org-babel-python-command "python")
+
+
+(setq python-shell-interpreter "python"
+      python-shell-interpreter-args "-i --simple-prompt")
+
 (use-package ob-lisp
   :ensure nil
   :commands (org-babel-execute:lisp))

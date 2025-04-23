@@ -23,14 +23,17 @@
               ("u" . mu4e-view-mark-for-unread)
               ("!" . mu4e-view-mark-for-refile)
               ("?" . mu4e-view-mark-for-unmark)
+              ("M-o" . my-transient-email) 
               
               :map mu4e-headers-mode-map
               ("r" . mu4e-headers-mark-for-read)
               ("u" . mu4e-headers-mark-for-unread)
               ("!" . mu4e-headers-mark-for-refile)
               ("?" . mu4e-headers-mark-for-unmark)
+              ("M-o" . my-transient-email) 
               :map mu4e-main-mode-map
-              ("u" . mu4e-update-index ))
+              ("u" . mu4e-update-index )
+              ("M-o" . my-transient-email))
 
   ;; use Dired to attach files via C-c <RET> C-a
   ;; https://www.djcbsoftware.nl/code/mu/mu4e/Dired.html
@@ -185,6 +188,17 @@ one is determined using `mu4e-attachment-dir'."
     (interactive)
     (mu4e-search (concat "from:" (nth 1 (flatten-list (mu4e-message-field msg :from))))))
 
+  (defun my-mu4e-search-toggle-unread (&optional msg)
+    "Toggle the flag:unread flag for the last query.
+If the string 'flag:unread is in the last query, remove it.
+Otherwise, add this string to the last query.
+Execute search with that query."
+    (interactive)
+    ;; last query to be checked is stored in mu4e--reach-last-query variable
+    ;; use (mu4e-seach ...) to execute the search after testing the search string
+    
+    )
+
   ;; define 'z' as the shortcut
   (add-to-list 'mu4e-view-actions
                '("zsearch for sender" . my-mu4e-search-for-sender) t)
@@ -283,9 +297,9 @@ one is determined using `mu4e-attachment-dir'."
   (setq mu4e-speedbar-support t)
   (setq mu4e-use-fancy-chars t)
 
-  ;; disable seeing related messages in a thread.
+  ;; enable seeing related messages in a thread.
   ;; useful for searches: https://groups.google.com/g/mu-discuss/c/yWvilXfLunE
-  (setq mu4e-search-include-related nil)
+  (setq mu4e-search-include-related t)
   (add-hook 'mu4e-view-mode-hook #'visual-line-mode)
 
   ;;** Useful functions and actions

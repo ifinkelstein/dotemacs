@@ -163,6 +163,18 @@
               ("C-c ! l" . flymake-show-buffer-diagnostics)))
 ;;* Programming modes
 ;; reminder to run eglot-upgrade-eglot every so often
+;;** Python
+(use-package elpy
+  :vc (:url "https://github.com/jorgenschaefer/elpy")
+  :custom
+  (python-shell-interpreter "ipython")
+  (python-shell-interpreter-args "-i --simple-prompt")
+
+  :init
+  (elpy-enable))
+
+
+
 ;;** json and jq
 (use-package json-mode)
 ;;** org-babel integration--need to decide if I want this

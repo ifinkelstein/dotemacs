@@ -160,6 +160,29 @@ PKG is the package symbol selected by the user."
 
 ;;* Window Functions
 ;; Toggle Dedicated Window
+(defun my-dired-download-split-screen (&optional dir-name)
+  "Create a vertical dual-window split with dired buffers.
+Left window shows ~/Downloads/, right window shows DIR-NAME or the most
+recently visited directory from `dired-recent-directories' if available."
+  (interactive)
+  (delete-other-windows)
+  (let* ((downloads-dir (expand-file-name "~/Downloads/"))
+         (default-directory downloads-dir)
+         (right-dir (cond
+                     (dir-name (expand-file-name dir-name))
+                     ((and (boundp 'dired-recent-directories)
+                           dired-recent-directories)
+                      (expand-file-name (car dired-recent-directories)))
+                     (t default-directory))))
+    ;; Open Downloads in the left window
+    (dired downloads-dir)
+    ;; Split and open the right directory
+    (split-window-right)
+    (other-window 1)
+    (dired right-dir)
+    ;; Go back to left window
+    (other-window 1)))
+
 (defun my-toggle-window-dedicated ()
   "Toggle whether the current active window is dedicated or not"
   (interactive)
