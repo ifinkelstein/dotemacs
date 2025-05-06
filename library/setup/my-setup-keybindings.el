@@ -225,7 +225,7 @@
    '("x" . meow-delete)
    '("X" . meow-backward-delete)
    '("y" . meow-save)
-   '("Y" . meow-sync-grab)
+   '("Y" . meow-save-append)
    '("z" . meow-pop-selection)
    '(":" . gptel-menu)
    '("'" . repeat)
