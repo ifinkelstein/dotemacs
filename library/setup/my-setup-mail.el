@@ -299,7 +299,7 @@ Execute search with that query."
 
   ;; enable seeing related messages in a thread.
   ;; useful for searches: https://groups.google.com/g/mu-discuss/c/yWvilXfLunE
-  (setq mu4e-search-include-related t)
+  (setq mu4e-search-include-related nil)
   (add-hook 'mu4e-view-mode-hook #'visual-line-mode)
 
   ;;** Useful functions and actions
@@ -445,6 +445,7 @@ the query (for links starting with \"query:\")."
               (my-swap-email-from-field)
               ;; Check spelling
               (flyspell-mode 1)
+              (olivetti-mode -1)
               (auto-fill-mode -1)
               (hl-line-mode -1)))
 
