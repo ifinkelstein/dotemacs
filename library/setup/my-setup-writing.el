@@ -15,18 +15,60 @@
   :ensure nil ; no need to install it as it is built-in
   :hook (after-init . delete-selection-mode))
 
-;;* Dictionary
+;;* Smerge mode
 ;; built in
+(use-package smerge-mode
+  :ensure nil
+  :bind (:map smerge-mode-map
+              ("M-o" . my-smerge-transient))
+
+  :config
+  (transient-define-prefix my-smerge-transient ()
+    "Smerge commands transient."
+    ["Smerge Actions"
+     ;; Navigation
+     ["Navigation"
+      ("p" "Prev conflict" smerge-prev)                 ;; C-c ^ p
+      ("n" "Next conflict" smerge-next)]                ;; C-c ^ n
+
+     ;; Keep Commands
+     ["Keep"
+      ("t" "Keep current (reTurn)" smerge-keep-current) ;; C-c ^ RET
+      ("a" "Keep all" smerge-keep-all)                  ;; C-c ^ a
+      ("b" "Keep base" smerge-keep-base)                ;; C-c ^ b
+      ("l" "Keep lower" smerge-keep-lower)              ;; C-c ^ l
+      ("o" "Keep lOwer (other)" smerge-keep-lower)      ;; C-c ^ o
+      ("m" "Keep upper (mine)" smerge-keep-upper)       ;; C-c ^ m
+      ("u" "Keep upper" smerge-keep-upper)]             ;; C-c ^ u
+
+     ;; Actions
+     ["Actions"
+      ("C" "Combine with next" smerge-combine-with-next);; C-c ^ C
+      ("R" "Refine" smerge-refine)                      ;; C-c ^ R (Shift-r)
+      ("r" "Resolve" smerge-resolve)]                   ;; C-c ^ r (lowercase r)
+
+     ;; View/Diff
+     ["View/Diff"
+      ("E" "Ediff" smerge-ediff)                        ;; C-c ^ E (Shift-e)
+      ("<" "Diff base - upper" smerge-diff-base-upper)  ;; C-c ^ = <
+      ("=" "Diff upper - lower" smerge-diff-upper-lower);; C-c ^ = =
+      (">" "Diff base - lower" smerge-diff-base-lower)] ;; C-C ^ = >
+     ]))
+
+
+;;* Dictionary
 (use-package dictionary
   :ensure nil
   :custom
   (dictionary-server "dict.org"))
+
 
 ;; quick dictionary access
 ;; To retrieve the word under the cursor and display its definition in a buffer:
 ;; (quick-sdcv-search-at-point)
 ;; To prompt the user for a word and display its definition in a buffer:
 ;; (quick-sdcv-search-input)
+
 (use-package quick-sdcv
   :bind ("M-#" . dictionary-lookup-definition)
   :custom
