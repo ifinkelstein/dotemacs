@@ -1443,7 +1443,7 @@ use 'server-force-delete' and 'server-mode' to restart."
         ((and (org-clocking-p) (not (org-pomodoro-active-p)))
          (format "⏳%d m: %s" (/ (org-time-convert-to-integer (time-since org-clock-start-time)) 60) (string-limit org-clock-heading 20)))
         (t
-         (format "No clock"))))
+         (format "What's the next task?"))))
 
 ;; org-timeblock for scheduling todos
 ;; schedule the day

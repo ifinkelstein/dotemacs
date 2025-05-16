@@ -281,7 +281,7 @@
     ("r" "Re-write" gptel-rewrite)]
    ["Whisper"
     ("d" "Transcribe Audio" whisper-run)
-    ;; ("D" "Select Audio Device" rk/select-default-audio-device
+    ("D" "Select Audio Device" rk/select-default-audio-device)
     ;;  :description (lambda ()
     ;;                 (format "Select Audio Device [Current: %s]" whisper--ffmpeg-input-device-name)))
     ("f" "Transcribe Audio" whisper-file)
