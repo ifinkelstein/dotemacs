@@ -36,6 +36,29 @@
     (gptel-context-add))
 
   ;; useful quick LLM calls
+
+  (defun my-gptel-quick-fact (prompt)
+    "Reply to user's question. Insert reply wherever the cursor is. v1-v5 controls verbosity of response (v1-sentence; v2-a few sentences; v3-paragraph; v4-several para; v5-as long as necessary)"
+    (interactive "sQuestion (verbosity: -v1 to -v5): ")
+    (let ((syntax-instruction (if (derived-mode-p 'org-mode)
+                                  "Format your response using org-mode syntax (use ** for headings, *bold*, /italic/, =code=, etc.)."
+                                "Format your response using markdown syntax (use ## for headings, **bold**, *italic*, `code`, etc.).")))
+      (message (concat "Sending query using " (symbol-name gptel-model)))
+      
+      (gptel-request
+          (concat "\nRespond to the query in a concise way. No conversation. Just the facts. The question may also have a switch for verbosity. Switches: -v1 to -v5 controls verbosity of response (-v1 is a sentence; - v2 a few sentences; -v3 paragraph;  -v4 several para; -v5 as long as necessary) \n "
+                  syntax-instruction "\n"
+                  "Prompt: \n"
+                  prompt)
+        :buffer (current-buffer)
+        :system   "You are a helpful executive assistant. Use short, concise, professional, positive tone."
+        :callback
+        (lambda (response info)
+          (if (not response)
+              (message "gptel-quick failed with message: %s" (plist-get info :status))
+            (insert response)
+            (kill-new response)))))) ;; my-gptel-quick-fact
+  
   (defun my-gptel-reply-to-message (prompt)
     "Prompt the user for input and sends it along with the current buffer's contents to GPT-4 for a reply.
 PROMPT is the input provided by the user. The model 'gpt-4-1106-preview' is used for generating a professional and concise response, which is then saved to a new file in '~/Downloads'."
@@ -143,6 +166,32 @@ START and END, rather than by the position of point and mark."
   :config
   (define-key gptel-aibo-mode-map
               (kbd "C-c /") #'gptel-aibo-apply-last-suggestions))
+;;** MCP (model context protocol) and integration with gptel
+(use-package mcp
+  :vc (:url "https://github.com/lizqwerscott/mcp.el" :rev :newest)
+  :after (gptel)
+  :config
+  (require 'mcp-hub)
+  ;; enable gptel integration
+  (require 'gptel-integrations)
+
+  (setq mcp-hub-servers
+        '(("fetch" . (:command "uvx" :args ("mcp-server-fetch" "--ignore-robots-txt"))) ;; fetch from web
+          ))
+
+  ;; (mcp-gptel-integration)
+  (mcp-hub-start-all-server)
+  
+  ;; Set up any custom model configurations if needed
+  ;; (mcp-add-model :name "my-custom-model" 
+  ;;                :url "https://api.example.com"
+  ;;                :token (my-get-api-key))
+  
+  ;; Configure default model if needed
+  ;; (setq mcp-default-model "gpt-4")
+  )
+
+
 ;;* whisper local audio to text in Emacs
 ;; example usage:
 ;; (rk/find-device-matching "FaceTime" :video)
