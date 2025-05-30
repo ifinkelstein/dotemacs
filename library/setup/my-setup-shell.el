@@ -43,12 +43,20 @@
              (kill-buffer buffer))
          (switch-to-buffer buffer)))))
 
+  (defun dwim-shell-commands-video-to-h265 ()
+    "Convert videos to h.265 format. Useful for compressing."
+    (interactive)
+    (dwim-shell-command-on-marked-files
+     "video to h.265 compressed format"
+     "ffmpeg -i '<<f>>' -c:v libx265 -crf 28 -c:a aac -b:a 128k '<<fne>>.mp4'"
+     :utils "ffmpeg"))
+  
   (defun dwim-shell-commands-docx-to-org ()
     "Convert docx(s)) to org."
     (interactive)
     (dwim-shell-command-on-marked-files
      "docx to org"
-     "pandoc --from=docx --to=org '<<f>>' > '<<fne>>.org'"
+     "pandoc --extract-media=. --from=docx --to=org '<<f>>' > '<<fne>>.org'"
      :extensions "docx"
      :utils "pandoc"))
 
