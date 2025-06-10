@@ -27,6 +27,26 @@
   (setq gptel-default-mode 'org-mode)
   (setq gptel-expert-commands t) ;; turn on additional 'expert' commands
 
+
+  ;; restore gptel0-mode in org buffers that had prior chats
+  ;; https://github.com/karthink/gptel/wiki/Auto%E2%80%90restore-gptel%E2%80%90mode-in-chat-buffers
+
+  (defun my/gptel-mode-auto ()
+    "Ensure that this file opens with `gptel-mode' enabled."
+    (save-excursion
+      (let ((enable-local-variables t))  ; Ensure we can modify local variables
+        (if (and (save-excursion
+                   (goto-char (point-min))
+                   (looking-at ".*-\\*-")))  ; If there's a -*- line
+            ;; First remove any existing eval, then add the new one
+            (modify-file-local-variable-prop-line
+             'eval nil 'delete))
+        ;; Always add our eval
+        (add-file-local-variable-prop-line
+         'eval '(and (fboundp 'gptel-mode) (gptel-mode 1))))))
+
+  (add-hook 'gptel-save-state-hook #'my/gptel-mode-auto)
+  
   ;; gptel helper functions
 
   (defun my-gptel-replace-context ()
