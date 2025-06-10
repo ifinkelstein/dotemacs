@@ -108,14 +108,7 @@
   :commands (affe-find)
   :config
   ;; Manual preview key for `affe-grep'
-  (consult-customize affe-grep :preview-key "M-.")
-
-  ;; The default regular expression transformation of Consult is limited.
-  ;; Configure Orderless as affe-regexp-compiler in Consult.
-  (defun affe-orderless-regexp-compiler (input _type _ignorecase)
-    (setq input (orderless-pattern-compiler input))
-    (cons input (apply-partially #'orderless--highlight input t)))
-  (setq affe-regexp-compiler #'affe-orderless-regexp-compiler))
+  (consult-customize affe-grep :preview-key "M-."))
 
 
 ;;** Provide
