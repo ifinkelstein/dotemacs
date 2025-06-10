@@ -12,6 +12,28 @@
          ([remap dired-do-shell-command] . dwim-shell-command)
          ([remap dired-smart-shell-command] . dwim-shell-command))
   :config
+
+  (defun dwim-shell-command-convert-movie-mp4 ()
+    "Convert and compress video files to MP4 format using H.265 codec.
+
+This function uses FFmpeg to convert marked video files to MP4 format with
+H.265 (libx265) encoding for optimal compression. The conversion uses:
+- CRF (Constant Rate Factor) of 25 for good quality/size balance
+- 'slow' preset for better compression efficiency at the cost of encoding time
+- Output files are named with '_compressed' suffix
+
+The function operates on marked files in Dired mode or the current file when
+called interactively. Original files are preserved.
+
+Requires FFmpeg to be installed and available in PATH.
+
+Example output: 'movie.avi' becomes 'movie_compressed.mp4'"
+    (interactive)
+    (dwim-shell-command-on-marked-files
+     "Compresses MP4s with libx265 using slow preset to bring down size"
+     "ffmpeg -i '<<f>>' -c:v libx265 -crf 25 -preset slow '<<fne>>_compressed.mp4'"
+     :utils "ffmpeg"))
+
   ;; Based on
   ;; https://apps.bram85.nl/git/bram/gists/src/commit/31ac3363da925daafa2420b7f96c67612ca28241/gists/dwim-0x0-upload.el
   (defun dwim-shell-commands-upload-to-0x0 ()
