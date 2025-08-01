@@ -691,6 +691,11 @@ Include: gptel, mu4e, and OrgMsg buffers in the user-buffer list"
   (kill-new (shell-command-to-string "pbpaste | pandoc -f markdown -t rtf | pbcopy"))
   (yank))
 
+(defun my-md-to-org ()
+  "convert md to org and send to clipboard"
+  (interactive)
+  (kill-new (shell-command-to-string "pbpaste | pandoc -f markdown -t org | pbcopy"))
+  (yank))
 
 (defun my-org-to-rtf ()
   "convert org to rtf and send to clipboard"
@@ -917,6 +922,15 @@ Tab numbering starts at 1."
 (add-hook 'kill-emacs-query-functions #'my--quit)
 
 ;;* Org functions
+
+;; reset all checkboxes in a narrowed org buffer
+;; https://mbork.pl/2025-07-07_Mass_resetting_Org_mode_checkboxes
+(defun my-org-reset-checkbox-state-buffer ()
+  "Reset all checkboxes in the (narrowed portion of) the buffer."
+  (interactive "*")
+  (org-map-entries #'org-reset-checkbox-state-subtree
+                   t nil
+                   'archive 'comment))
 ;; build daily agendas using sub-trees
 (defun my-copy-org-subtree-to-daily-agenda (day)
   "Copy the current org-mode subtree and paste it under the 'Agenda' heading in the org-roam daily agenda file specified by 'day'. Day is computed based on today"

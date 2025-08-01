@@ -114,6 +114,7 @@ and sends a message of the current volume status."
 
 ;;* ready-player for dired integration
 (use-package ready-player
+  :disabled t
   :config
   (ready-player-mode +1))
 

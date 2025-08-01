@@ -286,6 +286,15 @@
     ;;                 (format "Select Audio Device [Current: %s]" whisper--ffmpeg-input-device-name)))
     ("f" "Transcribe Audio" whisper-file)
     ]
+   ["Assistants"
+    ("o" "gptel-aibo" gptel-aibo)
+    ("O" "Toggle gptel-mode" (lambda ()
+                               (interactive)
+                               "Enable gptel-mode in Org and Markdown buffers."
+                               (when (or (derived-mode-p 'org-mode)
+                                         (derived-mode-p 'markdown-mode))
+                                 (gptel-mode))))
+    ]
    ["Process"
     ;; ("b" "Process Message" my-gptel-process-message)
     ;; ("i" "Create Calendar Event" my-gptel-ical-from-message)
@@ -474,7 +483,7 @@
     ("a" "Attach" org-attach-attach)]
    ["Task"
     ("A" "Archive Done Tasks" my-org-archive-done-tasks)
-    ("e" "Set Effort" org-set-effort)
+    ("E" "Set Effort" org-set-effort)
     ("K" "Kill Text Under Heading" my-org-kill-text-under-heading)
     ("q" "Set Tags" org-set-tags-command)]
    ["Clock"
@@ -495,12 +504,21 @@
     ("l" "Store Link" org-store-link)
     ("L" "Grab FF Link" (lambda () (interactive)
                           (grab-mac-link-dwim 'firefox)))]
+   ["Export"
+    ("ep" "Export to PDF & Open" (lambda ()
+                                   (interactive)
+                                   (org-open-file (org-latex-export-to-pdf))))
+    ("eP" "Export to PDF" org-latex-export-to-pdf)
+    ("ex" "Export to DOCX & Open" (lambda ()
+                                    (interactive)
+                                    (org-pandoc-export 'docx nil nil nil nil nil 0)))
+    ("eX" "Export to DOCX" org-pandoc-export-to-docx)]
    ["Miscellaneous"
-    ;; ("h" "Timeblock" org-timeblock)
+    ("h" "Timeblock" org-timeblock)
     ("p" "Pomodoro" org-pomodoro)
-    ("s" "Agenda Jump" my-consult-org-ql-agenda-jump)
-    ("S" "Org Reschedule" my-org-reschedule)
-    ;; ("S" "Lock the Search" org-ql-search)
+    ("f" "Agenda search" my-consult-org-ql-agenda-jump)
+    ("s" "Search with org-ql" org-ql-search)
+    ("S" "Org reschedule" my-org-reschedule)
     ("w" "Refile" org-refile)]
    ])
 

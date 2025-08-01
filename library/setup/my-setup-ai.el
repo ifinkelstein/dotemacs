@@ -180,6 +180,20 @@ START and END, rather than by the position of point and mark."
                  :context-window 200 :input-cost 3 :output-cost 15 :cutoff-date "2024-11")))
 
 ;;** GPTEl extending packages
+;; ingest gptel prompts from a file
+(use-package gptel-prompts
+  :vc (:url "https://github.com/jwiegley/gptel-prompts" :rev :newest :branch "master")
+  :after (gptel)
+  ;; need this to dynamically load into gptel
+  :demand t
+  :custom
+  ;; one prompt per file
+  (gptel-prompts-directory (concat my-library-dir "llm-prompts"))
+  :config
+  (gptel-prompts-update)
+  ;; Ensure prompts are updated if prompt files change
+  (gptel-prompts-add-update-watchers))
+
 (use-package gptel-aibo
   :vc (:url "https://github.com/dolmens/gptel-aibo" :rev :newest :branch "master")
   :after (gptel)
@@ -199,8 +213,8 @@ START and END, rather than by the position of point and mark."
         '(("fetch" . (:command "uvx" :args ("mcp-server-fetch" "--ignore-robots-txt"))) ;; fetch from web
           ))
 
-  ;; (mcp-gptel-integration)
-  (mcp-hub-start-all-server)
+  ;; turned off mcp bc I don't use it that much  
+  ;; (mcp-hub-start-all-server)
   
   ;; Set up any custom model configurations if needed
   ;; (mcp-add-model :name "my-custom-model" 

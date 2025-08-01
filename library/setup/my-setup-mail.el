@@ -40,6 +40,10 @@
   :hook ((dired-mode . turn-on-gnus-dired-mode))
   
   :config
+  ;; Fix a problem with some escape characters
+  ;; https://github.com/djcb/mu/issues/2662
+  (setq rfc2047-quote-decoded-words-containing-tspecials t)
+
   ;; Finding the binary (installed w/homebrew)
   (setq mu4e-mu-binary (executable-find "mu"))
 
@@ -445,7 +449,8 @@ the query (for links starting with \"query:\")."
               (my-swap-email-from-field)
               ;; Check spelling
               (flyspell-mode 1)
-              (olivetti-mode -1)
+              (olivetti-mode 1)
+              (olivetti-set-width 0.8)
               (auto-fill-mode -1)
               (hl-line-mode -1)))
 
@@ -873,7 +878,14 @@ select one email at a time.
                    (interactive)
                    (insert "🦄")))]
      [("eR" "recent" emoji-recent)
-      ("eS" "search" emoji-search)]])
+      ("eS" "search" emoji-search)]
+     [("rj" "Jeremiah" (lambda ()
+                         (interactive)
+                         (insert "jdpaulus@utexas.edu")))
+      ("rh" "HR" (lambda ()
+                   (interactive)
+                   (insert "MBS_HR@austin.utexas.edu")))]
+     ])
   ;; (define-key message-mode-map (kbd "M-o") 'my-transient-email-compose)
   (define-key org-msg-edit-mode-map (kbd "M-o") 'my-transient-email-compose)
 

@@ -188,6 +188,11 @@
          ("\\.applescript\\'"       . applescript-mode))
   :commands (applescript-mode))
 
+(use-package ob-applescript
+  :vc (:url "https://github.com/stig/ob-applescript.el"))
+
+(use-package applescript-mode)
+
 ;;** YAML
 (use-package yaml-mode)
 

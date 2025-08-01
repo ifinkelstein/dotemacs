@@ -13,6 +13,20 @@
          ([remap dired-smart-shell-command] . dwim-shell-command))
   :config
 
+  (defun dwim-shell-split-cue-to-flac ()
+    "Convert all selectede cue files to FLAC. 
+
+This function uses xld to convert marked cue files to FLAC
+
+The function operates on marked files in Dired mode or the current file when
+called interactively. Original files are preserved.
+"
+    (interactive)
+    (dwim-shell-command-on-marked-files
+     "Convert cue to FLAC"
+     "xld -f flac --profile 'ilya' -c '<<fne>>.cue' <<f>>"
+     :utils "xld"))
+  
   (defun dwim-shell-command-convert-movie-mp4 ()
     "Convert and compress video files to MP4 format using H.265 codec.
 
@@ -154,7 +168,7 @@ If this doesn't work, then the file can be reduced further in Adobe Acrobat."
     ;; https://askubuntu.com/questions/113544/how-can-i-reduce-the-file-size-of-a-scanned-pdf-file
     (dwim-shell-command-on-marked-files
      "Reduce PDF file size"
-     "  gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile=\"<<fne>>.reduced.pdf\" \"<<f>>\""
+     "  gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/printer -dNOPAUSE -dQUIET -dBATCH -sOutputFile=\"<<fne>>.reduced.pdf\" \"<<f>>\""
      :utils "gs"))
 
   (defun dwim-shell-commands-converst-to-docx ()
@@ -199,13 +213,16 @@ If this doesn't work, then the file can be reduced further in Adobe Acrobat."
 ;;* eshell and helpers
 
 ;;** eat
+
 (use-package eat
-  :custom
-  (eat-term-name "xterm")
+  :ensure t
+  ;; :custom
+  ;; (eat-term-name "xterm")
   :custom-face
   (ansi-color-bright-blue ((t (:foreground "#00afff" :background "#00afff"))))
   :config
   (eat-eshell-mode)
+  (setq eshell-visual-commands '())
   (eat-eshell-visual-command-mode))
 
 ;;* vterm and helpers

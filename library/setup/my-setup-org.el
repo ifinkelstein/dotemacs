@@ -1033,7 +1033,7 @@ the current region, if a region is selected, or the current tree."
   (org-appear-autolinks nil)
   (org-appear-autosubmarkers t))
 
-;;* easier highlighting in org
+;;** easier highlighting in org
 
 ;; This library provides two additional markers !!
 ;; and !@ over and above those in org-emphasis-alist.
@@ -1042,7 +1042,7 @@ the current region, if a region is selected, or the current tree."
 ;; (use-package org-extra-emphasis
 ;;   :vc (:url "https://github.com/QiangF/org-extra-emphasis" :rev :newest)) 
 
-;;* org-sticky-header
+;;** org-sticky-header
 (use-package org-sticky-header
   :hook (org-mode . org-sticky-header-mode)
   :custom
@@ -1445,10 +1445,10 @@ use 'server-force-delete' and 'server-mode' to restart."
         (t
          (format "What's the next task?"))))
 
-;; org-timeblock for scheduling todos
-;; schedule the day
-;; (use-package org-timeblock
-;;   :after org)
+;;** org-timeblock to schedule the day
+(use-package org-timeblock
+  :vc (:url "https://github.com/ifinkelstein/org-timeblock" :rev :newest :branch "master")
+  :after org)
 ;;** org-agenda improvements
 ;;*** origami -- fold agenda elements
 ;; useful for folding elements in org-agenda
