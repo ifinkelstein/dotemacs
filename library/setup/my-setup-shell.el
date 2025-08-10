@@ -24,7 +24,7 @@ called interactively. Original files are preserved.
     (interactive)
     (dwim-shell-command-on-marked-files
      "Convert cue to FLAC"
-     "xld -f flac --profile 'ilya' -c '<<fne>>.cue' <<f>>"
+     "xld -f flac --profile 'ilya' -c '<<fne>>.cue' '<<fne>>.flac'"
      :utils "xld"))
   
   (defun dwim-shell-command-convert-movie-mp4 ()
@@ -150,15 +150,6 @@ Spool to default printer using lp with double-sided printing on."
      "Convert AI to PDF"
      "gs -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=\"<<fne>>.pdf\" \"<<f>>\""
      :utils "gs"))
-
-  (defun dwim-shell-command-split-FLAC ()
-    "Split a FLAC album file into tracks using xld and a CUE file in the same folder."
-    (interactive)
-
-    (dwim-shell-command-on-marked-files
-     "Split FLAC album file into tracks"
-     "xld -c \"<<fne>>.cue\" -f FLAC \"<<f>>\""
-     :utils "xld"))
 
   (defun dwim-shell-command-reduce-PDF-size ()
     "Reduce PDF file size; images downsampled to 150 dpi.
