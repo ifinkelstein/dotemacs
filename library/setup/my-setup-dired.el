@@ -15,6 +15,8 @@
               ("O" . org-attach-dired-to-subtree)
               ("S" . xah-open-in-external-app))
   :custom
+  ;; compress to .zip files by default with dired "Z" command (otherwise its .tar.gz)
+  (dired-compress-directory-default-suffix ".zip")
   ;; make sure git knows when a file is renamed
   (dired-vc-rename-file t)
   ;; Like with ls, append "@" to file names if they're symlinks
