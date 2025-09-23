@@ -666,6 +666,10 @@ the query (for links starting with \"query:\")."
                  :query ,(mu4e-make-query
                           '(and (date (2m .. 1m)) (flag unread) (not (flag trashed)) (maildir (regex "Inbox$"))))
                  :key ?M)
+          (:name "Home"
+                 :query ,(mu4e-make-query
+                          '(from "ABOR@mlsmatrix.com"))
+                 :key ?h)
           (:name "HR"
                  :query ,(mu4e-make-query
                           '(from "MBS_HR@austin.utexas.edu"))
@@ -1006,6 +1010,41 @@ Requires all-the-icons as a dependency"
   ) ;; org-msg
 
 ;;* Helper functions
+(defun my-mu4e-attach-png-from-clipboard ()
+  "Save a PNG image from the clipboard to a temp file and attach it. MacOS or linux only, for now."
+  (interactive)
+  (unless (or (derived-mode-p 'mu4e-compose-mode)
+              (derived-mode-p 'org-msg-edit-mode))
+    (error "Not in a mu4e-compose-mode or org-msg-edit-mode buffer"))
+
+  (let* ((paste-tool
+          (cond
+           ((executable-find "pngpaste") '("pngpaste"))
+           ((executable-find "xclip")    '("xclip" "-selection" "clipboard" "-t" "image/png" "-o"))
+           (t (error "Please install 'pngpaste' (macOS) or 'xclip' (Linux)"))))
+         (tmp-file (make-temp-file "org-msg-clipboard-" nil ".png")))
+
+    ;; Run the clipboard tool. The invocation depends on the tool used.
+    (let ((command (car paste-tool))
+          (args (cdr paste-tool)))
+      (cond ((string= command "pngpaste")
+             ;; pngpaste takes the output file as a command-line argument.
+             ;; (message "Running: %s %s" command tmp-file)
+             (call-process command nil nil nil tmp-file))
+            ((string= command "xclip")
+             ;; xclip writes to standard output, which we redirect to the file.
+             ;; (message "Running: %s %s > %s" command (mapconcat #'identity args " ") tmp-file)
+             (apply #'call-process command nil tmp-file nil args))
+            (t (error "Unsupported paste tool: %s" command))))
+    
+    (if (> (file-attribute-size (file-attributes tmp-file)) 0)
+        (progn
+          ;; `mml-attach-file` is the standard Emacs function for this.
+          (mml-attach-file tmp-file)
+          ;; (message "Attached image from clipboard: %s" (file-name-nondirectory tmp-file)))
+          (delete-file tmp-file)
+          (error "Command '%S' produced no output or failed. Make sure that an image is in the clipboard." paste-tool)))))
+
 (defun my-mu4e-queries-help ()
   "Look up search syntax"
   (interactive)
