@@ -8,6 +8,8 @@
   :bind (:map dired-mode-map
               ("M-<up>"   . my-dired-drag-item-up)
               ("M-<down>" . my-dired-drag-item-down)
+              ("M-<" . end-of-buffer)           ;; beginning and end of buffer need to be reversed in dired
+              ("M->" . beginning-of-buffer)     ;; beginning and end of buffer need to be reversed in dired
               ("l" . dired-find-alternate-file)
               ("h" . my-dired-updirectory)
               ("E" . gnus-dired-attach)
