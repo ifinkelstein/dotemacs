@@ -922,6 +922,16 @@ Tab numbering starts at 1."
 (add-hook 'kill-emacs-query-functions #'my--quit)
 
 ;;* Org functions
+(defun my-org-table-kill-cell-text ()
+  "Copy the content of the current org-mode table cell to the kill ring."
+  (interactive)
+  (when (org-at-table-p)
+    (kill-new
+     (string-trim
+      (substring-no-properties(org-table-get-field))))
+    (message "copied cell: @%d$%d"
+             (org-table-current-line)
+             (org-table-current-column) )))
 
 ;; reset all checkboxes in a narrowed org buffer
 ;; https://mbork.pl/2025-07-07_Mass_resetting_Org_mode_checkboxes
@@ -1280,21 +1290,50 @@ appropriate.  In tables, insert a new row or end the table."
     (set-process-filter proc #'comint-output-filter)))
 
 ;;* Marking text in org-mode and other buffers
+;; written with LLM, hope it works. yolo
 (defun my-mark-inside-org-block ()
   "Mark the inside of any org block when the cursor is inside or on the block delimiter."
   (interactive)
-  (when-let* ((element (org-element-context))
-              (type (org-element-type element))
-              ;; Check if element is a block with contents
-              ((memq type '(src-block example-block quote-block center-block
-                                      special-block export-block verse-block)))
-              (begin (org-element-property :begin element))
-              (end (org-element-property :end element)))
-    (goto-char begin)
-    (forward-line 1)
-    (set-mark (point))
-    (goto-char end)
-    (forward-line -2)))
+  (let* ((element (org-element-context))
+         (type (org-element-type element))
+         ;; If we're inside a block element, check the parent
+         (block-element (cond
+                         ;; If current element is already a block, use it
+                         ((memq type '(src-block example-block quote-block center-block
+                                                 special-block export-block verse-block))
+                          element)
+                         ;; Otherwise check if parent is a block
+                         ((memq (org-element-type (org-element-property :parent element))
+                                '(src-block example-block quote-block center-block
+                                            special-block export-block verse-block))
+                          (org-element-property :parent element))
+                         ;; No block found
+                         (t nil))))
+    (when block-element
+      (let ((contents-begin (org-element-property :contents-begin block-element))
+            (contents-end (org-element-property :contents-end block-element)))
+        (when (and contents-begin contents-end)
+          (goto-char contents-begin)
+          (set-mark contents-begin)
+          (goto-char contents-end))))))
+
+
+;; old version doesn't work on quote blocks.
+;; (defun my-mark-inside-org-block ()
+;;   "Mark the inside of any org block when the cursor is inside or on the block delimiter."
+;;   (interactive)
+;;   (when-let* ((element (org-element-context))
+;;               (type (org-element-type element))
+;;               ;; Check if element is a block with contents
+;;               ((memq type '(src-block example-block quote-block center-block
+;;                                       special-block export-block verse-block)))
+;;               (begin (org-element-property :begin element))
+;;               (end (org-element-property :end element)))
+;;     (goto-char begin)
+;;     (forward-line 1)
+;;     (set-mark (point))
+;;     (goto-char end)
+;;     (forward-line -2)))
 
 
 ;;* Download helpers
