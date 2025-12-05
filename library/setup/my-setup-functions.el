@@ -922,6 +922,25 @@ Tab numbering starts at 1."
 (add-hook 'kill-emacs-query-functions #'my--quit)
 
 ;;* Org functions
+
+;; inspired by http://yummymelon.com/devnull/import-markdown-to-org-with-the-clipboard-in-emacs.html
+(defun my-yank-markdown-as-org ()
+  "Yank Markdown text as Org.
+
+This command will convert Markdown text in the top of the `kill-ring'
+and convert it to Org using the pandoc utility."
+  (interactive)
+  (unless (executable-find "pandoc")
+    (user-error "pandoc is not installed"))
+  (save-excursion
+    (with-temp-buffer
+      (yank)
+      (shell-command-on-region
+       (point-min) (point-max)
+       "pandoc -f markdown -t org --wrap=preserve" t t)
+      (kill-region (point-min) (point-max)))
+    (yank)))
+
 (defun my-org-table-kill-cell-text ()
   "Copy the content of the current org-mode table cell to the kill ring."
   (interactive)
