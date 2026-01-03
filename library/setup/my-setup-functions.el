@@ -291,6 +291,15 @@ recently visited directory from `dired-recent-directories' if available."
     (error "Minibuffer is not active")))
 
 ;;* Buffer Functions
+(defun my-copy-buffer-filename ()
+  "Copy the full filename of current buffer to kill ring if not virtual."
+  (interactive)
+  (if buffer-file-name
+      (progn
+        (kill-new buffer-file-name)
+        (message "Copied: %s" buffer-file-name))
+    (message "Buffer has no associated file")))
+
 (defun my-toggle-line-spacing ()
   "Toggle line spacing between no extra space to extra half line height.
 URL `http://xahlee.info/emacs/emacs/emacs_toggle_line_spacing.html'
@@ -691,6 +700,12 @@ Include: gptel, mu4e, and OrgMsg buffers in the user-buffer list"
   (kill-new (shell-command-to-string "pbpaste | pandoc -f markdown -t rtf | pbcopy"))
   (yank))
 
+(defun my-md-to-html ()
+  "convert md to rtf and send to clipboard"
+  (interactive)
+  (kill-new (shell-command-to-string "pbpaste | pandoc -f markdown -t html | pbcopy"))
+  (yank))
+
 (defun my-md-to-org ()
   "convert md to org and send to clipboard"
   (interactive)
@@ -940,6 +955,39 @@ and convert it to Org using the pandoc utility."
        "pandoc -f markdown -t org --wrap=preserve" t t)
       (kill-region (point-min) (point-max)))
     (yank)))
+
+(defun my--strip-markdown-markup (text)
+  "Strip markdown links and emphasis from TEXT."
+  (let ((result text))
+    ;; [text](url) -> text
+    (setq result (replace-regexp-in-string "\\[\\([^]]+\\)](\\([^)]+\\))" "\\1" result))
+    ;; [text][ref] -> text
+    (setq result (replace-regexp-in-string "\\[\\([^]]+\\)]\\[[^]]*\\]" "\\1" result))
+    ;; **bold** or __bold__ -> bold
+    (setq result (replace-regexp-in-string "\\*\\*\\([^*]+\\)\\*\\*" "\\1" result))
+    (setq result (replace-regexp-in-string "__\\([^_]+\\)__" "\\1" result))
+    ;; *italic* or _italic_ -> italic (but not inside words)
+    (setq result (replace-regexp-in-string "\\*\\([^*]+\\)\\*" "\\1" result))
+    (setq result (replace-regexp-in-string "\\b_\\([^_]+\\)_\\b" "\\1" result))
+    ;; `code` -> code
+    (setq result (replace-regexp-in-string "`\\([^`]+\\)`" "\\1" result))
+    result))
+
+(defun my-copy-region-as-plain-text (beg end)
+  "Copy region as plain text, stripping links and markup.
+Works in `org-mode' and `markdown-mode'. Note: not tested, written quickly with claude-code"
+  (interactive "r")
+  (let* ((text (buffer-substring-no-properties beg end))
+         (plain-text
+          (string-trim
+           (cond
+            ((derived-mode-p 'org-mode)
+             (org-export-string-as text 'ascii t '(:with-toc nil)))
+            ((derived-mode-p 'markdown-mode)
+             (my--strip-markdown-markup text))
+            (t text)))))
+    (kill-new plain-text)
+    (message "Copied: %s" plain-text)))
 
 (defun my-org-table-kill-cell-text ()
   "Copy the content of the current org-mode table cell to the kill ring."
@@ -1329,8 +1377,21 @@ appropriate.  In tables, insert a new row or end the table."
                          ;; No block found
                          (t nil))))
     (when block-element
-      (let ((contents-begin (org-element-property :contents-begin block-element))
-            (contents-end (org-element-property :contents-end block-element)))
+      (let* ((block-type (org-element-type block-element))
+             ;; src-block and example-block don't have :contents-begin/:contents-end
+             (contents-begin (if (memq block-type '(src-block example-block))
+                                 (save-excursion
+                                   (goto-char (org-element-property :begin block-element))
+                                   (forward-line 1)
+                                   (point))
+                               (org-element-property :contents-begin block-element)))
+             (contents-end (if (memq block-type '(src-block example-block))
+                               (save-excursion
+                                 (goto-char (org-element-property :end block-element))
+                                 (forward-line (- (org-element-property :post-blank block-element)))
+                                 (forward-line -1)
+                                 (point))
+                             (org-element-property :contents-end block-element))))
         (when (and contents-begin contents-end)
           (goto-char contents-begin)
           (set-mark contents-begin)

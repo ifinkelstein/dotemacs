@@ -162,14 +162,91 @@ If this doesn't work, then the file can be reduced further in Adobe Acrobat."
      "  gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/printer -dNOPAUSE -dQUIET -dBATCH -sOutputFile=\"<<fne>>.reduced.pdf\" \"<<f>>\""
      :utils "gs"))
 
-  (defun dwim-shell-commands-converst-to-docx ()
-    "Convert file(s) to docx using custom template."
+  (defun dwim-shell-commands-convert-to-doc ()
+    "Convert file(s) to docx using custom template.
+In dired buffers, convert marked files.
+In org-mode, markdown-mode, or text-mode derivatives, convert current buffer.
+For virtual buffers, output is saved to ~/Downloads with date-time.docx."
     (interactive)
-    (dwim-shell-command-on-marked-files
-     "Convert to DOCX"
-     "pandoc --reference-doc '/Users/ilya/Work/80-89 other writing/80 letter-templates/generic-word-template.docx' -i '<<f>>' -o '<<fne>>.docx'"
-     :utils "pandoc"))
+    (let ((template "/Users/ilya/Work/80 other writing/80 letter-templates/generic-word-template.docx"))
+      (cond
+       ;; Dired mode: use original behavior
+       ((derived-mode-p 'dired-mode)
+        (dwim-shell-command-on-marked-files
+         "Convert to DOCX"
+         (format "pandoc --reference-doc '%s' -i '<<f>>' -o '<<fne>>.docx'" template)
+         :utils "pandoc"))
+       ;; Text-based modes (org, markdown, text, etc.)
+       ((derived-mode-p 'text-mode 'org-mode 'markdown-mode)
+        (let* ((input-format (cond
+                              ((derived-mode-p 'org-mode) "org")
+                              ((derived-mode-p 'markdown-mode) "markdown")
+                              (t "markdown")))
+               (has-file (and buffer-file-name (file-exists-p buffer-file-name)))
+               (input-file (if has-file
+                               buffer-file-name
+                             (let ((temp (make-temp-file "pandoc-input-" nil
+                                                         (concat "." input-format))))
+                               (write-region (point-min) (point-max) temp)
+                               temp)))
+               (output-file (if has-file
+                                (concat (file-name-sans-extension buffer-file-name) ".docx")
+                              (expand-file-name
+                               (format-time-string "%Y-%m-%d-%H%M%S.docx")
+                               "~/Downloads")))
+               (command (format "pandoc --reference-doc '%s' -f %s -i '%s' -o '%s'"
+                                template input-format input-file output-file)))
+          (message "Converting to DOCX...")
+          (if (zerop (call-process-shell-command command))
+              (progn
+                (unless has-file (delete-file input-file))
+                (message "Created: %s" output-file))
+            (error "Pandoc conversion failed"))))
+       (t
+        (user-error "Not in a supported mode (dired, org, markdown, or text)")))))
 
+  (defun dwim-shell-commands-convert-to-nih-docx ()
+    "Convert file(s) to docx using NIH template.
+In dired buffers, convert marked files.
+In org-mode, markdown-mode, or text-mode derivatives, convert current buffer.
+For virtual buffers, output is saved to ~/Downloads with date-time.docx."
+    (interactive)
+    (let ((template "/Users/ilya/Work/80 other writing/80 letter-templates/nih-reference.docx"))
+      (cond
+       ;; Dired mode: use original behavior
+       ((derived-mode-p 'dired-mode)
+        (dwim-shell-command-on-marked-files
+         "Convert to DOCX"
+         (format "pandoc --reference-doc '%s' -i '<<f>>' -o '<<fne>>.docx'" template)
+         :utils "pandoc"))
+       ;; Text-based modes (org, markdown, text, etc.)
+       ((derived-mode-p 'text-mode 'org-mode 'markdown-mode)
+        (let* ((input-format (cond
+                              ((derived-mode-p 'org-mode) "org")
+                              ((derived-mode-p 'markdown-mode) "markdown")
+                              (t "markdown")))
+               (has-file (and buffer-file-name (file-exists-p buffer-file-name)))
+               (input-file (if has-file
+                               buffer-file-name
+                             (let ((temp (make-temp-file "pandoc-input-" nil
+                                                         (concat "." input-format))))
+                               (write-region (point-min) (point-max) temp)
+                               temp)))
+               (output-file (if has-file
+                                (concat (file-name-sans-extension buffer-file-name) ".docx")
+                              (expand-file-name
+                               (format-time-string "%Y-%m-%d-%H%M%S.docx")
+                               "~/Downloads")))
+               (command (format "pandoc --reference-doc '%s' -f %s -i '%s' -o '%s'"
+                                template input-format input-file output-file)))
+          (message "Converting to DOCX...")
+          (if (zerop (call-process-shell-command command))
+              (progn
+                (unless has-file (delete-file input-file))
+                (message "Created: %s" output-file))
+            (error "Pandoc conversion failed"))))
+       (t
+        (user-error "Not in a supported mode (dired, org, markdown, or text)")))))
   (defun dwim-shell-commands-pdf-to-txt ()
     "Convert pdf to txt."
     (interactive)

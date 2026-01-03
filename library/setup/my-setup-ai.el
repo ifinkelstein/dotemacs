@@ -225,18 +225,19 @@ START and END, rather than by the position of point and mark."
   ;; (setq mcp-default-model "gpt-4")
   )
 
-
 ;;* whisper local audio to text in Emacs
+
 ;; example usage:
 ;; (rk/find-device-matching "FaceTime" :video)
 ;; (rk/find-device-matching "Macbook Pro Microphone" :audio)
 ;; (rk/select-default-audio-device)
-
 (use-package whisper
   :vc (:url "https://github.com/natrys/whisper.el"  :rev :newest :branch "master")
   :commands (whisper-run whisper-file rk/select-default-audio-device)
   :bind ("s-R" . whisper-run)
   :custom
+  ;; need to not insert text for my custom whisper function
+  (whisper-insert-text-at-point t)
   (whisper-install-directory my-var-dir)
   (whisper-model "base")
   (whisper-language "en")
@@ -245,7 +246,9 @@ START and END, rather than by the position of point and mark."
   (whisper--ffmpeg-input-device (rk/find-device-matching whisper--ffmpeg-input-device-name :audio))
   (whisper--ffmpeg-input-format "avfoundation")
   ;; move cursor to the end of the inserted text
-  (whisper-return-cursor-to-start nil))
+  (whisper-return-cursor-to-start nil)
+  ;; :hook (whisper-after-transcription-hook . my-whisper-process-text)
+  )
 
 (defcustom rk/default-audio-device nil
   "The default audio device to use for whisper.el and outher audio processes."
@@ -321,6 +324,50 @@ Each list contains a list of cons cells, where the car is the device number and 
              do (push (cons (string-to-number (match-string 1 line)) (match-string 2 line)) audio-devices)
              finally return (list (nreverse video-devices) (nreverse audio-devices)))))
 
+
+;;* elisp introspection and semantic search
+;; usage example: https://share.karthinks.com/ragmacs-test-simple.html
+(use-package ragmacs
+  :vc (:url "https://github.com/positron-solutions/ragmacs" :rev :newest :branch "master")
+  :after gptel
+  :defer
+  :init
+  (gptel-make-preset 'introspect
+    :pre (lambda () (require 'ragmacs))
+    :system
+    "You are pair programming with the user in Emacs and on Emacs.
+ 
+ Your job is to dive into Elisp code and understand the APIs and
+ structure of elisp libraries and Emacs.  Use the provided tools to do
+ so, but do not make duplicate tool calls for information already
+ available in the chat.
+ 
+ <tone>
+ 1. Be terse and to the point.  Speak directly.
+ 2. Explain your reasoning.
+ 3. Do NOT hedge or qualify.
+ 4. If you don't know, say you don't know.
+ 5. Do not offer unprompted advice or clarifications.
+ 6. Never apologize.
+ 7. Do NOT summarize your answers.
+ </tone>
+ 
+ <code_generation>
+ When generating code:
+ 1. Always check that functions or variables you use in your code exist.
+ 2. Also check their calling convention and function-arity before you use them.
+ 3. Write code that can be tested by evaluation, and offer to evaluate
+ code using the `elisp_eval` tool.
+ </code_generation>
+ 
+ <formatting>
+ 1. When referring to code symbols (variables, functions, tags etc) enclose them in markdown quotes.
+    Examples: `read_file`, `getResponse(url, callback)`
+    Example: `<details>...</details>`
+ 2. If you use LaTeX notation, enclose math in \( and \), or \[ and \] delimiters.
+ </formatting>"
+    :tools '("introspection")))
+
 ;;* Semantic search with semext
 (use-package semext
   :vc (:url "https://github.com/ahyatt/semext/"  :rev :newest :branch "master")
@@ -328,6 +375,36 @@ Each list contains a list of cons cells, where the car is the device number and 
   (require 'llm-openai)
   ;; Replace provider with whatever you want, see https://github.com/ahyatt/llm
   (setopt semext-provider (make-llm-openai :key gptel-api-key :chat-model "gpt-4o-mini")))
+
+;;* claude-code
+;; install required inheritenv dependency:
+(use-package inheritenv
+  :vc (:url "https://github.com/purcell/inheritenv" :rev :newest))
+
+;; install claude-code.el
+(use-package claude-code :ensure t
+  :vc (:url "https://github.com/stevemolitor/claude-code.el" :rev :newest)
+  :config
+  ;; optional IDE integration with Monet
+  ;; (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
+  ;; (monet-mode 1)
+  (setq claude-code-terminal-backend 'eat)
+  (setq eat-term-scrollback-size 500000)  ; Increase to 500k characters
+  (claude-code-mode)
+  :bind-keymap ("C-c c" . claude-code-command-map)
+
+  ;; Optionally define a repeat map so that "M" will cycle thru Claude auto-accept/plan/confirm modes after invoking claude-code-cycle-mode / C-c M.
+  :bind
+  (:repeat-map my-claude-code-map ("M" . claude-code-cycle-mode)))
+
+(use-package claude-code-ide
+  :vc (:url "https://github.com/manzaltu/claude-code-ide.el" :rev :newest)
+  :bind ("C-c C-'" . claude-code-ide-menu) ; Set your favorite keybinding
+  :config
+  ;; Optionally enable Emacs MCP tools
+  (claude-code-ide-emacs-tools-setup))
+
+
 ;;* provide
 (provide 'my-setup-ai)
 ;; my-setup-ai.el ends here

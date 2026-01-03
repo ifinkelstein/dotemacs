@@ -532,11 +532,14 @@ the query (for links starting with \"query:\")."
       (insert "From: " (message-make-from "Ilya Finkelstein" "ilya@finkelsteinlab.org") "\n")))
 
   ;; a few helper functions to navigate & copy message fields quickly
-  (defun my-copy-email-address-at-point ()
-    "If there is one, copy the e-mail address at point to the kill-ring."
+  (defun my-kill-email-address-at-point ()
+    "If there is one, copy the e-mail address at point to the kill-ring.
+Strips surrounding angle brackets if present."
     (interactive)
-    (when-let ((addr (thing-at-point 'email)))
-      (kill-new addr)))
+    (when-let* ((addr (thing-at-point 'email))
+                (clean (string-trim addr "<" ">")))
+      (kill-new clean)
+      (message "Copied: %s" clean)))
 
   ;; (defun my-msg-goto-to-field ()
   ;;   "Move point to the beginning of the To field."

@@ -315,6 +315,34 @@ Version 2022-09-14"
                                         (point-min)
                                         (point-max))))))))
 
+
+;;** Dired helper functions
+;; ref: https://mbork.pl/2025-09-29_Improving_dired-show-file-type
+(defun my-get-media-file-metadata (file)
+  "Get FILE's duration and resolution, assuming it’s a media file."
+  (let (process-file-side-effects)
+    (with-temp-buffer
+      (process-file "ffprobe" nil t nil
+                    "-loglevel" "error"
+                    "-select_streams" "v:0"
+                    "-show_entries" "format=duration:stream=width,height"
+                    "-output_format" "csv=p=0"
+                    "-sexagesimal"
+                    file)
+      (goto-char (point-min))
+      (when (looking-at-p "[0-9]+,[0-9]+")
+        (insert "resolution: ")
+        (search-forward "," nil t)
+        (delete-char -1)
+        (insert "x")
+        (search-forward "\n")
+        (delete-char -1)
+        (insert ", "))
+      (insert "duration: ")
+      (buffer-substring-no-properties
+       (point-min)
+       (1- (point-max))))))
+
 ;;* Dirvish (an improved Dired)
 ;; original author repo not updated, using doom fork
 (use-package dirvish

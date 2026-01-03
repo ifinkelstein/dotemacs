@@ -55,6 +55,7 @@
   (add-to-list 'meow-mode-state-list '(mu4e-compose-mode . insert))
   (add-to-list 'meow-mode-state-list '(mu4e-main-mode . insert))
   (add-to-list 'meow-mode-state-list '(mu4e-view-mode . motion))
+  (add-to-list 'meow-mode-state-list '(edebug-mode . insert))
   (add-to-list 'meow-mode-state-list '(vterm-mode . insert))
 
   (setq meow-selection-command-fallback
@@ -280,12 +281,14 @@
     ("a" "GPT Menu" gptel-menu)
     ("r" "Re-write" gptel-rewrite)]
    ["Whisper"
+    ;; ("-r" "Refine" :class 'transient-toggle
+    ;;  :variable 'my-whisper-do-refine :format "Refine: %-3s")
+
+    ;; Suffix commands for actions
     ("d" "Transcribe Audio" whisper-run)
     ("D" "Select Audio Device" rk/select-default-audio-device)
-    ;;  :description (lambda ()
-    ;;                 (format "Select Audio Device [Current: %s]" whisper--ffmpeg-input-device-name)))
-    ("f" "Transcribe Audio" whisper-file)
-    ]
+    ("f" "Transcribe from File" whisper-file)]
+   
    ["Assistants"
     ("o" "gptel-aibo" gptel-aibo)
     ("O" "Toggle gptel-mode" (lambda ()

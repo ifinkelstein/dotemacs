@@ -144,8 +144,7 @@
   (popper-group-function #'popper-group-by-directory)
   ;; Set popper buffers
   (popper-reference-buffers
-   '("\\*Messages\\*"
-     "Output\\*$"
+   '("Output\\*$"
      "\\*Async Shell Command\\*"
      help-mode
      compilation-mode))

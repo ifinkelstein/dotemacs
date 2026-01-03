@@ -349,7 +349,8 @@
     (progn
       (turn-on-flyspell)
       (auto-fill-mode)
-      (hl-todo-mode)))
+      (hl-todo-mode)
+      (variable-pitch-mode)))
 
   ;; markdown hooks
   (add-hook 'markdown-mode-hook 'my--markdown-settings)
@@ -407,7 +408,7 @@ sentence. Otherwise kill forward but preserve any punctuation at the sentence en
 URL `http://xahlee.info/emacs/emacs/emacs_toggle_line_spacing.html'
 Version 2017-06-02"
   (interactive)
-  (if (< line-spacing 0.2)
+  (if (or (null line-spacing) (< line-spacing 0.2))
       (setq line-spacing 0.5)
     (setq line-spacing 0.1))
   (redraw-frame (selected-frame)))

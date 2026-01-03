@@ -40,7 +40,10 @@
   ;; magit-auto-revert-mode" when loading Magit.
   (setq magit-no-message '("Turning on magit-auto-revert-mode..."))
   
-  
+  :custom
+  ;; explicitly pointing to homebrew-installed git is supposed to speed up magit
+  ;; https://gregnewman.io/blog/speed-up-magit-on-macos/
+  (magit-git-executable "/opt/homebrew/bin/git")
   :config
   (setq magit-log-margin '(t "%Y-%m-%d.%H:%M:%S "  magit-log-margin-width nil 18))
   (setq magit-refresh-status-buffer t)

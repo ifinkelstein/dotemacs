@@ -1,3 +1,4 @@
+;;; my-setup-org.el -*- lexical-binding: t -*-
 
 (message "Setting up org mode...")
 ;; re-enable org-modern, lambda-line
@@ -9,7 +10,9 @@
   :commands (org-mode org-capture org-attach-attach org-attach)
   :mode (("\\.org$" . org-mode))
   :hook ((org-mode . variable-pitch-mode)
-         (org-mode . unpackaged/org-table-face-mode))
+         ;; DISABLED: testing if org-table-face-mode causes hangs in org files with tables
+         ;; (org-mode . unpackaged/org-table-face-mode)
+         )
   :bind
   (:map global-map
         ("C-c a" . org-agenda)
@@ -1006,7 +1009,9 @@ the current region, if a region is selected, or the current tree."
 
 ;;** TOC-Org
 ;; export TOCs in org and markdown files for GitHub
+;; DISABLED: testing if this causes hangs when collapsing headers in large org files
 (use-package toc-org
+  :disabled t
   :hook ((org-mode . toc-org-mode)
          (markdown-mode . toc-org-mode)))
 ;;** org-bookmark-heading
@@ -1024,7 +1029,6 @@ the current region, if a region is selected, or the current tree."
 ;;*** Org-Appear (Show Markup/Pretty Entities)
 ;; show markup at point -- this should be part of org!
 (use-package org-appear
-  :disabled t
   :after org
   :commands (org-appear-mode)
   :hook (org-mode . org-appear-mode)
