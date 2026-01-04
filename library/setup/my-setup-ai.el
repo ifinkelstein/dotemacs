@@ -243,12 +243,14 @@ START and END, rather than by the position of point and mark."
   (whisper-language "en")
   (whisper-translate nil)
   (whisper--ffmpeg-input-device-name "Macbook Pro Microphone")
-  (whisper--ffmpeg-input-device (rk/find-device-matching whisper--ffmpeg-input-device-name :audio))
+  ;; (whisper--ffmpeg-input-device (rk/find-device-matching whisper--ffmpeg-input-device-name :audio))
   (whisper--ffmpeg-input-format "avfoundation")
   ;; move cursor to the end of the inserted text
   (whisper-return-cursor-to-start nil)
   ;; :hook (whisper-after-transcription-hook . my-whisper-process-text)
-  )
+  :config
+  (setq rk/default-audio-device 0)
+  (setq whisper--ffmpeg-input-device ":0"))
 
 (defcustom rk/default-audio-device nil
   "The default audio device to use for whisper.el and outher audio processes."
@@ -261,6 +263,10 @@ matching `STRING'. `TYPE' can be :video or :audio."
          (device-list (if (eq type :video)
                           (car devices)
                         (cadr devices))))
+    (message "Available %s devices: %s"
+             (if (eq type :video) "video" "audio")
+             (mapconcat (lambda (d) (format "[%s] %s" (car d) (cdr d)))
+                        device-list ", "))
     (cl-loop for device in device-list
              when (string-match-p string (cdr device))
              return (car device))))
