@@ -155,8 +155,17 @@
     (transient-suffix-put 'magit-dispatch "E" :command 'vdiff-magit)))
 
 ;; * Ediff
-;; Don't open ediff in new frame
-(setq ediff-window-setup-function 'ediff-setup-windows-plain)
+(use-package ediff
+  :ensure nil
+  :custom
+  (ediff-window-setup-function 'ediff-setup-windows-plain)
+  :config
+  ;; Quit ediff without confirmation prompt
+  (defun my-ediff-quit-no-confirm (orig-fun &optional reverse-default-keep-variants)
+    "Quit ediff without y-or-n-p confirmation."
+    (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _) t)))
+      (funcall orig-fun reverse-default-keep-variants)))
+  (advice-add 'ediff-quit :around #'my-ediff-quit-no-confirm))
 
 ;; * Quick Commits
 ;; Make a quick commit without opening magit.

@@ -165,7 +165,8 @@ one is determined using `mu4e-attachment-dir'."
                            (mu4e-warn "No attachments for this message")))
 
            (custom-dir (when ask-dir (read-directory-name
-                                      "Save to directory: "))))
+                                      "Save to directory: "
+                                      mu4e-attachment-dir))))
       ;; we have determined what files to save, and where.
 
       ;; candidates is an alist of plists, I think?
@@ -385,6 +386,18 @@ Execute search with that query."
 
   (add-to-list 'mu4e-headers-actions
 	           '("Rremove all tags" . my-mu4e-remove-all-tags-message) t)
+
+  (defun my-mu4e-copy-message-path (msg)
+    "Copy the file path of MSG to the kill ring."
+    (let ((path (mu4e-message-field msg :path)))
+      (kill-new path)
+      (message "Copied: %s" path)))
+
+  (add-to-list 'mu4e-view-actions
+               '("yank path" . my-mu4e-copy-message-path) t)
+
+  (add-to-list 'mu4e-headers-actions
+               '("yank path" . my-mu4e-copy-message-path) t)
 
   (add-to-list 'mu4e-view-actions
 	           '("retag message" . mu4e-action-retag-message) t)

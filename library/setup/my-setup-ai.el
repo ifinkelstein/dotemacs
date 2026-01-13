@@ -407,6 +407,8 @@ Each list contains a list of cons cells, where the car is the device number and 
   :vc (:url "https://github.com/manzaltu/claude-code-ide.el" :rev :newest)
   :bind ("C-c C-'" . claude-code-ide-menu) ; Set your favorite keybinding
   :config
+  (setq claude-code-ide-window-side 'bottom)
+  (setq claude-code-ide-window-height 10)
   ;; Optionally enable Emacs MCP tools
   (claude-code-ide-emacs-tools-setup))
 
