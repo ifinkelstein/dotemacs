@@ -482,8 +482,6 @@
 (transient-define-prefix my-transient-org ()
   "Org Transient Menu"
   ["Org Commands"
-   ["Attachments"
-    ("a" "Attach" org-attach-attach)]
    ["Task"
     ("A" "Archive Done Tasks" my-org-archive-done-tasks)
     ("E" "Set Effort" org-set-effort)
@@ -501,12 +499,14 @@
     ("I" "inbox.org" my-goto-inbox.org)
     ("j" "Interactive" org-goto-interactive)
     ("n" "Narrow/Widen" my-narrow-or-widen-dwim)]
-   ["Org Links and Subtree"
+   ["Org Subtrees"
+    ("a" "Attach" org-attach-attach)
     ("c" "Copy Subtree" org-copy-subtree)
     ("k" "Cut Subtree" org-cut-subtree)
     ("l" "Store Link" org-store-link)
     ("L" "Grab FF Link" (lambda () (interactive)
-                          (grab-mac-link-dwim 'firefox)))]
+                          (grab-mac-link-dwim 'firefox)))
+    ("m" "Email from header" my-org-heading-to-email)]
    ["Export"
     ("ep" "Export to PDF & Open" (lambda ()
                                    (interactive)
