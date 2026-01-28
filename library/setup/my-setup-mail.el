@@ -438,6 +438,16 @@ Note: this function is actually not necessary because I learned how to use mu fi
   (add-to-list 'mu4e-headers-actions
                '("org link" . org-store-link) t)
 
+  ;; add sender to org-contacts (press 'a' then 'o' in view/headers)
+  ;; NOTE: org-contacts can aggressively override mu4e's native contact
+  ;; completion. If that happens, set `org-contacts-enable-completion' to
+  ;; nil in the org-contacts use-package (in my-setup-notes.el).
+  (setq mu4e-org-contacts-file (concat org-roam-directory "contacts.org"))
+  (add-to-list 'mu4e-headers-actions
+               '("org-contact-add" . mu4e-action-add-org-contact) t)
+  (add-to-list 'mu4e-view-actions
+               '("org-contact-add" . mu4e-action-add-org-contact) t)
+
   ;; TODO: implement this function to open mu4e links from org in another frame
   ;; I need to modify how the org-link behavior works in org
   (defun mu4e-org-open-new-frame (link)
@@ -905,6 +915,7 @@ select one email at a time.
       ("rh" "HR" (lambda ()
                    (interactive)
                    (insert "MBS_HR@austin.utexas.edu")))]
+     [("l" "llm expand" my-mail-llm-expand)]
      ])
   ;; (define-key message-mode-map (kbd "M-o") 'my-transient-email-compose)
   (define-key org-msg-edit-mode-map (kbd "M-o") 'my-transient-email-compose)
@@ -1026,6 +1037,198 @@ Requires all-the-icons as a dependency"
   ) ;; org-msg
 
 ;;* Helper functions
+(defvar my--org-heading-email-data nil
+  "Temporary storage for email data from org heading.")
+
+(defun my--org-heading-to-email-populate ()
+  "Populate email fields after composition buffer is ready.
+Called from `org-msg-edit-mode-hook'."
+  (when my--org-heading-email-data
+    (message "[org-heading-to-email] Populating fields in composition buffer...")
+    (let-alist my--org-heading-email-data
+      ;; Populate To field
+      (message "[org-heading-to-email] Populating To: %s" .to)
+      (message-goto-to)
+      (insert .to)
+      ;; Populate Cc if present
+      (when .cc
+        (message "[org-heading-to-email] Populating Cc: %s" .cc)
+        (message-goto-cc)
+        (insert .cc))
+      ;; Populate Bcc if present
+      (when .bcc
+        (message "[org-heading-to-email] Populating Bcc: %s" .bcc)
+        (message-goto-bcc)
+        (insert .bcc))
+      ;; Populate Subject if present
+      (when .subject
+        (message "[org-heading-to-email] Populating Subject: %s" .subject)
+        (message-goto-subject)
+        (insert .subject))
+      ;; Populate body if present
+      (when (and .body (not (string-empty-p .body)))
+        (message "[org-heading-to-email] Populating body...")
+        (org-msg-goto-body)
+        (insert .body))
+      ;; Position cursor at body
+      (org-msg-goto-body)
+      (message "[org-heading-to-email] Done!"))
+    ;; Clear the data and remove hook
+    (setq my--org-heading-email-data nil)
+    (remove-hook 'org-msg-edit-mode-hook #'my--org-heading-to-email-populate)))
+
+(defun my--org-heading-to-email-parse-subheading-format ()
+  "Parse email data from subheading format.
+Returns alist with to, cc, bcc, subject, body or nil if not in subheading format.
+
+Expected format:
+* Heading title (ignored)
+** To
+recipient@example.com, another@example.com
+** Cc
+cc@example.com
+** Subject
+Email subject
+** Body
+Body text starts here..."
+  (save-excursion
+    (org-back-to-heading t)
+    (let ((parent-level (org-current-level))
+          (bound (save-excursion (org-end-of-subtree t) (point)))
+          to-addrs cc-addrs bcc-addrs subject body
+          found-subheading)
+      ;; Look for subheadings
+      (while (re-search-forward org-heading-regexp bound t)
+        (let* ((heading-text (org-get-heading t t t t))
+               (heading-level (org-current-level)))
+          (when (= heading-level (1+ parent-level))
+            (setq found-subheading t)
+            (let* ((element (org-element-at-point))
+                   (content-begin (org-element-property :contents-begin element))
+                   (content-end (org-element-property :contents-end element))
+                   (content (when (and content-begin content-end)
+                              (string-trim
+                               (buffer-substring-no-properties content-begin content-end)))))
+              (pcase (downcase heading-text)
+                ("to" (setq to-addrs content))
+                ("cc" (setq cc-addrs content))
+                ("bcc" (setq bcc-addrs content))
+                ("subject" (setq subject content))
+                ("body" (setq body content)))))))
+      (when found-subheading
+        `((to . ,to-addrs)
+          (cc . ,cc-addrs)
+          (bcc . ,bcc-addrs)
+          (subject . ,subject)
+          (body . ,body))))))
+
+(defun my--org-heading-to-email-parse-inline-format ()
+  "Parse email data from inline header format.
+Returns alist with to, cc, bcc, subject, body.
+
+Expected format:
+* Heading title (ignored)
+<optional timestamp>
+
+To: recipient@example.com, another@example.com
+Cc: cc@example.com (optional)
+Subject: Email subject (optional)
+
+Body text starts here..."
+  (save-excursion
+    (org-back-to-heading t)
+    (let* ((element (org-element-at-point))
+           (content-begin (org-element-property :contents-begin element))
+           (content-end (org-element-property :contents-end element))
+           (content (when (and content-begin content-end)
+                      (buffer-substring-no-properties content-begin content-end)))
+           to-addrs cc-addrs bcc-addrs subject body)
+      (when content
+        (with-temp-buffer
+          (insert content)
+          (goto-char (point-min))
+          ;; Skip timestamp line if present
+          (when (looking-at "^<[^>]+>")
+            (forward-line 1))
+          ;; Skip blank lines
+          (while (and (not (eobp)) (looking-at "^\\s-*$"))
+            (forward-line 1))
+          ;; Parse header fields
+          (while (looking-at "^\\(To\\|Cc\\|Bcc\\|Subject\\):\\s-*\\(.*\\)$")
+            (let ((field (match-string 1))
+                  (value (string-trim (match-string 2))))
+              (pcase field
+                ("To" (push value to-addrs))
+                ("Cc" (push value cc-addrs))
+                ("Bcc" (push value bcc-addrs))
+                ("Subject" (setq subject value))))
+            (forward-line 1))
+          ;; Skip blank lines before body
+          (while (and (not (eobp)) (looking-at "^\\s-*$"))
+            (forward-line 1))
+          ;; Rest is body
+          (setq body (string-trim (buffer-substring-no-properties (point) (point-max))))))
+      ;; Combine multiple addresses
+      (setq to-addrs (and to-addrs (string-join (nreverse to-addrs) ", ")))
+      (setq cc-addrs (and cc-addrs (string-join (nreverse cc-addrs) ", ")))
+      (setq bcc-addrs (and bcc-addrs (string-join (nreverse bcc-addrs) ", ")))
+      `((to . ,to-addrs)
+        (cc . ,cc-addrs)
+        (bcc . ,bcc-addrs)
+        (subject . ,subject)
+        (body . ,body)))))
+
+(defun my-org-heading-to-email ()
+  "Convert org heading at point to a new mu4e email.
+
+Supports two formats:
+
+Format 1 - Inline headers:
+* Heading title (ignored)
+<optional timestamp>
+
+To: recipient@example.com, another@example.com
+Cc: cc@example.com (optional, multiple allowed)
+Bcc: bcc@example.com (optional, multiple allowed)
+Subject: Email subject (optional)
+
+Body text starts here...
+
+Format 2 - Subheadings:
+* Heading title (ignored)
+** To
+recipient@example.com, another@example.com
+** Cc
+cc@example.com
+** Subject
+Email subject
+** Body
+Body text starts here..."
+  (interactive)
+  (unless (derived-mode-p 'org-mode)
+    (user-error "Not in an org-mode buffer"))
+  (save-excursion
+    (org-back-to-heading t)
+    (message "[org-heading-to-email] Found heading at point %d" (point))
+    ;; Try subheading format first, fall back to inline format
+    (let ((email-data (or (my--org-heading-to-email-parse-subheading-format)
+                          (my--org-heading-to-email-parse-inline-format))))
+      (let-alist email-data
+        (message "[org-heading-to-email] Parsed - To: %s, Cc: %s, Bcc: %s, Subject: %s"
+                 .to .cc .bcc .subject)
+        (message "[org-heading-to-email] Body:\n%s" .body)
+        ;; Validate required fields
+        (unless .to
+          (user-error "Missing To: field"))
+        ;; Store data for the hook to use
+        (setq my--org-heading-email-data email-data)
+        ;; Add hook to populate after buffer is ready
+        (add-hook 'org-msg-edit-mode-hook #'my--org-heading-to-email-populate)
+        ;; Create the email in a new window - buffer population happens in the hook
+        (message "[org-heading-to-email] Creating new mu4e composition buffer...")
+        (let ((mu4e-compose-switch 'window))
+          (mu4e-compose-new))))))
+
 (defun my-mu4e-attach-png-from-clipboard ()
   "Save a PNG image from the clipboard to a temp file and attach it. MacOS or linux only, for now."
   (interactive)
@@ -1068,7 +1271,55 @@ Requires all-the-icons as a dependency"
   (woman "mu-query")
   (search-forward "FIELDS"))
 
-;; TODO: incomplete. need to think of what I really want here
+;; TODO: test my-org-msg-llm-draft
+(defun my-mail-llm-expand ()
+  "Find @llm directive in org-msg buffer and use LLM to draft email.
+
+Place cursor anywhere in the buffer. The function searches for a line
+starting with @llm followed by instructions. It sends those instructions
+along with the entire email as context to the LLM, then replaces the
+@llm line with the generated response.
+
+Example usage in an org-msg reply buffer:
+  @llm politely decline, too busy. commend her son."
+  (interactive)
+  (unless (derived-mode-p 'org-msg-edit-mode)
+    (user-error "Not in an org-msg-edit-mode buffer"))
+  (save-excursion
+    (goto-char (point-min))
+    (unless (re-search-forward "^@llm\\s-+\\(.+\\)$" nil t)
+      (user-error "No @llm directive found"))
+    (let* ((instructions (match-string 1))
+           (llm-line-beg (match-beginning 0))
+           (llm-line-end (match-end 0))
+           (email-content (buffer-substring-no-properties (point-min) (point-max))))
+      (message "[org-msg-llm] Instructions: %s" instructions)
+      (message "[org-msg-llm] Sending to LLM...")
+      ;; Delete the @llm line
+      (delete-region llm-line-beg llm-line-end)
+      ;; Position for insertion
+      (goto-char llm-line-beg)
+      (let ((target-buffer (current-buffer))
+            (insert-pos llm-line-beg))
+        (gptel-request
+            (concat
+             "You are drafting an email response. Follow these instructions:\n"
+             instructions
+             "\n\nSign off with:\nKind regards,\nIlya"
+             "\n\nHere is the email context (headers and any quoted reply):\n"
+             email-content)
+          :system "You are a helpful executive assistant drafting emails. Use short, concise, professional, positive tone. Use simple sentences only. Avoid hyphenated or compound sentences. Output only the email body text, no headers or metadata. Use org-mode formatting if needed."
+          :callback
+          (lambda (response info)
+            (if (not response)
+                (message "[org-msg-llm] Failed: %s" (plist-get info :status))
+              (with-current-buffer target-buffer
+                (save-excursion
+                  (goto-char insert-pos)
+                  (insert response)))
+              (message "[org-msg-llm] Draft inserted:\n%s" response))))))))
+
+
 (defun my-daily-email-progress ()
   "Plot my daily, weekly, and monthly email progress.
 A shell script queries mu every five minutes via the xbar app."

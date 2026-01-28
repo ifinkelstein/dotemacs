@@ -4,7 +4,7 @@
 
 (message "Setting up notes...")
 
-;; * Org Roam
+;;* Org Roam
 (use-package org-roam
   :defer 10
   :after org
@@ -72,7 +72,7 @@
 
   (org-roam-setup))
 
-;; ** Consult Notes
+;;** Consult Notes
 ;; Adapted from https://github.com/minad/consult/wiki/hrm-notes
 (use-package consult-notes
   :after org-roam
@@ -111,6 +111,27 @@ Marked 2 is a mac app that renders markdown."
 
   ;; make embark-export use dired for notes
   (setf (alist-get consult-notes-category embark-exporters-alist) #'embark-export-dired))
+
+;;* Org Contacts
+(use-package org-contacts
+  :after org org-roam
+  :custom
+  (org-contacts-files (list (concat org-roam-directory "contacts.org")))
+  ;; NOTE: org-contacts can aggressively override mu4e's native contact
+  ;; completion in compose buffers. Set to nil to use mu4e's own completion
+  ;; (which draws from your mail history) instead.
+  ;; (org-contacts-enable-completion nil)
+  :config
+  (add-to-list 'org-capture-templates
+               '("c" "Contact" entry (file (lambda () (car org-contacts-files)))
+                 "* %(org-contacts-template-name)
+:PROPERTIES:
+:EMAIL: %(org-contacts-template-email)
+:PHONE:
+:ADDRESS:
+:BIRTHDAY:
+:NOTE:
+:END:")))
 
 ;; Provide Notes
 (provide 'my-setup-notes)
