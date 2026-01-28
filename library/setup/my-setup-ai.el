@@ -394,7 +394,7 @@ Each list contains a list of cons cells, where the car is the device number and 
   ;; optional IDE integration with Monet
   ;; (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
   ;; (monet-mode 1)
-  (setq claude-code-terminal-backend 'eat)
+  (setq claude-code-terminal-backend 'vterm)
   (setq eat-term-scrollback-size 500000)  ; Increase to 500k characters
   (claude-code-mode)
   :bind-keymap ("C-c c" . claude-code-command-map)
@@ -412,6 +412,19 @@ Each list contains a list of cons cells, where the car is the device number and 
   ;; Optionally enable Emacs MCP tools
   (claude-code-ide-emacs-tools-setup))
 
+
+;;* pi-coding-agent
+(use-package pi-coding-agent
+  :vc (:url "https://github.com/dnouri/pi-coding-agent" :rev :newest)
+  :commands (pi-coding-agent)
+  :bind ("C-c C-p" . pi-coding-agent)
+  :custom
+  (pi-coding-agent-input-window-height 10)
+  (pi-coding-agent-tool-preview-lines 10)
+  (pi-coding-agent-bash-preview-lines 5)
+  (pi-coding-agent-context-warning-threshold 70)
+  (pi-coding-agent-context-error-threshold 90)
+  (pi-coding-agent-visit-file-other-window t))
 
 ;;* provide
 (provide 'my-setup-ai)
