@@ -323,7 +323,10 @@
               ("<M-left>"   . markdown-promote)
               ("<M-up>"     . markdown-move-up)
               ("<M-down>"   . markdown-move-down)
-              ("<C-return>" . markdown-insert-header-dwim))
+              ("<C-return>" . markdown-insert-header-dwim)
+              ("C-c C-o C-c" . markdown-fold-citations-dwim)
+              ("C-c C-o C-b" . markdown-fold-citations-buffer)
+              ("C-c C-o b"   . markdown-fold-citations-clearout-buffer))
   :config
   (setq markdown-enable-math nil
         markdown-enable-wiki-links t
@@ -356,7 +359,450 @@
   (add-hook 'markdown-mode-hook 'my--markdown-settings)
 
   ;; for use with meow point movement
-  (modify-syntax-entry ?@ "_" markdown-mode-syntax-table))
+  (modify-syntax-entry ?@ "_" markdown-mode-syntax-table)
+
+  ;;** Markdown Citation Folding
+  ;; ============================================================================
+  ;; Citation Folding for Markdown Mode
+  ;; ============================================================================
+  ;;
+  ;; This section provides functionality to fold/hide Pandoc-style citations
+  ;; in markdown documents using overlays. Citations are elements of the form
+  ;; [@key] or [@key1; @key2] and will be folded to display as [C].
+  ;;
+  ;; Inspired by AUCTeX's TeX-fold-mode (see `tex-fold.el'), this implementation
+  ;; uses overlays to hide citation content while preserving the underlying text.
+  ;; Overlays are non-destructive - the actual buffer content is unchanged.
+  ;;
+  ;; Key Features:
+  ;; - Toggle individual citations with `markdown-fold-citation-at-point'
+  ;; - Fold all citations in buffer with `markdown-fold-citations-buffer'
+  ;; - Fold citations in region with `markdown-fold-citations-region'
+  ;; - Smart DWIM command that folds/unfolds based on context
+  ;; - Auto-reveal when point enters a folded citation
+  ;; - Mouse hover shows full citation text via help-echo
+  ;;
+  ;; The implementation follows the overlay-based approach from AUCTeX:
+  ;; 1. Search for citation patterns using regexp
+  ;; 2. Create overlays spanning the citation text
+  ;; 3. Set the 'display property to show replacement text
+  ;; 4. Use post-command-hook for auto-reveal behavior
+  ;;
+  ;; Keybindings (in markdown-mode):
+  ;;   C-c C-o C-c - DWIM: toggle citation at point or fold region/buffer
+  ;;   C-c C-o C-b - Fold all citations in buffer
+  ;;   C-c C-o b   - Unfold (clearout) all citations in buffer
+  ;; ============================================================================
+
+  (defgroup markdown-fold nil
+    "Fold citations and other elements in Markdown documents.
+
+This group contains customization options for the citation folding
+feature in `markdown-mode'. The folding functionality allows hiding
+Pandoc-style citations (e.g., [@author2023]) behind a shorter display
+string (e.g., [C]) to reduce visual clutter while writing.
+
+The implementation uses Emacs overlays, similar to AUCTeX's TeX-fold-mode,
+ensuring that the underlying buffer content remains unchanged."
+    :group 'markdown
+    :prefix "markdown-fold-")
+
+  (defcustom markdown-fold-citation-display-string "[C]"
+    "Display string used when a citation is folded.
+
+This string replaces the visible representation of citations like
+[@key] or [@key1; @key2] when folding is active. The actual buffer
+content is preserved - only the display is affected.
+
+Common alternatives:
+- \"[C]\" (default) - compact indicator
+- \"[…]\" - ellipsis style
+- \"📚\" - emoji indicator
+- \"[cite]\" - more explicit
+
+The string should be short to maximize the visual benefit of folding."
+    :type 'string
+    :group 'markdown-fold)
+
+  (defcustom markdown-fold-citation-help-echo-max-length 80
+    "Maximum length of the help-echo tooltip for folded citations.
+
+When hovering over a folded citation, the original text is shown
+in a tooltip. If the citation exceeds this length, it will be
+truncated with an ellipsis (...).
+
+Set to 0 to disable help-echo tooltips entirely."
+    :type 'integer
+    :group 'markdown-fold)
+
+  (defcustom markdown-fold-auto-reveal t
+    "Whether to automatically unfold citations when point enters them.
+
+When non-nil (the default), moving point into a folded citation
+will temporarily reveal its contents. The citation folds again
+when point moves away.
+
+This mimics the behavior of AUCTeX's TeX-fold-mode and provides
+a convenient way to inspect citations without manual toggling.
+
+When nil, citations remain folded until explicitly unfolded."
+    :type 'boolean
+    :group 'markdown-fold)
+
+  (defface markdown-fold-citation-face
+    '((((class color) (background light))
+       (:foreground "SlateBlue" :weight bold))
+      (((class color) (background dark))
+       (:foreground "SlateBlue1" :weight bold))
+      (t (:slant italic :weight bold)))
+    "Face used for the display string of folded citations.
+
+This face is applied to the replacement text (e.g., [C]) that
+appears in place of the folded citation. The default uses a
+blue-ish color to distinguish it from regular text while
+remaining unobtrusive."
+    :group 'markdown-fold)
+
+  (defface markdown-fold-citation-unfolded-face
+    '((((class color) (background light))
+       (:background "#f2f0fd"))
+      (((class color) (background dark))
+       (:background "#38405d"))
+      (t (:inverse-video t)))
+    "Face for temporarily unfolded citation content.
+
+When `markdown-fold-auto-reveal' is enabled and point enters
+a folded citation, this face highlights the revealed text to
+indicate its special status."
+    :group 'markdown-fold)
+
+  (defvar-local markdown-fold--open-spots nil
+    "List of currently revealed (temporarily unfolded) citation overlays.
+
+Each element is a cons cell (WINDOW . OVERLAY) tracking which
+overlays are revealed in which windows. This allows the same
+buffer to have different fold states in different windows.
+
+This variable is managed internally by the post-command-hook
+and should not be modified directly.")
+
+  (defconst markdown-fold--citation-regexp
+    "\\[\\(?:[^][@]*\\)?@[^]]+\\]"
+    "Regular expression matching Pandoc-style citations.
+
+This pattern matches citations in the following formats:
+- Simple: [@key]
+- With prefix: [see @key]
+- With suffix: [@key, p. 10]
+- Multiple: [@key1; @key2]
+- Combined: [see @key1; @key2, p. 10]
+
+The regexp breakdown:
+- \\\\[ - Opening bracket
+- \\\\(?:[^][@]*\\\\)? - Optional prefix (text before @, no brackets)
+- @[^]]+ - At least one @key (@ followed by non-bracket chars)
+- \\\\] - Closing bracket
+
+Note: This intentionally matches the entire bracket expression,
+not just the @key portion, as the whole citation should be folded.")
+
+  (defun markdown-fold--make-overlay (start end)
+    "Create a fold overlay for a citation from START to END.
+
+Creates an overlay with the following properties:
+- category: `markdown-fold-citation' (for identification)
+- display: the folded representation (from `markdown-fold-citation-display-string')
+- face: `markdown-fold-citation-face'
+- help-echo: the original citation text (for tooltip)
+- evaporate: t (auto-delete when text is deleted)
+- priority: calculated to handle nested overlays
+
+The overlay is returned for further manipulation if needed.
+
+Arguments:
+  START - Buffer position where the citation begins (inclusive)
+  END   - Buffer position where the citation ends (exclusive)
+
+Returns:
+  The newly created overlay object."
+    (let* ((priority (- (buffer-size) (- end start))) ; Smaller spans get higher priority
+           (original-text (buffer-substring-no-properties start end))
+           (help-echo (if (and (> markdown-fold-citation-help-echo-max-length 0)
+                               (> (length original-text)
+                                  markdown-fold-citation-help-echo-max-length))
+                          (concat (substring original-text 0
+                                            markdown-fold-citation-help-echo-max-length)
+                                  "...")
+                        original-text))
+           (ov (make-overlay start end nil t nil)))
+      (overlay-put ov 'category 'markdown-fold-citation)
+      (overlay-put ov 'evaporate t)
+      (overlay-put ov 'priority priority)
+      (overlay-put ov 'markdown-fold-original-text original-text)
+      (overlay-put ov 'help-echo help-echo)
+      (overlay-put ov 'mouse-face 'highlight)
+      ov))
+
+  (defun markdown-fold--hide-overlay (ov)
+    "Set the display properties on overlay OV to hide the citation.
+
+This function applies the visual folding by setting the overlay's
+display property to `markdown-fold-citation-display-string' and
+applying the appropriate face.
+
+Arguments:
+  OV - An overlay created by `markdown-fold--make-overlay'"
+    (when (and ov (overlay-buffer ov))
+      (overlay-put ov 'display
+                   (propertize markdown-fold-citation-display-string
+                               'face 'markdown-fold-citation-face))
+      (overlay-put ov 'face 'markdown-fold-citation-face)))
+
+  (defun markdown-fold--show-overlay (ov)
+    "Remove display properties from overlay OV to reveal the citation.
+
+This temporarily shows the original citation text while keeping
+the overlay in place. The `markdown-fold-citation-unfolded-face'
+is applied to indicate the special state.
+
+Arguments:
+  OV - An overlay created by `markdown-fold--make-overlay'"
+    (when (and ov (overlay-buffer ov))
+      (overlay-put ov 'display nil)
+      (overlay-put ov 'face 'markdown-fold-citation-unfolded-face)))
+
+  (defun markdown-fold--citation-overlay-at-point ()
+    "Return the citation fold overlay at point, or nil if none exists.
+
+Searches through all overlays at the current point position and
+returns the first one with category `markdown-fold-citation'.
+
+Returns:
+  An overlay object or nil."
+    (seq-find (lambda (ov)
+                (eq (overlay-get ov 'category) 'markdown-fold-citation))
+              (overlays-at (point))))
+
+  (defun markdown-fold--citation-overlays-in-region (start end)
+    "Return all citation fold overlays between START and END.
+
+Arguments:
+  START - Beginning of region to search
+  END   - End of region to search
+
+Returns:
+  A list of overlay objects (may be empty)."
+    (seq-filter (lambda (ov)
+                  (eq (overlay-get ov 'category) 'markdown-fold-citation))
+                (overlays-in start end)))
+
+  (defun markdown-fold-citation-at-point ()
+    "Fold the citation at point, if any.
+
+Searches for a Pandoc-style citation ([@...]) at or around point
+and creates a fold overlay for it. If a fold overlay already
+exists at point, this function does nothing.
+
+Returns:
+  The created overlay, or nil if no citation was found or
+  if one was already folded."
+    (interactive)
+    (unless (markdown-fold--citation-overlay-at-point)
+      (save-excursion
+        (let ((orig-point (point))
+              start end)
+          ;; Search backward for opening bracket
+          (when (or (looking-at markdown-fold--citation-regexp)
+                    (and (re-search-backward "\\[" (line-beginning-position) t)
+                         (looking-at markdown-fold--citation-regexp)
+                         (<= (match-beginning 0) orig-point)
+                         (>= (match-end 0) orig-point)))
+            (setq start (match-beginning 0)
+                  end (match-end 0))
+            (let ((ov (markdown-fold--make-overlay start end)))
+              (markdown-fold--hide-overlay ov)
+              ov))))))
+
+  (defun markdown-fold-citations-region (start end)
+    "Fold all citations in the region from START to END.
+
+Searches for all Pandoc-style citations within the specified
+region and creates fold overlays for each one. Existing fold
+overlays in the region are preserved (not duplicated).
+
+When called interactively, operates on the active region.
+
+Arguments:
+  START - Beginning of region to fold
+  END   - End of region to fold
+
+Returns:
+  The number of citations folded."
+    (interactive "r")
+    (let ((count 0))
+      ;; First, remove existing overlays to avoid duplicates
+      (markdown-fold-citations-clearout-region start end)
+      (save-excursion
+        (goto-char start)
+        (while (re-search-forward markdown-fold--citation-regexp end t)
+          (let ((ov (markdown-fold--make-overlay (match-beginning 0)
+                                                  (match-end 0))))
+            (markdown-fold--hide-overlay ov)
+            (setq count (1+ count)))))
+      (when (called-interactively-p 'interactive)
+        (message "Folded %d citation%s" count (if (= count 1) "" "s")))
+      count))
+
+  (defun markdown-fold-citations-buffer ()
+    "Fold all citations in the current buffer.
+
+This is a convenience function that calls `markdown-fold-citations-region'
+on the entire buffer. Any existing fold overlays are first removed
+to ensure a clean state.
+
+Returns:
+  The number of citations folded."
+    (interactive)
+    (markdown-fold-citations-region (point-min) (point-max)))
+
+  (defun markdown-fold-citations-clearout-region (start end)
+    "Remove all citation fold overlays in the region from START to END.
+
+This restores the original display of all citations in the
+specified region by deleting their fold overlays.
+
+Arguments:
+  START - Beginning of region to unfold
+  END   - End of region to unfold
+
+Returns:
+  The number of overlays removed."
+    (interactive "r")
+    (let ((overlays (markdown-fold--citation-overlays-in-region start end))
+          (count 0))
+      (dolist (ov overlays)
+        (delete-overlay ov)
+        (setq count (1+ count)))
+      (when (called-interactively-p 'interactive)
+        (message "Unfolded %d citation%s" count (if (= count 1) "" "s")))
+      count))
+
+  (defun markdown-fold-citations-clearout-buffer ()
+    "Remove all citation fold overlays in the current buffer.
+
+This is a convenience function that calls
+`markdown-fold-citations-clearout-region' on the entire buffer,
+restoring all citations to their original display.
+
+Returns:
+  The number of overlays removed."
+    (interactive)
+    (markdown-fold-citations-clearout-region (point-min) (point-max)))
+
+  (defun markdown-fold-citation-toggle-at-point ()
+    "Toggle the fold state of the citation at point.
+
+If point is on a folded citation, unfold it (remove the overlay).
+If point is on an unfolded citation, fold it.
+If point is not on a citation, do nothing.
+
+Returns:
+  Non-nil if a toggle action was performed."
+    (interactive)
+    (let ((ov (markdown-fold--citation-overlay-at-point)))
+      (if ov
+          (progn
+            (delete-overlay ov)
+            (message "Citation unfolded")
+            t)
+        (when (markdown-fold-citation-at-point)
+          (message "Citation folded")
+          t))))
+
+  (defun markdown-fold-citations-dwim ()
+    "Do What I Mean for citation folding.
+
+Smart command that performs different actions based on context:
+
+1. If point is on a folded citation: unfold it
+2. If point is on an unfolded citation: fold it
+3. If region is active: fold all citations in region
+4. Otherwise: fold all citations in buffer
+
+This provides a single convenient keybinding for all common
+folding operations."
+    (interactive)
+    (cond
+     ;; If on a citation overlay, toggle it
+     ((markdown-fold--citation-overlay-at-point)
+      (markdown-fold-citation-toggle-at-point))
+     ;; If on an unfolded citation, fold it
+     ((save-excursion
+        (or (looking-at markdown-fold--citation-regexp)
+            (and (re-search-backward "\\[" (line-beginning-position) t)
+                 (looking-at markdown-fold--citation-regexp)
+                 (<= (match-beginning 0) (point))
+                 (>= (match-end 0) (point)))))
+      (markdown-fold-citation-at-point)
+      (message "Citation folded"))
+     ;; If region active, fold region
+     ((use-region-p)
+      (markdown-fold-citations-region (region-beginning) (region-end)))
+     ;; Otherwise fold buffer
+     (t
+      (markdown-fold-citations-buffer))))
+
+  (defun markdown-fold--post-command-hook ()
+    "Hook function for auto-revealing folded citations.
+
+This function runs after each command and implements the
+auto-reveal behavior controlled by `markdown-fold-auto-reveal'.
+When point moves into a folded citation, the citation is
+temporarily revealed. When point moves out, it folds again.
+
+The function tracks revealed overlays in `markdown-fold--open-spots'
+to properly manage the fold state across multiple windows.
+
+This design is adapted from AUCTeX's `TeX-fold-post-command'."
+    (when markdown-fold-auto-reveal
+      (condition-case err
+          (let* ((current-window (selected-window))
+                 ;; Partition spots into current window vs others
+                 (partition (seq-group-by
+                             (lambda (spot)
+                               (eq (car spot) current-window))
+                             markdown-fold--open-spots))
+                 (current-spots (cdr (assq t partition)))
+                 (other-spots (cdr (assq nil partition)))
+                 (old-overlays (mapcar #'cdr current-spots))
+                 (new-open-spots other-spots))
+            ;; Check for overlays at point that should be revealed
+            (dolist (ov (overlays-at (point)))
+              (when (eq (overlay-get ov 'category) 'markdown-fold-citation)
+                ;; Reveal this overlay
+                (markdown-fold--show-overlay ov)
+                (push (cons current-window ov) new-open-spots)
+                (setq old-overlays (delq ov old-overlays))))
+            ;; Re-hide overlays that point has left
+            (dolist (ov old-overlays)
+              (when (and (overlay-buffer ov)
+                         (not (and (>= (point) (overlay-start ov))
+                                   (<= (point) (overlay-end ov)))))
+                (markdown-fold--hide-overlay ov)))
+            (setq markdown-fold--open-spots new-open-spots))
+        (error (message "markdown-fold: %s" err)))))
+
+  ;; Install the post-command hook for auto-reveal in markdown buffers
+  (add-hook 'markdown-mode-hook
+            (lambda ()
+              (add-hook 'post-command-hook
+                        #'markdown-fold--post-command-hook nil t)))
+
+  ;; Also enable in gfm-mode (GitHub Flavored Markdown)
+  (add-hook 'gfm-mode-hook
+            (lambda ()
+              (add-hook 'post-command-hook
+                        #'markdown-fold--post-command-hook nil t))))
 
 ;;** Markdown TOC
 (use-package markdown-toc
