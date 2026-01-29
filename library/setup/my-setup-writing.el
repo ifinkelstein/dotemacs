@@ -323,10 +323,7 @@
               ("<M-left>"   . markdown-promote)
               ("<M-up>"     . markdown-move-up)
               ("<M-down>"   . markdown-move-down)
-              ("<C-return>" . markdown-insert-header-dwim)
-              ("C-c C-o C-c" . markdown-fold-citations-dwim)
-              ("C-c C-o C-b" . markdown-fold-citations-buffer)
-              ("C-c C-o b"   . markdown-fold-citations-clearout-buffer))
+              ("<C-return>" . markdown-insert-header-dwim))
   :config
   (setq markdown-enable-math nil
         markdown-enable-wiki-links t
@@ -388,10 +385,10 @@
   ;; 3. Set the 'display property to show replacement text
   ;; 4. Use post-command-hook for auto-reveal behavior
   ;;
-  ;; Keybindings (in markdown-mode):
-  ;;   C-c C-o C-c - DWIM: toggle citation at point or fold region/buffer
-  ;;   C-c C-o C-b - Fold all citations in buffer
-  ;;   C-c C-o b   - Unfold (clearout) all citations in buffer
+  ;; Main interactive commands:
+  ;;   M-x markdown-fold-citations-dwim      - Smart fold/unfold based on context
+  ;;   M-x markdown-fold-citations-buffer    - Fold all citations in buffer
+  ;;   M-x markdown-fold-citations-clearout-buffer - Unfold all citations
   ;; ============================================================================
 
   (defgroup markdown-fold nil
