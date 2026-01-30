@@ -6,6 +6,7 @@
 ;;* mu4e
 (use-package mu4e
   :ensure nil
+  :after (org org-contacts)
   :load-path "/opt/homebrew/Cellar/mu/1.12.2/share/emacs/site-lisp/mu/mu4e"
   :commands (mu4e mu4e-compose-new mu4e-update-mail-and-index)
   ;; Change keybindings to look more like elfeed
@@ -442,7 +443,7 @@ Note: this function is actually not necessary because I learned how to use mu fi
   ;; NOTE: org-contacts can aggressively override mu4e's native contact
   ;; completion. If that happens, set `org-contacts-enable-completion' to
   ;; nil in the org-contacts use-package (in my-setup-notes.el).
-  (setq mu4e-org-contacts-file (concat org-roam-directory "contacts.org"))
+  (setq mu4e-org-contacts-file (concat org-directory "contacts.org"))
   (add-to-list 'mu4e-headers-actions
                '("org-contact-add" . mu4e-action-add-org-contact) t)
   (add-to-list 'mu4e-view-actions
@@ -888,25 +889,18 @@ select one email at a time.
       ("s" "subject" message-goto-subject)
       ("t" "to" message-goto-to)
       ]
-     [("ec" "🤷‍♂️" (lambda ()
-                    (interactive)
-                    (insert "🤷‍♂️")))
-      ("er" "🌈" (lambda ()
-                   (interactive)
-                   (insert "🌈")))
-
-      ("es" "🙂" (lambda ()
-                   (interactive)
-                   (insert "🙂")))]
-     [("et" "👍" (lambda ()
-                   (interactive)
-                   (insert "👍")))
-      ("ex" "🤞" (lambda ()
-                   (interactive)
-                   (insert "🤞")))
-      ("eu" "🦄" (lambda ()
-                   (interactive)
-                   (insert "🦄")))]
+     [("ec" "🤷‍♂️" (lambda () (interactive) (insert "🤷‍♂️")))
+      ("ed" "👋" (lambda () (interactive) (insert "👋")))
+      ("ef" "🎉" (lambda () (interactive) (insert "🎉")))
+      ("eg" "😂" (lambda () (interactive) (insert "😂")))
+      ("eh" "❤️" (lambda () (interactive) (insert "❤️")))
+      ("ei" "🙏" (lambda () (interactive) (insert "🙏")))]
+     [("er" "🌈" (lambda () (interactive) (insert "🌈")))
+      ("es" "🙂" (lambda () (interactive) (insert "🙂")))
+      ("et" "👍" (lambda () (interactive) (insert "👍")))
+      ("eu" "🦄" (lambda () (interactive) (insert "🦄")))
+      ("ex" "🤞" (lambda () (interactive) (insert "🤞")))
+      ("ew" "🔥" (lambda () (interactive) (insert "🔥")))]
      [("eR" "recent" emoji-recent)
       ("eS" "search" emoji-search)]
      [("rj" "Jeremiah" (lambda ()
@@ -1070,8 +1064,13 @@ Called from `org-msg-edit-mode-hook'."
         (message "[org-heading-to-email] Populating body...")
         (org-msg-goto-body)
         (insert .body))
-      ;; Position cursor at body
-      (org-msg-goto-body)
+      ;; Position cursor at body and save to drafts. Deferred because
+      ;; org-msg-goto-body fails when called directly from org-msg-edit-mode-hook
+      ;; due to the buffer not being fully initialized yet. Auto-save also
+      ;; prevents mu4e from prompting to create a draft record during send.
+      (run-at-time 0 nil (lambda ()
+                          (org-msg-goto-body)
+                          (save-buffer)))
       (message "[org-heading-to-email] Done!"))
     ;; Clear the data and remove hook
     (setq my--org-heading-email-data nil)
@@ -1147,6 +1146,10 @@ Body text starts here..."
         (with-temp-buffer
           (insert content)
           (goto-char (point-min))
+          ;; Skip property drawer if present
+          (when (looking-at "^:PROPERTIES:")
+            (when (re-search-forward "^:END:" nil t)
+              (forward-line 1)))
           ;; Skip timestamp line if present
           (when (looking-at "^<[^>]+>")
             (forward-line 1))
