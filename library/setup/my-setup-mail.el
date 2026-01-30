@@ -894,7 +894,8 @@ select one email at a time.
       ("ef" "🎉" (lambda () (interactive) (insert "🎉")))
       ("eg" "😂" (lambda () (interactive) (insert "😂")))
       ("eh" "❤️" (lambda () (interactive) (insert "❤️")))
-      ("ei" "🙏" (lambda () (interactive) (insert "🙏")))]
+      ("ei" "🙏" (lambda () (interactive) (insert "🙏")))
+      ("ej" "😐" (lambda () (interactive) (insert "😐")))]
      [("er" "🌈" (lambda () (interactive) (insert "🌈")))
       ("es" "🙂" (lambda () (interactive) (insert "🙂")))
       ("et" "👍" (lambda () (interactive) (insert "👍")))
