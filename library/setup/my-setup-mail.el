@@ -1128,59 +1128,51 @@ Returns alist with to, cc, bcc, subject, body.
 
 Expected format:
 * Heading title (ignored)
-<optional timestamp>
+:PROPERTIES:
+...
+:END:
 
 To: recipient@example.com, another@example.com
-Cc: cc@example.com (optional)
+Cc: cc@example.com (optional, multiple allowed)
+Bcc: bcc@example.com (optional, multiple allowed)
 Subject: Email subject (optional)
 
 Body text starts here..."
   (save-excursion
     (org-back-to-heading t)
-    (let* ((element (org-element-at-point))
-           (content-begin (org-element-property :contents-begin element))
-           (content-end (org-element-property :contents-end element))
-           (content (when (and content-begin content-end)
-                      (buffer-substring-no-properties content-begin content-end)))
-           to-addrs cc-addrs bcc-addrs subject body)
-      (when content
-        (with-temp-buffer
-          (insert content)
-          (goto-char (point-min))
-          ;; Skip property drawer if present
-          (when (looking-at "^:PROPERTIES:")
-            (when (re-search-forward "^:END:" nil t)
-              (forward-line 1)))
-          ;; Skip timestamp line if present
-          (when (looking-at "^<[^>]+>")
-            (forward-line 1))
-          ;; Skip blank lines
-          (while (and (not (eobp)) (looking-at "^\\s-*$"))
-            (forward-line 1))
-          ;; Parse header fields
-          (while (looking-at "^\\(To\\|Cc\\|Bcc\\|Subject\\):\\s-*\\(.*\\)$")
-            (let ((field (match-string 1))
-                  (value (string-trim (match-string 2))))
-              (pcase field
-                ("To" (push value to-addrs))
-                ("Cc" (push value cc-addrs))
-                ("Bcc" (push value bcc-addrs))
-                ("Subject" (setq subject value))))
-            (forward-line 1))
-          ;; Skip blank lines before body
-          (while (and (not (eobp)) (looking-at "^\\s-*$"))
-            (forward-line 1))
-          ;; Rest is body
-          (setq body (string-trim (buffer-substring-no-properties (point) (point-max))))))
-      ;; Combine multiple addresses
-      (setq to-addrs (and to-addrs (string-join (nreverse to-addrs) ", ")))
-      (setq cc-addrs (and cc-addrs (string-join (nreverse cc-addrs) ", ")))
-      (setq bcc-addrs (and bcc-addrs (string-join (nreverse bcc-addrs) ", ")))
-      `((to . ,to-addrs)
-        (cc . ,cc-addrs)
-        (bcc . ,bcc-addrs)
-        (subject . ,subject)
-        (body . ,body)))))
+    ;; Skip past heading line, property drawer, planning info
+    (org-end-of-meta-data t)
+    ;; Skip blank lines
+    (while (and (not (eobp)) (looking-at-p "^[ \t]*$"))
+      (forward-line 1))
+    (let ((bound (org-entry-end-position))
+          to-addrs cc-addrs bcc-addrs subject)
+      ;; Parse header fields (case-insensitive)
+      (while (and (< (point) bound)
+                  (looking-at "^\\([Tt]o\\|[Cc]c\\|[Bb]cc\\|[Ss]ubject\\):[ \t]*\\(.*\\)$"))
+        (let ((field (downcase (match-string 1)))
+              (value (string-trim (match-string 2))))
+          (pcase field
+            ("to" (push value to-addrs))
+            ("cc" (push value cc-addrs))
+            ("bcc" (push value bcc-addrs))
+            ("subject" (setq subject value))))
+        (forward-line 1))
+      ;; Skip blank lines before body
+      (while (and (< (point) bound) (looking-at-p "^[ \t]*$"))
+        (forward-line 1))
+      ;; Rest is body (up to end of entry, i.e. before child headings)
+      (let ((body (string-trim
+                   (buffer-substring-no-properties (point) bound))))
+        ;; Combine multiple addresses
+        (setq to-addrs (and to-addrs (string-join (nreverse to-addrs) ", ")))
+        (setq cc-addrs (and cc-addrs (string-join (nreverse cc-addrs) ", ")))
+        (setq bcc-addrs (and bcc-addrs (string-join (nreverse bcc-addrs) ", ")))
+        `((to . ,to-addrs)
+          (cc . ,cc-addrs)
+          (bcc . ,bcc-addrs)
+          (subject . ,subject)
+          (body . ,body))))))
 
 (defun my-org-heading-to-email ()
   "Convert org heading at point to a new mu4e email.
