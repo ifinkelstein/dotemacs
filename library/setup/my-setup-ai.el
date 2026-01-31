@@ -415,16 +415,36 @@ Each list contains a list of cons cells, where the car is the device number and 
 
 ;;* pi-coding-agent
 (use-package pi-coding-agent
-  :vc (:url "https://github.com/dnouri/pi-coding-agent" :rev :newest)
+  ;; Using local repo with image paste support (yank-media)
+  :load-path "~/projects/pi-coding-agent"
+
+  :bind (("C-c C-p" . pi-coding-agent)
+         ("M-o" . pi-coding-agent-menu)
+         :map pi-coding-agent-input-mode-map
+         ("<s-return>" . pi-coding-agent-send))
+
   :commands (pi-coding-agent)
-  :bind ("C-c C-p" . pi-coding-agent)
+
   :custom
   (pi-coding-agent-input-window-height 10)
   (pi-coding-agent-tool-preview-lines 10)
   (pi-coding-agent-bash-preview-lines 5)
   (pi-coding-agent-context-warning-threshold 70)
   (pi-coding-agent-context-error-threshold 90)
-  (pi-coding-agent-visit-file-other-window t))
+  (pi-coding-agent-visit-file-other-window t)
+
+  :config
+  ;; Register pi-coding-agent faces as fixed-pitch for mixed-pitch-mode.
+  ;; The chat buffer derives from gfm-mode which gets mixed-pitch-mode;
+  ;; tool output and commands should stay monospaced.
+  (with-eval-after-load 'mixed-pitch
+    (dolist (face '(pi-coding-agent-tool-command
+                    pi-coding-agent-tool-output
+                    pi-coding-agent-tool-error
+                    pi-coding-agent-tool-name
+                    pi-coding-agent-collapsed-indicator
+                    pi-coding-agent-separator))
+      (add-to-list 'mixed-pitch-fixed-pitch-faces face))))
 
 ;;* provide
 (provide 'my-setup-ai)

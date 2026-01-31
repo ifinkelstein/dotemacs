@@ -309,12 +309,25 @@
   (define-key olivetti-mode-map (kbd "C-c {") nil)
   (define-key olivetti-mode-map (kbd "C-c }") nil))
 
+;;* Mixed Pitch
+(use-package mixed-pitch
+  :hook ((markdown-mode . mixed-pitch-mode)
+         (gfm-mode . mixed-pitch-mode))
+  :config
+  ;; markdown faces not covered by mixed-pitch defaults
+  (dolist (face '(markdown-table-face
+                  markdown-pre-face))
+    (add-to-list 'mixed-pitch-fixed-pitch-faces face)))
+
 ;;* Markdown
 (use-package markdown-mode
   :commands (markdown-mode gfm-mode)
   :mode (("\\.markdown\\'" . markdown-mode)
          ("\\.md\\'"       . markdown-mode)
          ("README\\.md\\'" . gfm-mode))
+  :hook ((markdown-mode . flyspell-mode)
+         (markdown-mode . auto-fill-mode)
+         (markdown-mode . hl-todo-mode))
   :bind (:map markdown-mode-map
               ("s-*"        . markdown-insert-list-item)
               ("s-b"        . markdown-insert-bold)
@@ -343,17 +356,6 @@
       (when (buffer-live-p buf)
         (and (eq buf (current-buffer)) (quit-window))
         (pop-to-buffer buf))))
-
-  (defun my--markdown-settings ()
-    "settings for markdown mode"
-    (progn
-      (turn-on-flyspell)
-      (auto-fill-mode)
-      (hl-todo-mode)
-      (variable-pitch-mode)))
-
-  ;; markdown hooks
-  (add-hook 'markdown-mode-hook 'my--markdown-settings)
 
   ;; for use with meow point movement
   (modify-syntax-entry ?@ "_" markdown-mode-syntax-table)
