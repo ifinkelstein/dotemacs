@@ -1147,6 +1147,9 @@ Called from `org-msg-edit-mode-hook'."
   "Parse email data from subheading format.
 Returns alist with to, cc, bcc, subject, body or nil if not in subheading format.
 
+Uses `org-element' to find direct child headlines and extract their
+content by name. Returns nil if the heading has no subheadings.
+
 Expected format:
 * Heading title (ignored)
 ** To
@@ -1159,29 +1162,36 @@ Email subject
 Body text starts here..."
   (save-excursion
     (org-back-to-heading t)
-    (let ((parent-level (org-current-level))
-          (bound (save-excursion (org-end-of-subtree t) (point)))
-          to-addrs cc-addrs bcc-addrs subject body
-          found-subheading)
-      ;; Look for subheadings
-      (while (re-search-forward org-heading-regexp bound t)
-        (let* ((heading-text (org-get-heading t t t t))
-               (heading-level (org-current-level)))
-          (when (= heading-level (1+ parent-level))
-            (setq found-subheading t)
-            (let* ((element (org-element-at-point))
-                   (content-begin (org-element-property :contents-begin element))
-                   (content-end (org-element-property :contents-end element))
-                   (content (when (and content-begin content-end)
-                              (string-trim
-                               (buffer-substring-no-properties content-begin content-end)))))
-              (pcase (downcase heading-text)
-                ("to" (setq to-addrs content))
-                ("cc" (setq cc-addrs content))
-                ("bcc" (setq bcc-addrs content))
-                ("subject" (setq subject content))
-                ("body" (setq body content)))))))
-      (when found-subheading
+    (let* ((tree (org-element-parse-buffer))
+           (pos (point))
+           ;; Find the headline element at point
+           (parent (org-element-map tree 'headline
+                     (lambda (h)
+                       (and (= (org-element-property :begin h) pos) h))
+                     nil t))
+           (parent-level (org-element-property :level parent))
+           ;; Collect direct child headlines (one level deeper)
+           (children (org-element-map parent 'headline
+                       (lambda (h)
+                         (when (= (org-element-property :level h)
+                                  (1+ parent-level))
+                           h))))
+           to-addrs cc-addrs bcc-addrs subject body)
+      (when children
+        ;; Extract content from each named subheading
+        (dolist (child children)
+          (let* ((title (downcase (org-element-property :raw-value child)))
+                 (cb (org-element-property :contents-begin child))
+                 (ce (org-element-property :contents-end child))
+                 (content (when (and cb ce)
+                            (string-trim
+                             (buffer-substring-no-properties cb ce)))))
+            (pcase title
+              ("to" (setq to-addrs content))
+              ("cc" (setq cc-addrs content))
+              ("bcc" (setq bcc-addrs content))
+              ("subject" (setq subject content))
+              ("body" (setq body content)))))
         ;; Extract file links from body and collect as attachments
         (let* ((extracted (when body (my--org-extract-file-links body)))
                (clean-body (if extracted (car extracted) body))
