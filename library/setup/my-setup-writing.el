@@ -935,7 +935,88 @@ Restores all [text]{.mark} patterns to their original display.
 
 Returns the number of overlays removed."
     (interactive)
-    (markdown-fold-marks-clearout-region (point-min) (point-max))))
+    (markdown-fold-marks-clearout-region (point-min) (point-max)))
+
+  (defun markdown-fold--mark-overlay-at-point ()
+    "Return the mark fold overlay at point, or nil if none exists."
+    (seq-find (lambda (ov)
+                (eq (overlay-get ov 'category) 'markdown-fold-mark))
+              (overlays-at (point))))
+
+  (defun markdown-fold-mark-at-point ()
+    "Fold the [text]{.mark} pattern at point, if any.
+
+Returns the created overlay, or nil if no mark pattern was found
+or if one was already folded."
+    (interactive)
+    (unless (markdown-fold--mark-overlay-at-point)
+      (save-excursion
+        (let ((orig-point (point))
+              start end)
+          (when (or (looking-at markdown-fold--mark-regexp)
+                    (and (re-search-backward (rx "[") (line-beginning-position) t)
+                         (looking-at markdown-fold--mark-regexp)
+                         (<= (match-beginning 0) orig-point)
+                         (>= (match-end 0) orig-point)))
+            (setq start (match-beginning 0)
+                  end (match-end 0))
+            (let* ((text (markdown-fold--strip-markup (match-string 1)))
+                   (ov (make-overlay start end nil t nil)))
+              (overlay-put ov 'category 'markdown-fold-mark)
+              (overlay-put ov 'evaporate t)
+              (overlay-put ov 'display
+                           (propertize text 'face 'markdown-fold-mark-face))
+              (overlay-put ov 'help-echo (buffer-substring-no-properties start end))
+              (overlay-put ov 'mouse-face 'highlight)
+              ov))))))
+
+  (defun markdown-fold-mark-toggle-at-point ()
+    "Toggle the fold state of the mark at point.
+
+If point is on a folded mark, unfold it.
+If point is on an unfolded mark, fold it.
+
+Returns non-nil if a toggle action was performed."
+    (interactive)
+    (let ((ov (markdown-fold--mark-overlay-at-point)))
+      (if ov
+          (progn
+            (delete-overlay ov)
+            (message "Mark unfolded")
+            t)
+        (when (markdown-fold-mark-at-point)
+          (message "Mark folded")
+          t))))
+
+  (defun markdown-fold-marks-dwim ()
+    "Do What I Mean for mark folding.
+
+Smart command that performs different actions based on context:
+
+1. If point is on a folded mark: unfold it
+2. If point is on an unfolded [text]{.mark}: fold it
+3. If region is active: fold all marks in region
+4. Otherwise: fold all marks in buffer"
+    (interactive)
+    (cond
+     ;; If on a mark overlay, toggle it
+     ((markdown-fold--mark-overlay-at-point)
+      (markdown-fold-mark-toggle-at-point))
+     ;; If on an unfolded mark, fold it
+     ((save-excursion
+        (or (looking-at markdown-fold--mark-regexp)
+            (and (re-search-backward (rx "[") (line-beginning-position) t)
+                 (looking-at markdown-fold--mark-regexp)
+                 (<= (match-beginning 0) (point))
+                 (>= (match-end 0) (point)))))
+      (markdown-fold-mark-at-point)
+      (message "Mark folded"))
+     ;; If region active, fold region
+     ((use-region-p)
+      (markdown-fold-marks-region (region-beginning) (region-end)))
+     ;; Otherwise fold buffer
+     (t
+      (markdown-fold-marks-buffer)))))
 
 ;;** Markdown TOC
 (use-package markdown-toc
