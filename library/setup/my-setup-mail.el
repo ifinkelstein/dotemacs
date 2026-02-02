@@ -1036,45 +1036,62 @@ Requires all-the-icons as a dependency"
 (defun my--org-extract-file-links (text)
   "Extract org file links from TEXT and return (CLEANED-TEXT . FILE-LIST).
 
-Finds all org-mode file links in TEXT, collects their paths, and
-replaces each link with its description (or filename if no description).
+Uses `org-element' to parse TEXT and find all file and attachment links.
+Each link is replaced with its description (or filename if no description).
+The file paths are collected and returned alongside the cleaned text.
 
-Recognized link formats:
+Recognized link types:
   [[file:/path/to/file.pdf]]           -> file.pdf
   [[file:/path/to/file.pdf][my doc]]   -> my doc
   [[/path/to/file.pdf]]               -> file.pdf
   [[~/path/to/file.pdf][report]]      -> report
-  [[attachment:file.pdf]]             -> file.pdf"
+  [[attachment:file.pdf]]             -> file.pdf
+
+Non-file links (https, mu4e, etc.) are left untouched."
   (let ((files '())
         (result text))
-    ;; Match org links: [[TYPE:PATH]] or [[TYPE:PATH][DESC]]
-    ;; TYPE can be file, attachment, or omitted (bare path starting with / or ~)
-    (let ((link-re (rx "[["
-                       (group
-                        (or (seq (or "file:" "attachment:") (+? anything))
-                            (seq (any "/" "~") (+? anything))))
-                       "]"
-                       (? "[" (group (+? anything)) "]")
-                       "]")))
-      (while (string-match link-re result)
-        (let* ((raw-path (match-string 1 result))
-               (desc (match-string 2 result))
-               ;; Strip file: or attachment: prefix
-               (path (cond
-                      ((string-prefix-p "file:" raw-path)
-                       (substring raw-path 5))
-                      ((string-prefix-p "attachment:" raw-path)
-                       (substring raw-path 11))
-                      (t raw-path)))
-               ;; Expand ~ and resolve relative paths
-               (expanded (expand-file-name path))
-               ;; Use description or fall back to filename
-               (replacement (or desc (file-name-nondirectory path))))
-          (when (file-exists-p expanded)
-            (push expanded files))
-          ;; Replace the link with its description/filename
-          (setq result (replace-match replacement t t result)))))
-    (cons result (nreverse files))))
+    (with-temp-buffer
+      (org-mode)
+      (insert text)
+      ;; Collect links in reverse order (end-of-buffer first) so that
+      ;; replacing earlier links doesn't shift positions of later ones
+      (let ((links '()))
+        (org-element-map (org-element-parse-buffer) 'link
+          (lambda (link)
+            (let ((type (org-element-property :type link))
+                  (path (org-element-property :path link)))
+              ;; Collect file links and attachment links
+              (when (or (string= type "file")
+                        (and (string= type "fuzzy")
+                             (string-prefix-p "attachment:" path)))
+                (push link links)))))
+        ;; links is already in reverse buffer order (due to push)
+        ;; Process from end to start so positions remain valid
+        (dolist (link links)
+          (let* ((type (org-element-property :type link))
+                 (path (org-element-property :path link))
+                 (begin (org-element-property :begin link))
+                 (end (- (org-element-property :end link)
+                         (org-element-property :post-blank link)))
+                 (contents-begin (org-element-property :contents-begin link))
+                 (contents-end (org-element-property :contents-end link))
+                 ;; Get description if present
+                 (desc (when (and contents-begin contents-end)
+                         (buffer-substring-no-properties contents-begin contents-end)))
+                 ;; Strip attachment: prefix for path resolution
+                 (file-path (if (string-prefix-p "attachment:" path)
+                                (substring path 11)
+                              path))
+                 (expanded (expand-file-name file-path))
+                 (replacement (or desc (file-name-nondirectory file-path))))
+            (when (file-exists-p expanded)
+              (push expanded files))
+            ;; Replace the link text in the buffer
+            (goto-char begin)
+            (delete-region begin end)
+            (insert replacement))))
+      (setq result (buffer-string)))
+    (cons result files)))
 
 (defvar my--org-heading-email-data nil
   "Temporary storage for email data from org heading.")
