@@ -831,6 +831,9 @@ giving it a yellow highlight appearance."
         (group                           ; capture group 1: the text content
          (*                              ; zero or more of:
           (or (not (any "[" "]"))         ;   any char except [ and ]
+              (seq "["                   ;   nested [...] (e.g. citations, links)
+                   (* (not (any "[" "]")))
+                   "]")
               (seq "\\" "[")             ;   backslash-escaped [
               (seq "\\" "]"))))          ;   backslash-escaped ]
         "]"                              ; closing bracket
@@ -838,16 +841,17 @@ giving it a yellow highlight appearance."
     "Regular expression matching [text]{.mark} highlight syntax.
 
 This matches Pandoc bracketed span syntax with the .mark class,
-e.g. [some text]{.mark} or [(**Fig. 2**)]{.mark}.
+e.g. [some text]{.mark}, [(**Fig. 2**)]{.mark}, or
+[**text [@citation].**]{.mark}.
 
 Capture group 1 contains the text to display (may include markdown
-formatting such as **bold**, *italic*, ~~strikethrough~~, etc.).
+formatting, citations, links, and other nested bracket expressions).
 The full match includes the brackets and {.mark} tag which are hidden.")
 
   (defun markdown-fold--strip-markup (text)
     "Strip inline markdown formatting from TEXT, returning plain text.
 Removes bold (**), italic (*), bold-italic (***), strikethrough (~~),
-inline code (`), and other common inline markup."
+inline code (`), and Pandoc citations ([@key] -> [C])."
     (let ((s text))
       ;; bold-italic (must come before bold/italic)
       (setq s (replace-regexp-in-string
@@ -864,6 +868,10 @@ inline code (`), and other common inline markup."
       ;; inline code
       (setq s (replace-regexp-in-string
                (rx "`" (group (+? anything)) "`") "\\1" s))
+      ;; citations [@key] or [@key1; @key2] -> [C]
+      (setq s (replace-regexp-in-string
+               markdown-fold--citation-regexp
+               markdown-fold-citation-display-string s))
       s))
 
   (defun markdown-fold--mark-overlays-in-region (start end)
