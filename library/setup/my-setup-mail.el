@@ -1032,6 +1032,50 @@ Requires all-the-icons as a dependency"
   ) ;; org-msg
 
 ;;* Helper functions
+
+(defun my--org-extract-file-links (text)
+  "Extract org file links from TEXT and return (CLEANED-TEXT . FILE-LIST).
+
+Finds all org-mode file links in TEXT, collects their paths, and
+replaces each link with its description (or filename if no description).
+
+Recognized link formats:
+  [[file:/path/to/file.pdf]]           -> file.pdf
+  [[file:/path/to/file.pdf][my doc]]   -> my doc
+  [[/path/to/file.pdf]]               -> file.pdf
+  [[~/path/to/file.pdf][report]]      -> report
+  [[attachment:file.pdf]]             -> file.pdf"
+  (let ((files '())
+        (result text))
+    ;; Match org links: [[TYPE:PATH]] or [[TYPE:PATH][DESC]]
+    ;; TYPE can be file, attachment, or omitted (bare path starting with / or ~)
+    (let ((link-re (rx "[["
+                       (group
+                        (or (seq (or "file:" "attachment:") (+? anything))
+                            (seq (any "/" "~") (+? anything))))
+                       "]"
+                       (? "[" (group (+? anything)) "]")
+                       "]")))
+      (while (string-match link-re result)
+        (let* ((raw-path (match-string 1 result))
+               (desc (match-string 2 result))
+               ;; Strip file: or attachment: prefix
+               (path (cond
+                      ((string-prefix-p "file:" raw-path)
+                       (substring raw-path 5))
+                      ((string-prefix-p "attachment:" raw-path)
+                       (substring raw-path 11))
+                      (t raw-path)))
+               ;; Expand ~ and resolve relative paths
+               (expanded (expand-file-name path))
+               ;; Use description or fall back to filename
+               (replacement (or desc (file-name-nondirectory path))))
+          (when (file-exists-p expanded)
+            (push expanded files))
+          ;; Replace the link with its description/filename
+          (setq result (replace-match replacement t t result)))))
+    (cons result (nreverse files))))
+
 (defvar my--org-heading-email-data nil
   "Temporary storage for email data from org heading.")
 
@@ -1065,6 +1109,11 @@ Called from `org-msg-edit-mode-hook'."
         (message "[org-heading-to-email] Populating body...")
         (org-msg-goto-body)
         (insert .body))
+      ;; Attach any files extracted from org links in the body
+      (when .attachments
+        (dolist (file .attachments)
+          (message "[org-heading-to-email] Attaching: %s" file)
+          (org-msg-attach-attach file)))
       ;; Position cursor at body and save to drafts. Deferred because
       ;; org-msg-goto-body fails when called directly from org-msg-edit-mode-hook
       ;; due to the buffer not being fully initialized yet. Auto-save also
@@ -1116,11 +1165,16 @@ Body text starts here..."
                 ("subject" (setq subject content))
                 ("body" (setq body content)))))))
       (when found-subheading
-        `((to . ,to-addrs)
-          (cc . ,cc-addrs)
-          (bcc . ,bcc-addrs)
-          (subject . ,subject)
-          (body . ,body))))))
+        ;; Extract file links from body and collect as attachments
+        (let* ((extracted (when body (my--org-extract-file-links body)))
+               (clean-body (if extracted (car extracted) body))
+               (attachments (when extracted (cdr extracted))))
+          `((to . ,to-addrs)
+            (cc . ,cc-addrs)
+            (bcc . ,bcc-addrs)
+            (subject . ,subject)
+            (body . ,clean-body)
+            (attachments . ,attachments)))))))
 
 (defun my--org-heading-to-email-parse-inline-format ()
   "Parse email data from inline header format.
@@ -1162,8 +1216,13 @@ Body text starts here..."
       (while (and (< (point) bound) (looking-at-p "^[ \t]*$"))
         (forward-line 1))
       ;; Rest is body (up to end of entry, i.e. before child headings)
-      (let ((body (string-trim
-                   (buffer-substring-no-properties (point) bound))))
+      (let* ((body (string-trim
+                    (buffer-substring-no-properties (point) bound)))
+             ;; Extract file links from body and collect as attachments
+             (extracted (when (not (string-empty-p body))
+                          (my--org-extract-file-links body)))
+             (clean-body (if extracted (car extracted) body))
+             (attachments (when extracted (cdr extracted))))
         ;; Combine multiple addresses
         (setq to-addrs (and to-addrs (string-join (nreverse to-addrs) ", ")))
         (setq cc-addrs (and cc-addrs (string-join (nreverse cc-addrs) ", ")))
@@ -1172,7 +1231,8 @@ Body text starts here..."
           (cc . ,cc-addrs)
           (bcc . ,bcc-addrs)
           (subject . ,subject)
-          (body . ,body))))))
+          (body . ,clean-body)
+          (attachments . ,attachments))))))
 
 (defun my-org-heading-to-email ()
   "Convert org heading at point to a new mu4e email.
