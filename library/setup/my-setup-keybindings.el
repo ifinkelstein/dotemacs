@@ -506,7 +506,7 @@
     ("l" "Store Link" org-store-link)
     ("L" "Grab FF Link" (lambda () (interactive)
                           (grab-mac-link-dwim 'firefox)))
-    ("m" "Email from header" my-org-heading-to-email)]
+    ("m" "Email from header" org-heading-mail-send)]
    ["Export"
     ("ep" "Export to PDF & Open" (lambda ()
                                    (interactive)

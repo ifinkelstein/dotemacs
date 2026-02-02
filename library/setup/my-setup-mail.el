@@ -1036,10 +1036,7 @@ Requires all-the-icons as a dependency"
 (use-package org-heading-mail
   :load-path "~/projects/org-heading-mail"
   :after org-msg
-  :commands (org-heading-mail-send)
-  :config
-  ;; Alias old name for backward compatibility
-  (defalias 'my-org-heading-to-email #'org-heading-mail-send))
+  :commands (org-heading-mail-send))
 
 (defun my-mu4e-attach-png-from-clipboard ()
   "Save a PNG image from the clipboard to a temp file and attach it. MacOS or linux only, for now."
