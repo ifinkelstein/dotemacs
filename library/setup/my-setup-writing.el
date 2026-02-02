@@ -806,9 +806,9 @@ This design is adapted from AUCTeX's `TeX-fold-post-command'."
   ;; Mark/Highlight Folding for Markdown Mode
   ;; ============================================================================
   ;;
-  ;; Folds Pandoc/CriticMarkup-style highlight syntax [text].{mark} so that
+  ;; Folds Pandoc/CriticMarkup-style highlight syntax [text]{.mark} so that
   ;; only "text" is displayed, rendered with a yellow highlight background.
-  ;; The brackets, dot, and {mark} tag are hidden via overlays.
+  ;; The brackets and {.mark} tag are hidden via overlays.
   ;;
   ;; Interactive commands:
   ;;   M-x markdown-fold-marks-buffer          - Fold all marks in buffer
@@ -822,7 +822,7 @@ This design is adapted from AUCTeX's `TeX-fold-post-command'."
        (:background "#555500" :foreground "#FFFF88"))
       (t (:inverse-video t)))
     "Face used to display highlighted/marked text.
-Applied to the visible text content inside [text].{mark} patterns,
+Applied to the visible text content inside [text]{.mark} patterns,
 giving it a yellow highlight appearance."
     :group 'markdown-fold)
 
@@ -834,12 +834,15 @@ giving it a yellow highlight appearance."
               (seq "\\" "[")             ;   backslash-escaped [
               (seq "\\" "]"))))          ;   backslash-escaped ]
         "]"                              ; closing bracket
-        ".{mark}")                       ; literal .{mark} tag
-    "Regular expression matching [text].{mark} highlight syntax.
+        "{.mark}")                       ; literal {.mark} tag (Pandoc span syntax)
+    "Regular expression matching [text]{.mark} highlight syntax.
+
+This matches Pandoc bracketed span syntax with the .mark class,
+e.g. [some text]{.mark} or [(**Fig. 2**)]{.mark}.
 
 Capture group 1 contains the text to display (may include markdown
 formatting such as **bold**, *italic*, ~~strikethrough~~, etc.).
-The full match includes the brackets and .{mark} tag which are hidden.")
+The full match includes the brackets and {.mark} tag which are hidden.")
 
   (defun markdown-fold--strip-markup (text)
     "Strip inline markdown formatting from TEXT, returning plain text.
@@ -870,7 +873,7 @@ inline code (`), and other common inline markup."
                 (overlays-in start end)))
 
   (defun markdown-fold-marks-region (start end)
-    "Fold all [text].{mark} patterns in the region from START to END.
+    "Fold all [text]{.mark} patterns in the region from START to END.
 
 Each match is replaced visually with just the inner text, displayed
 with a yellow highlight face. The underlying buffer content is unchanged.
@@ -900,10 +903,10 @@ Returns the number of marks folded."
       count))
 
   (defun markdown-fold-marks-buffer ()
-    "Fold all [text].{mark} patterns in the current buffer.
+    "Fold all [text]{.mark} patterns in the current buffer.
 
 Displays only the inner text with a yellow highlight, hiding the
-surrounding brackets and .{mark} tag.
+surrounding brackets and {.mark} tag.
 
 Returns the number of marks folded."
     (interactive)
@@ -912,7 +915,7 @@ Returns the number of marks folded."
   (defun markdown-fold-marks-clearout-region (start end)
     "Remove all mark fold overlays in the region from START to END.
 
-Restores the original [text].{mark} display.
+Restores the original [text]{.mark} display.
 
 Returns the number of overlays removed."
     (interactive "r")
@@ -928,7 +931,7 @@ Returns the number of overlays removed."
   (defun markdown-fold-marks-clearout-buffer ()
     "Remove all mark fold overlays in the current buffer.
 
-Restores all [text].{mark} patterns to their original display.
+Restores all [text]{.mark} patterns to their original display.
 
 Returns the number of overlays removed."
     (interactive)
