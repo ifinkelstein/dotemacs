@@ -486,7 +486,11 @@ This variable is managed internally by the post-command-hook
 and should not be modified directly.")
 
   (defconst markdown-fold--citation-regexp
-    "\\[\\(?:[^][@]*\\)?@[^]]+\\]"
+    (rx "["                              ; opening bracket
+        (? (* (not (any "]" "[" "@"))))  ; optional prefix (e.g., "see ")
+        "@"                              ; at least one @key
+        (+ (not (any "]")))              ; key text (no closing bracket)
+        "]")                             ; closing bracket
     "Regular expression matching Pandoc-style citations.
 
 This pattern matches citations in the following formats:
@@ -495,12 +499,6 @@ This pattern matches citations in the following formats:
 - With suffix: [@key, p. 10]
 - Multiple: [@key1; @key2]
 - Combined: [see @key1; @key2, p. 10]
-
-The regexp breakdown:
-- \\\\[ - Opening bracket
-- \\\\(?:[^][@]*\\\\)? - Optional prefix (text before @, no brackets)
-- @[^]]+ - At least one @key (@ followed by non-bracket chars)
-- \\\\] - Closing bracket
 
 Note: This intentionally matches the entire bracket expression,
 not just the @key portion, as the whole citation should be folded.")
@@ -612,7 +610,7 @@ Returns:
               start end)
           ;; Search backward for opening bracket
           (when (or (looking-at markdown-fold--citation-regexp)
-                    (and (re-search-backward "\\[" (line-beginning-position) t)
+                    (and (re-search-backward (rx "[") (line-beginning-position) t)
                          (looking-at markdown-fold--citation-regexp)
                          (<= (match-beginning 0) orig-point)
                          (>= (match-end 0) orig-point)))
@@ -738,7 +736,7 @@ folding operations."
      ;; If on an unfolded citation, fold it
      ((save-excursion
         (or (looking-at markdown-fold--citation-regexp)
-            (and (re-search-backward "\\[" (line-beginning-position) t)
+            (and (re-search-backward (rx "[") (line-beginning-position) t)
                  (looking-at markdown-fold--citation-regexp)
                  (<= (match-beginning 0) (point))
                  (>= (match-end 0) (point)))))
@@ -801,7 +799,140 @@ This design is adapted from AUCTeX's `TeX-fold-post-command'."
   (add-hook 'gfm-mode-hook
             (lambda ()
               (add-hook 'post-command-hook
-                        #'markdown-fold--post-command-hook nil t))))
+                        #'markdown-fold--post-command-hook nil t)))
+
+  ;;** Markdown Mark (Highlight) Folding
+  ;; ============================================================================
+  ;; Mark/Highlight Folding for Markdown Mode
+  ;; ============================================================================
+  ;;
+  ;; Folds Pandoc/CriticMarkup-style highlight syntax [text].{mark} so that
+  ;; only "text" is displayed, rendered with a yellow highlight background.
+  ;; The brackets, dot, and {mark} tag are hidden via overlays.
+  ;;
+  ;; Interactive commands:
+  ;;   M-x markdown-fold-marks-buffer          - Fold all marks in buffer
+  ;;   M-x markdown-fold-marks-clearout-buffer - Unfold all marks in buffer
+  ;; ============================================================================
+
+  (defface markdown-fold-mark-face
+    '((((class color) (background light))
+       (:background "#FFFF00"))
+      (((class color) (background dark))
+       (:background "#555500" :foreground "#FFFF88"))
+      (t (:inverse-video t)))
+    "Face used to display highlighted/marked text.
+Applied to the visible text content inside [text].{mark} patterns,
+giving it a yellow highlight appearance."
+    :group 'markdown-fold)
+
+  (defconst markdown-fold--mark-regexp
+    (rx "["                              ; opening bracket
+        (group                           ; capture group 1: the text content
+         (*                              ; zero or more of:
+          (or (not (any "[" "]"))         ;   any char except [ and ]
+              (seq "\\" "[")             ;   backslash-escaped [
+              (seq "\\" "]"))))          ;   backslash-escaped ]
+        "]"                              ; closing bracket
+        ".{mark}")                       ; literal .{mark} tag
+    "Regular expression matching [text].{mark} highlight syntax.
+
+Capture group 1 contains the text to display (may include markdown
+formatting such as **bold**, *italic*, ~~strikethrough~~, etc.).
+The full match includes the brackets and .{mark} tag which are hidden.")
+
+  (defun markdown-fold--strip-markup (text)
+    "Strip inline markdown formatting from TEXT, returning plain text.
+Removes bold (**), italic (*), bold-italic (***), strikethrough (~~),
+inline code (`), and other common inline markup."
+    (let ((s text))
+      ;; bold-italic (must come before bold/italic)
+      (setq s (replace-regexp-in-string
+               (rx "***" (group (+? anything)) "***") "\\1" s))
+      ;; bold
+      (setq s (replace-regexp-in-string
+               (rx "**" (group (+? anything)) "**") "\\1" s))
+      ;; italic
+      (setq s (replace-regexp-in-string
+               (rx "*" (group (+? anything)) "*") "\\1" s))
+      ;; strikethrough
+      (setq s (replace-regexp-in-string
+               (rx "~~" (group (+? anything)) "~~") "\\1" s))
+      ;; inline code
+      (setq s (replace-regexp-in-string
+               (rx "`" (group (+? anything)) "`") "\\1" s))
+      s))
+
+  (defun markdown-fold--mark-overlays-in-region (start end)
+    "Return all mark fold overlays between START and END."
+    (seq-filter (lambda (ov)
+                  (eq (overlay-get ov 'category) 'markdown-fold-mark))
+                (overlays-in start end)))
+
+  (defun markdown-fold-marks-region (start end)
+    "Fold all [text].{mark} patterns in the region from START to END.
+
+Each match is replaced visually with just the inner text, displayed
+with a yellow highlight face. The underlying buffer content is unchanged.
+
+Returns the number of marks folded."
+    (interactive "r")
+    (let ((count 0))
+      ;; Remove existing mark overlays to avoid duplicates
+      (markdown-fold-marks-clearout-region start end)
+      (save-excursion
+        (goto-char start)
+        (while (re-search-forward markdown-fold--mark-regexp end t)
+          (let* ((full-start (match-beginning 0))
+                 (full-end (match-end 0))
+                 (text (markdown-fold--strip-markup (match-string 1)))
+                 (ov (make-overlay full-start full-end nil t nil)))
+            (overlay-put ov 'category 'markdown-fold-mark)
+            (overlay-put ov 'evaporate t)
+            (overlay-put ov 'display
+                         (propertize text 'face 'markdown-fold-mark-face))
+            (overlay-put ov 'help-echo (buffer-substring-no-properties
+                                        full-start full-end))
+            (overlay-put ov 'mouse-face 'highlight)
+            (setq count (1+ count)))))
+      (when (called-interactively-p 'interactive)
+        (message "Folded %d mark%s" count (if (= count 1) "" "s")))
+      count))
+
+  (defun markdown-fold-marks-buffer ()
+    "Fold all [text].{mark} patterns in the current buffer.
+
+Displays only the inner text with a yellow highlight, hiding the
+surrounding brackets and .{mark} tag.
+
+Returns the number of marks folded."
+    (interactive)
+    (markdown-fold-marks-region (point-min) (point-max)))
+
+  (defun markdown-fold-marks-clearout-region (start end)
+    "Remove all mark fold overlays in the region from START to END.
+
+Restores the original [text].{mark} display.
+
+Returns the number of overlays removed."
+    (interactive "r")
+    (let ((overlays (markdown-fold--mark-overlays-in-region start end))
+          (count 0))
+      (dolist (ov overlays)
+        (delete-overlay ov)
+        (setq count (1+ count)))
+      (when (called-interactively-p 'interactive)
+        (message "Unfolded %d mark%s" count (if (= count 1) "" "s")))
+      count))
+
+  (defun markdown-fold-marks-clearout-buffer ()
+    "Remove all mark fold overlays in the current buffer.
+
+Restores all [text].{mark} patterns to their original display.
+
+Returns the number of overlays removed."
+    (interactive)
+    (markdown-fold-marks-clearout-region (point-min) (point-max))))
 
 ;;** Markdown TOC
 (use-package markdown-toc
