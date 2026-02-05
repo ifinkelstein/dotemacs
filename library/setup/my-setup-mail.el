@@ -1082,32 +1082,28 @@ Requires all-the-icons as a dependency"
 
 ;; TODO: test my-org-msg-llm-draft
 (defun my-mail-llm-expand ()
-  "Find @llm directive in org-msg buffer and use LLM to draft email.
+  "Find @tn directive in org-msg buffer and use LLM to draft email.
 
 Place cursor anywhere in the buffer. The function searches for a line
-starting with @llm followed by instructions. It sends those instructions
+starting with @tn followed by instructions. It sends those instructions
 along with the entire email as context to the LLM, then replaces the
-@llm line with the generated response.
+@tn line with the generated response.
 
 Example usage in an org-msg reply buffer:
-  @llm politely decline, too busy. commend her son."
+  @tn politely decline, too busy. commend her son."
   (interactive)
   (unless (derived-mode-p 'org-msg-edit-mode)
     (user-error "Not in an org-msg-edit-mode buffer"))
   (save-excursion
     (goto-char (point-min))
-    (unless (re-search-forward "^@llm\\s-+\\(.+\\)$" nil t)
-      (user-error "No @llm directive found"))
+    (unless (re-search-forward "^@tn\\s-+\\(.+\\)$" nil t)
+      (user-error "No @tn directive found"))
     (let* ((instructions (match-string 1))
            (llm-line-beg (match-beginning 0))
            (llm-line-end (match-end 0))
            (email-content (buffer-substring-no-properties (point-min) (point-max))))
       (message "[org-msg-llm] Instructions: %s" instructions)
       (message "[org-msg-llm] Sending to LLM...")
-      ;; Delete the @llm line
-      (delete-region llm-line-beg llm-line-end)
-      ;; Position for insertion
-      (goto-char llm-line-beg)
       (let ((target-buffer (current-buffer))
             (insert-pos llm-line-beg))
         (gptel-request
@@ -1124,9 +1120,25 @@ Example usage in an org-msg reply buffer:
                 (message "[org-msg-llm] Failed: %s" (plist-get info :status))
               (with-current-buffer target-buffer
                 (save-excursion
-                  (goto-char insert-pos)
+                  ;; Delete the @tn line only on success
+                  (goto-char llm-line-beg)
+                  (delete-region llm-line-beg llm-line-end)
+                  ;; Insert response at same position
                   (insert response)))
               (message "[org-msg-llm] Draft inserted:\n%s" response))))))))
+
+(defun my-mail-check-tn-directive ()
+  "Check if @tn directive is still present; ask to confirm sending.
+This prevents accidentally sending an email with an unexpanded @tn
+directive that was meant to be processed by the LLM."
+  (when (derived-mode-p 'org-msg-edit-mode)
+    (save-excursion
+      (goto-char (point-min))
+      (when (re-search-forward "^@tn\\s-+" nil t)
+        (unless (y-or-n-p "@tn directive found (not processed by LLM). Send anyway? ")
+          (user-error "Aborted: @tn directive still present"))))))
+
+(add-hook 'message-send-hook #'my-mail-check-tn-directive)
 
 
 (defun my-daily-email-progress ()
