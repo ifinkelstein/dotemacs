@@ -344,8 +344,10 @@
   (load-theme 'modus-operandi-tinted :no-confirm-loading))
 
 ;;* Modeline
-
-
+;; highlight the active window at the bottom 
+(set-face-attribute 'mode-line-active nil
+                    :foreground "black" :background "goldenrod" :box '(:line-width 1 :color
+                                                                                   "black"))
 ;; minimal and cute
 ;; NOTE: disabled for now, as I'm back to using lambda-line
 (use-package moody
