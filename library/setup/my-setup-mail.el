@@ -352,10 +352,10 @@ Execute search with that query."
                                (my-mu4e-remove-all-tags msg))))
 
   (add-to-list 'mu4e-view-actions
-	           '("Ttodo with LLM" . my-gptel-todo-from-mu4e-message) t)
+	           '("Ttodo with LLM" . my-todo-from-mu4e-message) t)
 
   (add-to-list 'mu4e-headers-actions
-	           '("Ttodo with LLM" . my-gptel-todo-from-mu4e-message) t)
+	           '("Ttodo with LLM" . my-todo-from-mu4e-message) t)
 
 
   ;; this function will remove all tags from a msg by erasing the mu4e-actions-tags-header-line
