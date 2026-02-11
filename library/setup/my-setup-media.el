@@ -92,7 +92,7 @@ and sends a message of the current volume status."
     ("b" "⏪ Back rewind" emms-seek-backward :transient transient--do-stay) ;; I want the transient to stay open on just these commands, so I can easily repeat them
     ("f" "⏩ Fast-Forward" emms-seek-forward :transient transient--do-stay)]
    ["Playlist"
-    ("N" "Cue Next" emms-cue-previous)
+    ("N" "Cue Next" emms-cue-next)
     ("P" "Cue Previous" emms-cue-previous)
     ("r" "🔀 play Random" emms-random)
     ("R" "🔀 toggle shuffle" emms-toggle-random-playlist)
