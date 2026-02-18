@@ -904,7 +904,13 @@ select one email at a time.
       ("ew" "🔥" (lambda () (interactive) (insert "🔥")))]
      [("eR" "recent" emoji-recent)
       ("eS" "search" emoji-search)]
-     [("rj" "Jeremiah" (lambda ()
+     [("rc" "Andy E" (lambda ()
+                      (interactive)
+                      (insert "ellingtonlab@gmail.com")))
+      ("rc" "Claus" (lambda ()
+                      (interactive)
+                      (insert "wilke@austin.utexas.edu")))
+      ("rj" "Jeremiah" (lambda ()
                          (interactive)
                          (insert "jdpaulus@utexas.edu")))
       ("rh" "HR" (lambda ()
