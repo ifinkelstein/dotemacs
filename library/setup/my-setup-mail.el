@@ -45,6 +45,15 @@
   ;; https://github.com/djcb/mu/issues/2662
   (setq rfc2047-quote-decoded-words-containing-tspecials t)
 
+  ;; Fix encoding errors when viewing emails with mismatched/undeclared charsets
+  ;; Prefer UTF-8 for MIME decoding, and provide sensible fallbacks
+  (setq mm-coding-system-priorities '(utf-8 utf-8-auto))
+  (setq mm-default-coding-system 'utf-8)
+  (setq mm-body-charset-encoding-alist '((iso-8859-1  . utf-8)
+                                         (iso-8859-15 . utf-8)
+                                         (us-ascii     . utf-8)
+                                         (windows-1252 . utf-8)))
+
   ;; Finding the binary (installed w/homebrew)
   (setq mu4e-mu-binary (executable-find "mu"))
 
