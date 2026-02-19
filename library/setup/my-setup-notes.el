@@ -45,7 +45,7 @@
         '(("d" "default" entry
            "* %?"
            :if-new (file+head "%<%Y-%m-%d>.org"
-                              "#+TITLE: %<%Y-%m-%d>\n \n#+CREATED: %U\n#+LAST_MODIFIED: %U
+                              ":PROPERTIES:\n:ID:       %<%Y%m%dT%H%M%S.000000>\n:END:\n#+TITLE: %<%Y-%m-%d>\n \n#+CREATED: %U\n#+LAST_MODIFIED: %U
 #+OPTIONS: toc:nil author:nil date:nil title:nil
 #+LATEX_CLASS: article
 \n\n
