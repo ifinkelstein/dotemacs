@@ -421,6 +421,11 @@
     ]])
 
 
+;; Ensure org-heading-mail-send is autoloaded even before org-msg loads,
+;; so transient menus referencing it don't error.
+(add-to-list 'load-path (expand-file-name "~/projects/elisp/org-heading-mail"))
+(autoload 'org-heading-mail-send "org-heading-mail" "Send org heading as email." t)
+
 ;;*** Mail Keybindings
 (transient-define-prefix my-transient-email ()
   "Mu4e main menu."
@@ -449,7 +454,8 @@
     ;; ("X" "Resend"          mu4e-compose-resend)
     ]
    ["Message"
-    ("e" "Email to Kill Ring" my-email-to-kill-ring)]
+    ("e" "Email to Kill Ring" my-email-to-kill-ring)
+    ("d" "Send draft"         org-heading-mail-send)]
    ])
 
 
@@ -495,6 +501,7 @@
     ("o" "Out" org-clock-out)
     ("R" "Recent" org-mru-clock-select-recent-task)]
    ["Navigation"
+    ("D" "drafts.org" my-goto-drafts.org)
     ("G" "gtd.org" my-goto-gtd.org)
     ("I" "inbox.org" my-goto-inbox.org)
     ("j" "Interactive" org-goto-interactive)
