@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: latex-$\times$
+# key: <times
+# --
+\$\times\$$0

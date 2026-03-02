@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: My comment (using todo package)
+# key: mc
+# --
+\mycomment[IJF]{$1}$0

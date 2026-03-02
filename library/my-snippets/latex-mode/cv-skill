@@ -1,0 +1,10 @@
+# -*- mode: snippet -*-
+# name: cv-skill for latex
+# key: cv.s
+# --
+\\cvskill
+{$1} % Year
+{$2} % Position
+{$3} % Institution
+
+$0

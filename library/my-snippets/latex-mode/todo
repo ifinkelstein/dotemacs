@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: Todo notes
+# key: td
+# --
+\todo[inline]{$1}$0

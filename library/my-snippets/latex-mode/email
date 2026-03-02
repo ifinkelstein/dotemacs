@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: email
+# key: @
+# --
+\href{mailto:$1}{$1}$0

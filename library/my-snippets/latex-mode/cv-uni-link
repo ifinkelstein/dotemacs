@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: cv-link-uni
+# key: cv.u
+# --
+\\uniurl{`(yank)`}$0

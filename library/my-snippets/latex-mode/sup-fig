@@ -1,0 +1,18 @@
+# -*- mode: snippet -*-
+# name: latex-new-supplemental-fig
+# key: fs
+# --
+
+\\clearpage
+
+\\begin{figure}[t!]
+\\centering
+\\includegraphics[width=1\\linewidth]{figures/$1}
+\\caption{\\textbf{ZZZ}
+(A) ZZZ
+(B) ZZZ
+}
+\\label{figS-$2}
+\\end{figure}
+
+$0

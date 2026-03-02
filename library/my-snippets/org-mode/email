@@ -1,0 +1,13 @@
+# -*- mode: snippet -*-
+# name: Email draft heading
+# key: email
+# --
+* Email to $1
+`(format-time-string "<%Y-%m-%d %a>")`
+
+To: $2
+Cc: $3
+Bcc: $4
+Subject: $5
+
+$0
