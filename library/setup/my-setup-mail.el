@@ -604,8 +604,10 @@ Strips surrounding angle brackets if present."
   (setq sendmail-program (executable-find "msmtp")
         send-mail-function 'smtpmail-send-it
         message-sendmail-f-is-evil t
-        message-sendmail-extra-arguments '("--read-envelope-from"
-                                           "-C" "~/.config/.msmtprc")
+        ;; NB: use backquote + expand-file-name because Emacs calls
+        ;; msmtp via call-process-region (no shell), so ~ is NOT expanded.
+        message-sendmail-extra-arguments `("--read-envelope-from"
+                                           "-C" ,(expand-file-name ".msmtprc" "~/.config/"))
         message-send-mail-function 'message-send-mail-with-sendmail)
 
   ;; I am not sure what the line below is supposed to do.
