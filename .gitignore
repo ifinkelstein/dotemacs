@@ -1,0 +1,46 @@
+# macOS
+.DS_Store
+
+# Private / secrets
+private.el
+library/private/
+
+# Native compilation cache
+eln-cache/
+
+# Package archives (installed via package manager)
+elpa/
+
+# Runtime state & cache
+var/
+url/
+request/
+persist/
+transient/
+emms/
+
+# Session / history files
+dired-history
+projects.eld
+tabsession.el
+
+# Backup & lock files
+*~
+\#*\#
+.\#*
+
+# Byte-compiled
+*.elc
+
+# Keyfreq data
+library/.emacs.keyfreq
+
+# Abbrevs
+library/.abbrev_defs
+
+# Embedded git repos
+library/my-org-export-themes/latex-mimore/
+
+# Claude settings
+.claude/
+library/setup/.claude/

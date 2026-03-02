@@ -1,0 +1,12 @@
+# -*- mode: snippet -*-
+# name: question-multiple-choice
+# key: qm
+# --
+\questionMultipleChoice{$1 (select
+  all that apply):}
+{$2}
+{$3}
+{$4}
+{$5}
+{$6}
+$0

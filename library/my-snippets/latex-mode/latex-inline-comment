@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: latex-inline-comment
+# key: ic
+# --
+\textcolor{red}{(\$\leftarrow\$ $1)}$0
