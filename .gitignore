@@ -38,6 +38,9 @@ library/.emacs.keyfreq
 # Abbrevs
 library/.abbrev_defs
 
+# LLM prompts
+library/llm-prompts/
+
 # Embedded git repos
 library/my-org-export-themes/latex-mimore/
 
