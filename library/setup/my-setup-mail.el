@@ -889,7 +889,7 @@ select one email at a time.
 (use-package org-msg
   :after (mu4e)
   :ensure t
-  :vc (:url "https://github.com/jeremy-compostella/org-msg" :branch "master")
+  :vc (:url "https://github.com/jeremy-compostella/org-msg" :branch "main")
   ;; :disabled t
   ;; avoid pesky org ASCII Export buffer
   ;; https://github.com/jeremy-compostella/org-msg/issues/169
