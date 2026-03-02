@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: end-plan-environment
+# key: ep
+# --
+\end{plan}

@@ -1,0 +1,22 @@
+# -*- mode: snippet -*-
+# contributor: Ilya Finkelstein
+# name: use-package straight
+# key: ups
+# --
+
+(use-package ${1:package}
+  :straight (:type git :host github :repo "${2:repo}/$1")
+  ;;:commands ()
+  ;;:bind (:map map-name
+         ;; ("" . function1)
+         ;; :map map2-name
+         ;;("M-@" . slack-message-embed-mention)
+         ;;("M-#" . slack-message-embed-channel))
+  ;;:hook (org-mode . function-def)
+  ;;:custom
+  ;; define variables here
+  ;; (var1 val1)
+  :config
+  $0
+  ;; define functions here
+  )

@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: cv-latex-linkedin; TODO: not finished
+# key: cv.l
+# --
+\\linurl{`(yank)`}$0

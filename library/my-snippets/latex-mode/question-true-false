@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: question-tf
+# key: qt
+# --
+\questionTF{$1}
+
+$0

@@ -1,0 +1,10 @@
+# -*- mode: snippet -*-
+# name: cv honors entry
+# key: cv.h
+# --
+\\cvhonor
+{$1} % Name
+{$2} % Long line
+{$3} % comma then long line
+{$4} % Date(s)
+$0

@@ -1,0 +1,9 @@
+# -*- mode: snippet -*-
+# name: section*
+# key: s*
+# type: command
+# --
+
+(if (region-active-p)
+    (yas-expand-snippet "\\section*{`yas-selected-text`}")
+  (yas-expand-snippet "\\section*{$1}$0"))
