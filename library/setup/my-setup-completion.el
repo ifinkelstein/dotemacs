@@ -482,10 +482,10 @@ targets."
   ;; (add-to-list 'completion-at-point-functions #'cape-dabbrev)
   ;; (add-to-list 'completion-at-point-functions #'cape-abbrev)
   :config
-  ;; Sanitize the `pcomplete-completions-at-point' Capf.
-  ;; The Capf has undesired side effects on Emacs 28 and earlier.
-  (advice-add 'pcomplete-completions-at-point :around #'cape-wrap-silent)
-  (advice-add 'pcomplete-completions-at-point :around #'cape-wrap-purify))
+  ;; NOTE: cape-wrap-silent and cape-wrap-purify were removed in recent
+  ;; cape versions. They were workarounds for pcomplete issues on Emacs ≤28
+  ;; and are no longer needed on Emacs 29+.
+  )
 
 ;;** Kind Icon (For Corfu)
 (use-package kind-icon
