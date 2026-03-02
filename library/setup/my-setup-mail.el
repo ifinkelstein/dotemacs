@@ -887,7 +887,8 @@ select one email at a time.
 (use-package org-msg
   :after (mu4e)
   :ensure t
-  :vc (:url "https://github.com/jeremy-compostella/org-msg" :branch "master")
+  :vc (:url "https://github.com/jeremy-compostella/org-msg"
+       :branch "jcompost/mu-1.12-support-with-backward-compatibility")
   ;; :disabled t
   ;; avoid pesky org ASCII Export buffer
   ;; https://github.com/jeremy-compostella/org-msg/issues/169
@@ -1003,19 +1004,16 @@ select one email at a time.
   (add-hook 'org-msg-edit-mode-hook #'cpm/org-msg-hooks)
 
 
-  ;; advise mu4e to move cursor to start of message body
-  ;; when replying or forwarding messages in org-msg
-  (defun my-reply-advice (orig &rest args)
-    "Move cursor to the start of the reply in org-msg mode to avoid the properties.
-Compatible with mu4e 1.12.xx"
-    ;; first run the mu4e function
-    (apply orig args)
-    ;; then, move the cursor to the body if its a reply (but not new/fwd composition)
-    ;; NOTE: first element in "args" holds the type of email that's being composed.
-    ;; default behavior for new and forwarded email is to start in the "to" field
-    (if (member (car args) '(reply edit))
-        (org-msg-goto-body)))
-  (advice-add 'mu4e--compose-setup-post :around #'my-reply-advice)
+  ;; Move cursor to the start of the reply body in org-msg.
+  ;; mu4e--compose-setup-post was removed in mu4e 1.12;
+  ;; use mu4e-compose-mode-hook instead.
+  (defun my-org-msg-goto-body-on-reply ()
+    "Move cursor to the message body when replying or editing.
+Default for new/forwarded mail is the To field."
+    (when (and (bound-and-true-p org-msg-edit-mode)
+               (memq mu4e-compose-type '(reply edit)))
+      (org-msg-goto-body)))
+  (add-hook 'mu4e-compose-mode-hook #'my-org-msg-goto-body-on-reply)
 
 
   (defun my-mu4e-add-attachment-icons ()
