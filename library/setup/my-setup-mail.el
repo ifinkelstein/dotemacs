@@ -967,9 +967,11 @@ select one email at a time.
   (add-hook 'message-sent-hook
             (lambda ()
               (interactive)
-              (switch-to-buffer "*mu4e-article*")
-              (mu4e-view-quit)
-              (kill-buffer "*Org ASCII Export*")))
+              (when (get-buffer "*mu4e-article*")
+                (switch-to-buffer "*mu4e-article*")
+                (mu4e-view-quit))
+              (when (get-buffer "*Org ASCII Export*")
+                (kill-buffer "*Org ASCII Export*"))))
 
   (setq org-msg-options "html-postamble:nil H:5 num:nil ^:{} toc:nil author:nil email:nil \\n:t"
 	    org-msg-startup "hidestars indent inlineimages"
