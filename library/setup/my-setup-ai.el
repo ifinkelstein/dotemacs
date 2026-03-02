@@ -416,7 +416,7 @@ Each list contains a list of cons cells, where the car is the device number and 
 ;;* pi-coding-agent
 (use-package pi-coding-agent
   ;; Using local repo with image paste support (yank-media)
-  :load-path "~/projects/pi-coding-agent"
+  :load-path "~/projects/elisp/pi-coding-agent"
 
   :bind (("C-c C-p" . pi-coding-agent)
          ("M-o" . pi-coding-agent-menu)
