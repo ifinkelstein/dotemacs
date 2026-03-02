@@ -1023,38 +1023,29 @@ Compatible with mu4e 1.12.xx"
 
 
   (defun my-mu4e-add-attachment-icons ()
-    "Add icons to the properties drawer to indicate the type of attachments
-Requires all-the-icons as a dependency"
+    "Display file-type icons next to the PROPERTIES drawer for each attachment.
+Uses `nerd-icons-icon-for-file' to pick an appropriate icon per filename."
     (interactive)
     (save-excursion
       (goto-char (point-min))
-      (let* ((attachments (org-msg-get-prop "attachment"))
-             (properties-pos (search-forward ":PROPERTIES:"))
-             (properties-start-pos (match-beginning 0)) ;; find the start of the ":PROPERTIES: tag"
-             (overlay-icons nil))
-        (when (and attachments properties-pos)
-          (dolist (element attachments)
-            (let ((overlay (make-overlay properties-start-pos 1)))
-              (overlay-put overlay 'attachment-icon t)
-              (overlay-put overlay 'after-string (all-the-icons-icon-for-file element)))
-
-            ;; (setq overlay-icons (concat (all-the-icons-icon-for-file element)))
-            ;; (message overlay-icons)
-            )))))
+      (when-let* ((attachments (org-msg-get-prop "attachment"))
+                  ((search-forward ":PROPERTIES:" nil t))
+                  (pos (match-beginning 0)))
+        (dolist (file attachments)
+          (let ((ov (make-overlay pos pos))) ; zero-width overlay at :PROPERTIES:
+            (overlay-put ov 'attachment-icon t)
+            (overlay-put ov 'after-string
+                         (concat " " (nerd-icons-icon-for-file file))))))))
 
   (defun my-mu4e-remove-attachment-icons ()
-    "Remove all icon overlays."
+    "Remove all attachment icon overlays from the current buffer."
     (save-restriction
       (widen)
-      (mapc #'delete-overlay
-            (cl-remove-if-not
-             (lambda (ov)
-               (overlay-get ov 'attachment-icon))
-             (overlays-in (point-min) (point-max))
-             ))))
+      (remove-overlays (point-min) (point-max) 'attachment-icon t)))
 
   (defun my-mu4e-reset-attachment-icons (orig-fun &rest args)
-    "Reset overlays for attachment icons"
+    "Around advice to refresh attachment icons after ORIG-FUN runs.
+Pass ARGS through to ORIG-FUN, then redraw icons."
     (apply orig-fun args)
     (my-mu4e-remove-attachment-icons)
     (my-mu4e-add-attachment-icons))
