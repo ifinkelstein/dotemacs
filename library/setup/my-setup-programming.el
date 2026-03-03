@@ -142,6 +142,22 @@
       (embrace-add-pair (car lst) (cadr lst) (cddr lst))))
   ) ;; use-package embrace
 
+;; Tree-sitter-aware expand region — replaces expand-region
+;; Expansion order: subword → word → symbol → list/string → treesit node → defun/paragraph
+;; In text modes, sentence expansion is added between word and paragraph.
+(use-package expreg
+  :bind (("C-=" . expreg-expand)
+         ("C--" . expreg-contract))
+  :custom
+  (expreg-restore-point-on-quit t)
+  :config
+  (defun my-expreg--enable-sentence ()
+    "Add sentence expansion to `expreg-functions' for text modes."
+    (setq-local expreg-functions
+                (append expreg-functions '(expreg--sentence))))
+  (dolist (hook '(text-mode-hook org-mode-hook markdown-mode-hook))
+    (add-hook hook #'my-expreg--enable-sentence)))
+
 ;;* eglot and treesitter for language server protocols (LSP)
 (use-package eglot
   :ensure nil
@@ -161,6 +177,56 @@
               ("C-c ! n" . flymake-goto-next-error)
               ("C-c ! p" . flymake-goto-prev-error)
               ("C-c ! l" . flymake-show-buffer-diagnostics)))
+
+;;** Tree-sitter
+;; Configure grammar sources and install them if missing.
+;; Remap classic major modes to their tree-sitter equivalents.
+(use-package treesit
+  :ensure nil
+  :when (treesit-available-p)
+  :custom
+  (treesit-font-lock-level 4)
+  :config
+  ;; Grammar sources — each entry is (LANG . (URL [REVISION [SOURCE-DIR]])
+  (setopt treesit-language-source-alist
+          '((python     "https://github.com/tree-sitter/tree-sitter-python")
+            (elisp      "https://github.com/Wilfred/tree-sitter-elisp")
+            (bash       "https://github.com/tree-sitter/tree-sitter-bash")
+            (org        "https://github.com/milisims/tree-sitter-org")
+            (markdown   "https://github.com/tree-sitter-grammars/tree-sitter-markdown"
+                        nil "tree-sitter-markdown/src")
+            (markdown-inline "https://github.com/tree-sitter-grammars/tree-sitter-markdown"
+                             nil "tree-sitter-markdown-inline/src")
+            (dockerfile "https://github.com/camdencheek/tree-sitter-dockerfile")
+            (yaml       "https://github.com/tree-sitter-grammars/tree-sitter-yaml")
+            (toml       "https://github.com/tree-sitter/tree-sitter-toml")
+            (json       "https://github.com/tree-sitter/tree-sitter-json")
+            ;; NOTE: latex grammar requires `tree-sitter generate' before
+            ;; compile (no parser.c in repo).  The dylib was manually built
+            ;; and placed in tree-sitter/.  If it goes missing, run:
+            ;;   cd /tmp && git clone https://github.com/latex-lsp/tree-sitter-latex
+            ;;   cd tree-sitter-latex && npx tree-sitter generate
+            ;;   cc -shared -fPIC -o libtree-sitter-latex.dylib src/parser.c src/scanner.c -Isrc -Os
+            ;;   cp libtree-sitter-latex.dylib ~/.config/.emacs/tree-sitter/
+            (latex      "https://github.com/latex-lsp/tree-sitter-latex")))
+
+  ;; Auto-install any missing grammars on startup
+  (dolist (grammar treesit-language-source-alist)
+    (unless (treesit-language-available-p (car grammar))
+      (message "Installing tree-sitter grammar: %s" (car grammar))
+      (treesit-install-language-grammar (car grammar))))
+
+  ;; Remap classic modes to tree-sitter modes where available
+  (setopt major-mode-remap-alist
+          '((python-mode     . python-ts-mode)
+            (bash-mode       . bash-ts-mode)
+            (sh-mode         . bash-ts-mode)
+            (json-mode       . json-ts-mode)
+            (yaml-mode       . yaml-ts-mode)
+            (dockerfile-mode . dockerfile-ts-mode)
+            (conf-toml-mode  . toml-ts-mode)
+            (markdown-mode   . markdown-mode))))
+
 ;;* Programming modes
 ;; reminder to run eglot-upgrade-eglot every so often
 ;;** Python
