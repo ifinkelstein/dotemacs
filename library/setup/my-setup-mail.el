@@ -84,6 +84,288 @@
   ;; Refresh mail using mbsync every 5 minutes
   (setq mu4e-update-interval (* 5 60))
 
+  ;;** Sleep/Wake Recovery for mu4e
+  ;;
+  ;; PROBLEM: On a laptop, macOS sleep/wake breaks mu4e in several
+  ;; sneaky ways that are hard to notice:
+  ;;
+  ;;   1. STUCK TIMERS — Emacs repeating timers store an absolute
+  ;;      fire-time.  When the laptop sleeps for hours, the timer
+  ;;      fires into the void during the wake transition.  Its
+  ;;      `triggered' flag gets set to t, but the rescheduling logic
+  ;;      in `timer-event-handler' fails silently.  Result: the timer
+  ;;      sits in `timer-list' with a fire-time in the past and
+  ;;      `triggered' = t, so it never fires again.  mbsync stops
+  ;;      running and you don't notice for hours.
+  ;;
+  ;;   2. STALE MBSYNC PROCESS — If mbsync was mid-sync when sleep
+  ;;      hit, the process gets killed by the OS.  But Emacs might
+  ;;      not run the process sentinel (race condition), so
+  ;;      `mu4e--update-buffer' still looks "live" to Emacs.  The
+  ;;      guard in `mu4e-update-mail-and-index' sees this and says
+  ;;      "Update process is already running", blocking ALL future
+  ;;      syncs.  This is the sneakiest failure — everything looks
+  ;;      fine, the timer fires, but mbsync never actually runs.
+  ;;
+  ;;   3. NETWORK NOT READY — Wi-Fi takes a few seconds to reconnect
+  ;;      after wake.  If mbsync fires immediately, it fails with a
+  ;;      DNS or connection error and the sync is silently skipped.
+  ;;
+  ;;   4. MU SERVER DEATH — The mu subprocess can occasionally die
+  ;;      during sleep.  Without it, mu4e can't index or search.
+  ;;
+  ;; SOLUTION: Two-layer detection + single recovery orchestrator.
+  ;;
+  ;;   Detection Layer 1: TIME-GAP HEARTBEAT
+  ;;     A cheap timer writes a timestamp every 60 seconds.  Any code
+  ;;     can compare `current-time' to this timestamp — if the gap is
+  ;;     much larger than 60s, the machine was asleep.  This is fully
+  ;;     portable (no macOS APIs) and catches sleep even if you don't
+  ;;     touch Emacs immediately after wake.
+  ;;
+  ;;   Detection Layer 2: FOCUS CHANGE
+  ;;     `after-focus-change-function' fires when Emacs regains focus
+  ;;     (e.g. you switch to it after waking the laptop).  This gives
+  ;;     faster response than waiting for the heartbeat, but only
+  ;;     triggers if you actually focus Emacs.
+  ;;
+  ;;   Recovery: MY-MU4E-SLEEP-WAKE-RECOVER
+  ;;     A single orchestrator function that, on wake detection:
+  ;;       1. Kills any stale mbsync process / update buffer
+  ;;       2. Resets the mu4e update timer
+  ;;       3. Waits briefly for network (with timeout)
+  ;;       4. Checks mu server health, restarts if needed
+  ;;       5. Triggers an immediate mail sync
+  ;;     This is idempotent — safe to call multiple times (the
+  ;;     debounce guard prevents double-firing from both detection
+  ;;     layers within the same wake event).
+
+  ;; ---- Heartbeat: detect time gaps from sleep ----
+
+  (defvar my-mu4e--heartbeat-time (current-time)
+    "Timestamp of the last heartbeat tick.
+Updated every `my-mu4e--heartbeat-interval' seconds by a timer.
+If `current-time' minus this value is much larger than the
+interval, the machine was probably asleep.")
+
+  (defvar my-mu4e--heartbeat-interval 60
+    "Seconds between heartbeat ticks.
+Kept short so we detect sleep quickly.  The timer itself is
+trivially cheap (just writes a timestamp).")
+
+  (defvar my-mu4e--sleep-threshold 90
+    "Seconds of heartbeat gap that counts as a sleep event.
+Should be comfortably larger than `my-mu4e--heartbeat-interval'
+to avoid false positives from Emacs being busy with GC or a
+long-running command.  90s means: if more than 90 seconds elapsed
+since the last heartbeat, we assume the machine slept.")
+
+  (defvar my-mu4e--last-recovery-time nil
+    "Timestamp of the last sleep/wake recovery.
+Used as a debounce guard: if we recovered less than 30 seconds
+ago, skip the recovery.  This prevents double-firing when both
+the heartbeat and focus-change detect the same wake event.")
+
+  (defvar my-mu4e--network-wait-seconds 8
+    "Seconds to wait for network after a detected wake event.
+Wi-Fi typically reconnects within 3-5 seconds on macOS.  We poll
+every 2 seconds up to this limit.  If network never comes back
+\(e.g. airplane mode), we give up and let the next timer tick
+retry naturally.")
+
+  (defun my-mu4e--heartbeat-tick ()
+    "Record the current time; detect sleep if gap is too large.
+Called every `my-mu4e--heartbeat-interval' seconds by a repeating
+timer.  If the gap between now and the last tick exceeds
+`my-mu4e--sleep-threshold', call the recovery orchestrator."
+    (let ((now (current-time))
+          (gap (float-time (time-subtract (current-time)
+                                          my-mu4e--heartbeat-time))))
+      (setq my-mu4e--heartbeat-time now)
+      ;; If the gap is suspiciously large, we probably slept.
+      (when (> gap my-mu4e--sleep-threshold)
+        (mu4e-message "Heartbeat gap %.0fs (threshold %ds) — recovering from sleep"
+                      gap my-mu4e--sleep-threshold)
+        (my-mu4e-sleep-wake-recover))))
+
+  ;; Start the heartbeat timer.  `run-at-time' with a repeat arg
+  ;; creates a repeating timer.  We deliberately use a short first
+  ;; delay (10s) so the heartbeat is established quickly after init.
+  ;; Guard: cancel any existing heartbeat timer first so config
+  ;; reloads don't accumulate duplicate timers.
+  (defvar my-mu4e--heartbeat-timer nil
+    "The heartbeat timer object, kept so we can cancel on reload.")
+  (when (timerp my-mu4e--heartbeat-timer)
+    (cancel-timer my-mu4e--heartbeat-timer))
+  (setq my-mu4e--heartbeat-timer
+        (run-at-time 10 my-mu4e--heartbeat-interval #'my-mu4e--heartbeat-tick))
+
+  ;; ---- Focus-change: faster detection when user returns ----
+
+  (defun my-mu4e--on-focus-change ()
+    "Check for sleep/wake when Emacs gains focus.
+Compares current time to `my-mu4e--heartbeat-time'.  If the gap
+exceeds `my-mu4e--sleep-threshold', trigger recovery.
+
+This is the fast path: the user wakes the laptop and switches to
+Emacs, so we recover before the next heartbeat tick."
+    ;; Only act when a frame is focused (not on every focus-out too).
+    (when (seq-some #'frame-focus-state (frame-list))
+      (let ((gap (float-time (time-subtract (current-time)
+                                            my-mu4e--heartbeat-time))))
+        (when (> gap my-mu4e--sleep-threshold)
+          (my-mu4e-sleep-wake-recover)))))
+
+  (when (fboundp 'after-focus-change-function)
+    (add-function :after after-focus-change-function
+                  #'my-mu4e--on-focus-change))
+
+  ;; ---- Network readiness check ----
+
+  (defun my-mu4e--network-available-p ()
+    "Return non-nil if the network appears to be up.
+Uses a single ICMP ping to Cloudflare DNS (1.1.1.1) with a 2
+second timeout.  Returns nil if the ping fails (no network) or
+if `ping' is not found."
+    (zerop (call-process "ping" nil nil nil "-c1" "-W2" "1.1.1.1")))
+
+  (defun my-mu4e--wait-for-network ()
+    "Block until network is available, up to `my-mu4e--network-wait-seconds'.
+Polls every 2 seconds.  Returns non-nil if network came up,
+nil if we timed out.
+
+WHY BLOCK?  This runs right after wake, typically from a timer or
+focus hook — not during interactive editing.  The brief pause
+\(at most 8s) is acceptable to ensure mbsync doesn't fail.  If
+blocking bothers you, reduce `my-mu4e--network-wait-seconds'."
+    (let ((deadline (+ (float-time) my-mu4e--network-wait-seconds)))
+      (catch 'done
+        (while (< (float-time) deadline)
+          (when (my-mu4e--network-available-p)
+            (throw 'done t))
+          (sleep-for 2))
+        ;; Timed out.
+        nil)))
+
+  ;; ---- Stale process cleanup ----
+
+  (defun my-mu4e--kill-stale-update-process ()
+    "Kill a stale mbsync process left over from before sleep.
+
+HOW THIS HAPPENS: mbsync was running when the laptop slept.  The
+OS killed the process, but Emacs never got the signal (or the
+sentinel raced).  `mu4e--update-buffer' still has a process
+object that looks alive to `process-live-p' even though the
+underlying PID is gone.
+
+The guard in `mu4e-update-mail-and-index' checks:
+  (process-live-p (get-buffer-process mu4e--update-buffer))
+and if this returns non-nil, it prints \"already running\" and
+refuses to start a new sync.
+
+FIX: Check if the buffer exists and its process is dead (or the
+process object is stale).  If so, kill the buffer so the guard
+no longer blocks.
+
+Returns non-nil if a stale process was cleaned up."
+    (when (buffer-live-p mu4e--update-buffer)
+      (let* ((proc (get-buffer-process mu4e--update-buffer))
+             (stale (or (null proc)                  ; buffer exists but no process
+                        (not (process-live-p proc))  ; process object is dead
+                        ;; Belt-and-suspenders: if the process has been
+                        ;; "running" for > 10 minutes, it's definitely stuck.
+                        ;; Normal mbsync finishes in 30-60 seconds.
+                        (and (eq (process-status proc) 'run)
+                             (> (float-time
+                                 (time-subtract (current-time)
+                                                (process-start-time proc)))
+                                600)))))
+        (when stale
+          (mu4e-message "Cleaning up stale mu4e update process")
+          (when (and proc (process-live-p proc))
+            (kill-process proc))             ; kill the zombie
+          (kill-buffer mu4e--update-buffer)  ; remove the blocking buffer
+          t))))
+
+  ;; ---- Timer reset ----
+
+  (defun my-mu4e--reset-update-timer ()
+    "Cancel and recreate the mu4e update timer.
+
+WHY: After sleep, the timer's absolute fire-time is in the past,
+and its `triggered' flag is stuck at t.  Emacs won't fire it
+again.  Cancelling and recreating gives it a fresh fire-time
+relative to now."
+    (when (and (bound-and-true-p mu4e--update-timer)
+               (timerp mu4e--update-timer))
+      (cancel-timer mu4e--update-timer)
+      (setq mu4e--update-timer nil))
+    ;; Recreate only if mu4e is running and has an update interval.
+    (when (and (bound-and-true-p mu4e-update-interval)
+               (mu4e-running-p))
+      (setq mu4e--update-timer
+            (run-at-time mu4e-update-interval mu4e-update-interval
+                         #'mu4e--refresh-timer))))
+
+  ;; ---- mu server health check ----
+
+  (defun my-mu4e--ensure-server ()
+    "Ensure the mu server subprocess is alive.  Restart if dead.
+
+The mu server is a long-running subprocess that handles indexing,
+searching, and moving messages.  If it died during sleep, mu4e
+is a hollow shell — headers and search silently fail.
+
+Returns non-nil if the server had to be restarted."
+    (unless (mu4e-running-p)
+      (mu4e-message "mu server is dead — restarting")
+      (mu4e 'background)
+      t))
+
+  ;; ---- The orchestrator ----
+
+  (defun my-mu4e-sleep-wake-recover ()
+    "Single entry point for recovering mu4e after a sleep/wake cycle.
+
+Called by both the heartbeat timer (Layer 1) and the focus-change
+hook (Layer 2).  A debounce guard prevents double-firing within
+30 seconds — this matters because both layers will often detect
+the same wake event.
+
+Recovery steps (in order):
+  1. Kill stale mbsync process — unblocks future syncs
+  2. Reset the update timer — unsticks the repeating timer
+  3. Wait for network — gives Wi-Fi time to reconnect
+  4. Ensure mu server — restart the indexer if it died
+  5. Trigger immediate sync — fetch mail NOW, don't wait 5 min
+
+Each step is independent and logged.  If one fails, the others
+still run.  The whole thing is idempotent."
+    ;; Debounce: skip if we recovered very recently.
+    (unless (and my-mu4e--last-recovery-time
+                 (< (float-time (time-subtract (current-time)
+                                               my-mu4e--last-recovery-time))
+                    30))
+      (setq my-mu4e--last-recovery-time (current-time))
+
+      (mu4e-message "Sleep/wake detected — running recovery…")
+
+      ;; Step 1: Kill stale mbsync process.
+      (my-mu4e--kill-stale-update-process)
+
+      ;; Step 2: Reset the update timer so it fires on schedule again.
+      (my-mu4e--reset-update-timer)
+
+      ;; Step 3: Wait for network (blocks briefly).
+      (if (my-mu4e--wait-for-network)
+          (progn
+            ;; Step 4: Make sure the mu server is alive.
+            (my-mu4e--ensure-server)
+            ;; Step 5: Sync immediately (in background).
+            (mu4e-message "Network up — triggering immediate sync")
+            (run-at-time 2 nil #'mu4e-update-mail-and-index t))
+        (mu4e-message "Network not available — skipping immediate sync"))))
+
 
   ;;** Add SVG tags
   (with-eval-after-load 'svg-tag-mode
@@ -507,6 +789,18 @@ the query (for links starting with \"query:\")."
   ;; Compose in new buffer (can make 'window for new window)
   (setq mu4e-compose-switch nil)
 
+  ;; When composing (reply/forward/new), delete the headers window so
+  ;; the compose buffer gets the full frame.  The saved window
+  ;; configuration (`mu4e-compose-post-restore-window-configuration')
+  ;; restores the original layout after send/exit/kill.
+  (defun my-mu4e-hide-headers-on-compose ()
+    "Delete the headers window when entering compose, giving compose the full frame."
+    (when-let* ((headers-buf (mu4e-get-headers-buffer))
+                (headers-win (get-buffer-window headers-buf))
+                ((not (eq headers-win (selected-window)))))
+      (delete-window headers-win)))
+  (add-hook 'mu4e-compose-mode-hook #'my-mu4e-hide-headers-on-compose)
+
   ;; Don't keep message compose buffers around after sending:
   (setq message-kill-buffer-on-exit t)
   ;;; Make sure plain text mails flow correctly for recipients
@@ -893,9 +1187,6 @@ select one email at a time.
   ;; :disabled t
   ;; avoid pesky org ASCII Export buffer
   ;; https://github.com/jeremy-compostella/org-msg/issues/169
-  :custom-face
-  (org-meta-line ((t (:height 0.65))))
-
   :preface
   (defun org-msg-no-temp-buffer (orig-fun &rest args)
     "Advice to set `org-export-show-temporary-export-buffer' to `nil'."
@@ -981,7 +1272,9 @@ select one email at a time.
 	    org-msg-default-alternatives '((new		        . (text html))
 				                       (reply-to-html	. (text html))
 				                       (reply-to-text	. (text html)))
-        org-msg-convert-citation t
+        ;; nil to avoid "Args out of range" errors when replying to
+        ;; emails with unusual HTML citation formatting
+        org-msg-convert-citation nil
         ;;         org-msg-signature "
         ;;  Regards,
         ;; #+begin_signature
@@ -1001,25 +1294,32 @@ select one email at a time.
       (auto-fill-mode -1)
       (hl-line-mode -1)  ;; disable highlight line when composing emails
       (diff-hl-mode -1) ;; disable diff gutter
+      ;; Shrink org-meta-line (#+begin_src, #+PROPERTIES, etc.) in compose buffers only
+      (face-remap-add-relative 'org-meta-line :height 0.5 :foreground "gray60")
       ;; (company-mode 1)
       ;; FIXME: Try remove auto-save hook *locally* to avoid multiple saved drafts
       (remove-hook 'auto-save-hook #'cpm/full-auto-save t)))
   (add-hook 'org-msg-edit-mode-hook #'cpm/org-msg-hooks)
 
 
-  ;; advise mu4e to move cursor to start of message body
-  ;; when replying or forwarding messages in org-msg
-  (defun my-reply-advice (orig &rest args)
-    "Move cursor to the start of the reply in org-msg mode to avoid the properties.
-Compatible with mu4e 1.12.xx"
-    ;; first run the mu4e function
-    (apply orig args)
-    ;; then, move the cursor to the body if its a reply (but not new/fwd composition)
-    ;; NOTE: first element in "args" holds the type of email that's being composed.
-    ;; default behavior for new and forwarded email is to start in the "to" field
-    (if (member (car args) '(reply edit))
-        (org-msg-goto-body)))
-  (advice-add 'mu4e--compose-setup-post :around #'my-reply-advice)
+  ;; In org-msg buffers, `message-goto-body' lands on the mail/mime
+  ;; separator which is invisible.  Advise it to jump to the line
+  ;; after :END: instead — the actual editing area.  This also fixes
+  ;; the cursor clobber from `mu4e--jump-to-a-reasonable-place' which
+  ;; calls `message-goto-body' after org-msg has set up the buffer.
+  (defun my-message-goto-body-org-msg (orig &rest args)
+    "In org-msg buffers, go to the line after :END: instead.
+Must return point (like the original `message-goto-body') because
+callers such as `org-msg-prepare-to-send' use the return value as
+a buffer position."
+    (if (derived-mode-p 'org-msg-edit-mode)
+        (progn
+          (goto-char (point-min))
+          (if (re-search-forward "^[ \t]*:END:[ \t]*$" nil t)
+              (progn (forward-line 1) (point))
+            (apply orig args)))
+      (apply orig args)))
+  (advice-add 'message-goto-body :around #'my-message-goto-body-org-msg)
 
 
   (defun my-mu4e-add-attachment-icons ()
