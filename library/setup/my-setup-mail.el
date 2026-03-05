@@ -418,8 +418,10 @@ still run.  The whole thing is idempotent."
     (advice-add 'mu4e-mark-at-point :after #'mu4e-mark-at-point-advice)) ;;with-eval-after-load
 
   ;;** Attachments
-  ;; Set default attachment dir
+  ;; Set default attachment dir (create if missing)
   (setq mu4e-attachment-dir (concat (getenv "HOME") "/Downloads/_Mail"))
+  (unless (file-directory-p mu4e-attachment-dir)
+    (make-directory mu4e-attachment-dir t))
   ;; TODO: Fix the function below so all attachements work
   ;; (bind-key "e" #'mu4e-views-mu4e-save-all-atachments mu4e-headers-mode-map)
   
@@ -789,16 +791,17 @@ the query (for links starting with \"query:\")."
   ;; Compose in new buffer (can make 'window for new window)
   (setq mu4e-compose-switch nil)
 
-  ;; When composing (reply/forward/new), delete the headers window so
-  ;; the compose buffer gets the full frame.  The saved window
-  ;; configuration (`mu4e-compose-post-restore-window-configuration')
-  ;; restores the original layout after send/exit/kill.
+  ;; Give compose the full frame.  We use `mu4e-compose-switch' = nil
+  ;; (current window), so compose already replaces whatever buffer was
+  ;; in that window.  If mu4e split to show headers + view before
+  ;; composing, delete the *other* window so compose is alone.
+  ;;
+  ;; IMPORTANT: mu4e saves the window configuration BEFORE
+  ;; `mu4e-compose-mode-hook' runs, so modifying windows here is safe —
+  ;; the restore after send/kill will recreate the original layout.
   (defun my-mu4e-hide-headers-on-compose ()
-    "Delete the headers window when entering compose, giving compose the full frame."
-    (when-let* ((headers-buf (mu4e-get-headers-buffer))
-                (headers-win (get-buffer-window headers-buf))
-                ((not (eq headers-win (selected-window)))))
-      (delete-window headers-win)))
+    "Give compose the full frame by deleting other windows."
+    (delete-other-windows))
   (add-hook 'mu4e-compose-mode-hook #'my-mu4e-hide-headers-on-compose)
 
   ;; Don't keep message compose buffers around after sending:
@@ -1258,11 +1261,15 @@ select one email at a time.
   (add-hook 'message-sent-hook
             (lambda ()
               (interactive)
-              (when (get-buffer "*mu4e-article*")
-                (switch-to-buffer "*mu4e-article*")
-                (mu4e-view-quit))
-              (when (get-buffer "*Org ASCII Export*")
-                (kill-buffer "*Org ASCII Export*"))))
+              ;; Kill stale article buffer so it doesn't confuse mu4e's
+              ;; window restoration (do NOT call mu4e-view-quit here —
+              ;; that navigates to headers and races with mu4e's own
+              ;; post-compose window-config restore, producing duplicate
+              ;; headers windows).
+              (when-let* ((buf (get-buffer "*mu4e-article*")))
+                (kill-buffer buf))
+              (when-let* ((buf (get-buffer "*Org ASCII Export*")))
+                (kill-buffer buf))))
 
   (setq org-msg-options "html-postamble:nil H:5 num:nil ^:{} toc:nil author:nil email:nil \\n:t"
 	    org-msg-startup "hidestars indent inlineimages"
