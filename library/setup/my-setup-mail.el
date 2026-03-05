@@ -476,7 +476,7 @@ one is determined using `mu4e-attachment-dir'."
       (seq-do (lambda (parts)
                 ;; (debug)
                 (let* ((part (cdr parts))
-                       (path (mu4e--uniqify-file-name
+                       (path (mu4e--uniquify-file-name
                               (mu4e-join-paths
                                (or custom-dir (plist-get part :target-dir))
                                (plist-get part :filename)))))
