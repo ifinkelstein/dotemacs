@@ -634,12 +634,11 @@ copy the entire buffer.  Works in `org-mode', `markdown-mode',
 `gfm-mode', and `text-mode'.
 
 The conversion pipeline is:
-  org/markdown → pandoc --standalone → RTF → pbcopy
+  org/markdown → pandoc → RTF + plain text → osascript → clipboard
 
-`pbcopy' auto-detects RTF input (by the \\={\\\\rtf} header) and
-sets the clipboard type accordingly.  The result can be pasted
-into Word, Google Docs, Pages, etc. with bold, italic, headers,
-lists, and links preserved."
+Uses `osascript' to set both RTF and plain text on the clipboard,
+which is required for Word, Google Docs, and Pages to paste with
+formatting.  (`pbcopy' alone only sets one type, which Word ignores.)"
   (interactive)
   (unless (executable-find "pandoc")
     (user-error "pandoc not found; install with `brew install pandoc'"))
@@ -653,7 +652,10 @@ lists, and links preserved."
                         ((derived-mode-p 'gfm-mode) "gfm")
                         ((derived-mode-p 'markdown-mode) "markdown")
                         (t "markdown")))
-         (rtf-buf (generate-new-buffer " *rich-text-rtf*")))
+         (rtf-file (make-temp-file "emacs-rich-" nil ".rtf"))
+         (txt-file (make-temp-file "emacs-rich-" nil ".txt"))
+         (rtf-buf (generate-new-buffer " *rich-text-rtf*"))
+         (txt-buf (generate-new-buffer " *rich-text-txt*")))
     (unwind-protect
         (progn
           ;; Step 1: Convert to RTF via pandoc
@@ -667,18 +669,37 @@ lists, and links preserved."
                               "--standalone")))
               (unless (zerop exit-code)
                 (user-error "Pandoc conversion failed: %s"
-                            (string-trim (buffer-string))))))
-          ;; Step 2: Pipe RTF to pbcopy (auto-detects RTF format)
-          (with-current-buffer rtf-buf
+                            (string-trim (buffer-string)))))
+            (let ((coding-system-for-write 'raw-text))
+              (write-region (point-min) (point-max) rtf-file nil 'quiet)))
+          ;; Step 2: Convert to plain text via pandoc
+          (with-current-buffer txt-buf
+            (insert text)
             (let ((exit-code (call-process-region
                               (point-min) (point-max)
-                              "pbcopy" nil nil nil)))
+                              "pandoc" t t nil
+                              "-f" input-format
+                              "-t" "plain"
+                              "--wrap=none")))
               (unless (zerop exit-code)
-                (user-error "pbcopy failed"))))
+                (user-error "Pandoc plain text conversion failed")))
+            (write-region (point-min) (point-max) txt-file nil 'quiet))
+          ;; Step 3: Set RTF + plain text on clipboard via osascript
+          (let ((exit-code
+                 (call-process
+                  "osascript" nil nil nil "-e"
+                  (format "set rtfData to read (POSIX file \"%s\") as «class RTF »
+set plainText to read (POSIX file \"%s\") as «class utf8»
+set the clipboard to {«class RTF »:rtfData, string:plainText}"
+                          rtf-file txt-file))))
+            (unless (zerop exit-code)
+              (user-error "Failed to set clipboard via osascript")))
           (message "Copied as rich text to clipboard (%d chars)" (- end beg)))
       ;; Cleanup
-      (when (buffer-live-p rtf-buf)
-        (kill-buffer rtf-buf)))))
+      (when (buffer-live-p rtf-buf) (kill-buffer rtf-buf))
+      (when (buffer-live-p txt-buf) (kill-buffer txt-buf))
+      (when (file-exists-p rtf-file) (delete-file rtf-file))
+      (when (file-exists-p txt-file) (delete-file txt-file)))))
 
 ;; Clipboard Transforms Using Pandoc
 (defun my-org-to-markdown ()
