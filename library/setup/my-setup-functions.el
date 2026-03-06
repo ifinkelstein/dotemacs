@@ -627,17 +627,58 @@ Include: gptel, mu4e, and OrgMsg buffers in the user-buffer list"
 
 ;; Formatted Copy
 (defun my-formatted-copy ()
-  "Export region to HTML, and copy it to the clipboard."
+  "Copy region or buffer as rich text to the macOS clipboard.
+
+When a region is active, copy only the selected text.  Otherwise
+copy the entire buffer.  Works in `org-mode', `markdown-mode',
+`gfm-mode', and `text-mode'.
+
+The conversion pipeline is:
+  org/markdown → pandoc --standalone → RTF → pbcopy
+
+`pbcopy' auto-detects RTF input (by the \\={\\\\rtf} header) and
+sets the clipboard type accordingly.  The result can be pasted
+into Word, Google Docs, Pages, etc. with bold, italic, headers,
+lists, and links preserved."
   (interactive)
-  (save-window-excursion
-    (let* ((buf (org-export-to-buffer 'html "*Formatted Copy*" nil nil t t))
-           (html (with-current-buffer buf (buffer-string))))
-      (with-current-buffer buf
-        (shell-command-on-region
-         (point-min)
-         (point-max)
-         "textutil -stdin -format html -convert rtf -stdout | pbcopy"))
-      (kill-buffer buf))))
+  (unless (executable-find "pandoc")
+    (user-error "pandoc not found; install with `brew install pandoc'"))
+  (unless (derived-mode-p 'org-mode 'markdown-mode 'gfm-mode 'text-mode)
+    (user-error "Not in a supported mode (org, markdown, or text)"))
+  (let* ((beg (if (use-region-p) (region-beginning) (point-min)))
+         (end (if (use-region-p) (region-end) (point-max)))
+         (text (buffer-substring-no-properties beg end))
+         (input-format (cond
+                        ((derived-mode-p 'org-mode) "org")
+                        ((derived-mode-p 'gfm-mode) "gfm")
+                        ((derived-mode-p 'markdown-mode) "markdown")
+                        (t "markdown")))
+         (rtf-buf (generate-new-buffer " *rich-text-rtf*")))
+    (unwind-protect
+        (progn
+          ;; Step 1: Convert to RTF via pandoc
+          (with-current-buffer rtf-buf
+            (insert text)
+            (let ((exit-code (call-process-region
+                              (point-min) (point-max)
+                              "pandoc" t t nil
+                              "-f" input-format
+                              "-t" "rtf"
+                              "--standalone")))
+              (unless (zerop exit-code)
+                (user-error "Pandoc conversion failed: %s"
+                            (string-trim (buffer-string))))))
+          ;; Step 2: Pipe RTF to pbcopy (auto-detects RTF format)
+          (with-current-buffer rtf-buf
+            (let ((exit-code (call-process-region
+                              (point-min) (point-max)
+                              "pbcopy" nil nil nil)))
+              (unless (zerop exit-code)
+                (user-error "pbcopy failed"))))
+          (message "Copied as rich text to clipboard (%d chars)" (- end beg)))
+      ;; Cleanup
+      (when (buffer-live-p rtf-buf)
+        (kill-buffer rtf-buf)))))
 
 ;; Clipboard Transforms Using Pandoc
 (defun my-org-to-markdown ()
