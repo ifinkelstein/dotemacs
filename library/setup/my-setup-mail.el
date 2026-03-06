@@ -63,6 +63,14 @@
                                     (gb2312      . utf-8)
                                     (gbk         . utf-8)))
 
+  ;; Ensure Emacs decodes Windows-1252 (cp1252) correctly in mu4e.
+  ;; Outlook sends email in Windows-1252 whose 0x80–0x9F bytes (smart
+  ;; quotes, en-dashes, ellipses) are valid glyphs but fall in the C1
+  ;; control range of ISO-8859-1.  Without these two lines Emacs may
+  ;; fall back to latin-1 and render them as garbage.
+  (prefer-coding-system 'utf-8)
+  (set-coding-system-priority 'utf-8 'cp1252)
+
   ;; Finding the binary (installed w/homebrew)
   (setq mu4e-mu-binary (executable-find "mu"))
 
