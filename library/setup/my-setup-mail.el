@@ -476,10 +476,8 @@ one is determined using `mu4e-attachment-dir'."
                   (mm-save-part-to-file (plist-get part :handle) path)))
               candidates)) )
 
-  ;; (add-to-list 'mu4e-view-actions
-  ;;              '("export file(s)" . mu4e-view-save-attachments) t)
-  (add-to-list 'mu4e-view-actions
-               '("export all" . my-mu4e-view-save-all-attachments) t)
+  ;; "export all" removed — mu4e's built-in `mu4e-view-save-attachments'
+  ;; (bound to `e' in view mode) saves all when none are selected.
 
 
 
