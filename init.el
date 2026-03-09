@@ -237,6 +237,7 @@ Loading modules
 (require 'my-setup-vc)
 (require 'my-setup-shell) ;; various shell and CLI-related functions
 (require 'my-setup-mail)
+(require 'my-setup-calendar)
 
 (require 'my-setup-ai)
 (require 'my-setup-media) 

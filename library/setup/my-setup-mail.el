@@ -51,15 +51,19 @@
   (setq mm-default-coding-system 'utf-8)
   (setq mm-body-charset-encoding-alist '((iso-8859-1  . utf-8)
                                          (iso-8859-15 . utf-8)
-                                         (us-ascii     . utf-8)
-                                         (windows-1252 . utf-8)))
+                                         (us-ascii     . utf-8)))
   ;; Override declared charsets → utf-8 during MIME decoding (fixes the
   ;; "select encoding" prompt when forwarding messages with
-  ;; mismatched/undeclared charsets)
+  ;; mismatched/undeclared charsets).
+  ;;
+  ;; NOTE: Do NOT override windows-1252 → utf-8 here!  Windows-1252
+  ;; bytes 0x80–0x9F (smart quotes, en-dashes, ellipses) are NOT valid
+  ;; UTF-8.  Overriding causes garbage on decode and "unknown characters"
+  ;; prompts on reply.  Emacs already handles cp1252 natively via
+  ;; `set-coding-system-priority' below.
   (setq mm-charset-override-alist '((iso-8859-1  . utf-8)
                                     (iso-8859-15 . utf-8)
                                     (us-ascii    . utf-8)
-                                    (windows-1252 . utf-8)
                                     (gb2312      . utf-8)
                                     (gbk         . utf-8)))
 
@@ -433,25 +437,6 @@ still run.  The whole thing is idempotent."
   ;; TODO: Fix the function below so all attachements work
   ;; (bind-key "e" #'mu4e-views-mu4e-save-all-atachments mu4e-headers-mode-map)
   
-  (defun my-mu4e-action-save-import-ics-file (msg)
-    ;;   "Save the text/calendar file(s)  of a message in
-    ;;   `mu4e-attachment-dir'. Open with calendar app."
-    (let* ((parts (mu4e-view-mime-parts))
-           (cal-parts (seq-filter
-                       (lambda (el) (equal (plist-get el :mime-type) "text/calendar"))
-                       parts))
-           (handle (plist-get (car cal-parts) :handle))
-           (file (expand-file-name (concat (format-time-string "%Y%m%d_%H-%M-%S_cal") ".ics") mu4e-attachment-dir)))
-      (when handle
-        ;; save ics file with date-time-stamp in filename in mu4e-attachment-dir
-        (mm-save-part-to-file handle file)
-        ;; assuming I'm on a Mac (see xah-open-in-external-app for a better implementation)
-        ;; open this ics file with open app
-        (shell-command (concat "open " (shell-quote-argument file))))))
-
-  (add-to-list 'mu4e-view-actions
-               '("Cal import" . my-mu4e-action-save-import-ics-file) t)
-
   (defun my-mu4e-view-save-all-attachments (&optional ask-dir)
     "Save all files from the current view buffer.
 
@@ -661,13 +646,6 @@ Execute search with that query."
                  :action     (lambda (docid msg target)
                                (my-mu4e-remove-all-tags msg))))
 
-  (add-to-list 'mu4e-view-actions
-	           '("Ttodo with LLM" . my-todo-from-mu4e-message) t)
-
-  (add-to-list 'mu4e-headers-actions
-	           '("Ttodo with LLM" . my-todo-from-mu4e-message) t)
-
-
   ;; this function will remove all tags from a msg by erasing the mu4e-actions-tags-header-line
   ;; based on mu4e-action-retag-message
   (defun my-mu4e-remove-all-tags-message (msg)
@@ -736,11 +714,6 @@ Note: this function is actually not necessary because I learned how to use mu fi
     "Search all mails sent by current message's sender."
     (mu4e-headers-search
      (concat "from:" (cdar (mu4e-message-field msg :from)))))
-
-  ;; define 'x' as the shortcut
-  (add-to-list 'mu4e-view-actions
-               '("Xsearch for sender" . my-mu4e-search-for-sender) t)
-
 
   ;; create org link to message
   (require 'mu4e-org)
@@ -973,15 +946,121 @@ Strips surrounding angle brackets if present."
   ;;** Quick Actions & helper functions
   ;; Helpful discussion at
   ;; https://github.com/daviwil/emacs-from-scratch/blob/master/show-notes/Emacs-Mail-05.org
+
+  ;;*** LLM-enhanced TODO capture from email
+  ;; Uses pi + haiku to analyze the email, then opens org-capture
+  ;; with title, deadline, actions, context pre-populated.
+  ;; Template "m" in `org-capture-templates' uses %(sexp) to pull
+  ;; pending deadline and body from these variables.
+
+  (defvar my-mu4e-todo--pending-deadline nil
+    "Pending deadline string for the next org-capture, or nil.")
+
+  (defvar my-mu4e-todo--pending-body nil
+    "Pending body string for the next org-capture, or nil.")
+
+  (defun my-mu4e-todo--deadline-string ()
+    "Return DEADLINE line if pending, empty string otherwise.
+Consumes the pending value.  Called by %(sexp) in the \"m\" template."
+    (prog1 (if my-mu4e-todo--pending-deadline
+                (format "DEADLINE: <%s>\n" my-mu4e-todo--pending-deadline)
+              "")
+      (setq my-mu4e-todo--pending-deadline nil)))
+
+  (defun my-mu4e-todo--body-string ()
+    "Return body content if pending, empty string otherwise.
+Consumes the pending value.  Called by %(sexp) in the \"m\" template."
+    (prog1 (or my-mu4e-todo--pending-body "")
+      (setq my-mu4e-todo--pending-body nil)))
+
+  (declare-function my-todo-from-email--build-body "private")
+  (declare-function my-remove-triple-ticks "my-setup-ai")
+
   (defun my-mu4e-capture-mail-gtd (msg)
-    "Capture message as a TODO item"
+    "Capture email MSG as a TODO with LLM-generated summary.
+Stores the mu4e link, sends the email body to pi CLI (haiku) for
+analysis, then opens `org-capture' with the heading, deadline,
+action items, and context pre-populated.  The user can edit
+everything in the capture buffer before confirming.
+
+Falls back to a plain capture buffer if the LLM fails."
     (interactive)
-    (call-interactively 'org-store-link)
-    (org-capture nil "m"))
+    (org-store-link nil t)
+    (let* ((pi-program (or my-todo-from-email-pi-program
+                           (executable-find "pi")))
+           (subject    (mu4e-message-field msg :subject))
+           (email-body (mu4e-view-message-text msg))
+           (tmpfile    (make-temp-file "mu4e-todo-" nil ".txt"))
+           (proc-buf   (generate-new-buffer " *todo-from-email*"))
+           (prompt     (concat
+                        "Analyze this email for " user-full-name ".  "
+                        "Subject: " subject "\n\n"
+                        "Return ONLY a valid JSON object:\n"
+                        "{\"title\": \"brief imperative action (5-8 words, use names)\","
+                        " \"actions\": [\"specific next step 1\", \"next step 2\"],"
+                        " \"deadline\": \"YYYY-MM-DD or null if none mentioned\","
+                        " \"context\": \"1-2 sentences of essential context\","
+                        " \"refs\": [\"bare URLs (no labels) or plain email addresses\"]}\n\n"
+                        "Focus on what " user-full-name " must DO.  Be terse.  "
+                        "Only include deadline if explicitly stated.")))
+      (unless pi-program
+        (user-error "Cannot find `pi' binary on PATH"))
+      (with-temp-file tmpfile (insert email-body))
+      (message "[todo] Analyzing: %s..." subject)
+      (let ((proc
+             (make-process
+              :name "todo-from-email"
+              :buffer proc-buf
+              :command (list pi-program
+                             "--print" "--mode" "text"
+                             "--no-tools" "--no-session"
+                             "--no-extensions" "--no-skills"
+                             "--no-prompt-templates" "--no-themes"
+                             "--provider" "anthropic"
+                             "--model" "claude-haiku-4-5"
+                             "--system-prompt"
+                             "Respond with valid JSON only. No markdown fences."
+                             (concat "@" tmpfile)
+                             prompt)
+              :sentinel
+              (lambda (process _signal)
+                (when (eq (process-status process) 'exit)
+                  (unwind-protect
+                      (let ((title nil)
+                            (ok (zerop (process-exit-status process))))
+                        (when ok
+                          (condition-case err
+                              (let* ((output (with-current-buffer proc-buf
+                                               (buffer-substring-no-properties
+                                                (point-min) (point-max))))
+                                     (cleaned (my-remove-triple-ticks output))
+                                     (result (json-parse-string
+                                              cleaned
+                                              :object-type 'plist
+                                              :array-type 'list
+                                              :null-object nil
+                                              :false-object nil)))
+                                (setq title (or (plist-get result :title) "Process email"))
+                                (setq my-mu4e-todo--pending-deadline
+                                      (plist-get result :deadline))
+                                (setq my-mu4e-todo--pending-body
+                                      (let ((body (my-todo-from-email--build-body result)))
+                                        (unless (string-empty-p body)
+                                          (concat body "\n")))))
+                            (error
+                             (message "[todo] LLM parse error: %s"
+                                      (error-message-string err)))))
+                        ;; Open capture — with or without LLM pre-population.
+                        (if title
+                            (org-capture-string title "m")
+                          (org-capture nil "m")))
+                    (when (file-exists-p tmpfile) (delete-file tmpfile))
+                    (when (buffer-live-p proc-buf) (kill-buffer proc-buf))))))))
+        (set-process-query-on-exit-flag proc nil))))
 
   ;; Add custom actions for our capture templates
   (add-to-list 'mu4e-headers-actions
-               '("todo" . my-mu4e-capture-mail-gtd ) t)
+               '("todo" . my-mu4e-capture-mail-gtd) t)
   (add-to-list 'mu4e-view-actions
                '("todo" . my-mu4e-capture-mail-gtd) t)
 
@@ -1305,36 +1384,33 @@ select one email at a time.
 
   (defun cpm/org-msg-hooks ()
     "Hooks for org-msg"
-    (progn
-      (auto-fill-mode -1)
-      (hl-line-mode -1)  ;; disable highlight line when composing emails
-      (diff-hl-mode -1) ;; disable diff gutter
-      ;; Shrink org-meta-line (#+begin_src, #+PROPERTIES, etc.) in compose buffers only
-      (face-remap-add-relative 'org-meta-line :height 0.5 :foreground "gray60")
-      ;; (company-mode 1)
-      ;; FIXME: Try remove auto-save hook *locally* to avoid multiple saved drafts
-      (remove-hook 'auto-save-hook #'cpm/full-auto-save t)))
+    (auto-fill-mode -1)
+    (hl-line-mode -1)  ;; disable highlight line when composing emails
+    (diff-hl-mode -1) ;; disable diff gutter
+    ;; Shrink org-meta-line (#+begin_src, #+PROPERTIES, etc.) in compose buffers only
+    (face-remap-add-relative 'org-meta-line :height 0.5 :foreground "gray60")
+    ;; FIXME: Try remove auto-save hook *locally* to avoid multiple saved drafts
+    (remove-hook 'auto-save-hook #'cpm/full-auto-save t))
   (add-hook 'org-msg-edit-mode-hook #'cpm/org-msg-hooks)
 
-
-  ;; In org-msg buffers, `message-goto-body' lands on the mail/mime
-  ;; separator which is invisible.  Advise it to jump to the line
-  ;; after :END: instead — the actual editing area.  This also fixes
-  ;; the cursor clobber from `mu4e--jump-to-a-reasonable-place' which
-  ;; calls `message-goto-body' after org-msg has set up the buffer.
-  (defun my-message-goto-body-org-msg (orig &rest args)
-    "In org-msg buffers, go to the line after :END: instead.
-Must return point (like the original `message-goto-body') because
-callers such as `org-msg-prepare-to-send' use the return value as
-a buffer position."
-    (if (derived-mode-p 'org-msg-edit-mode)
-        (progn
-          (goto-char (point-min))
-          (if (re-search-forward "^[ \t]*:END:[ \t]*$" nil t)
-              (progn (forward-line 1) (point))
-            (apply orig args)))
-      (apply orig args)))
-  (advice-add 'message-goto-body :around #'my-message-goto-body-org-msg)
+  ;; After compose setup, `mu4e--jump-to-a-reasonable-place' calls
+  ;; `message-goto-body' which lands on the #+OPTIONS line (inside the
+  ;; org-msg metadata).  Adjust it to land after :END: instead.
+  ;; Unlike the old `message-goto-body' advice this only fires during
+  ;; compose setup so it cannot interfere with `org-msg-prepare-to-send'.
+  (defun my--org-msg-fix-jump (orig &rest args)
+    "In org-msg buffers, ensure cursor lands after :END:, not in metadata."
+    (apply orig args)
+    (when (derived-mode-p 'org-msg-edit-mode)
+      (let ((end-pos (save-excursion
+                       (goto-char (point-min))
+                       (when (re-search-forward "^[ \t]*:END:[ \t]*$" nil t)
+                         (line-beginning-position 2)))))
+        (when (and end-pos (< (point) end-pos)
+                   (message-field-value "To")
+                   (message-field-value "Subject"))
+          (goto-char end-pos)))))
+  (advice-add 'mu4e--jump-to-a-reasonable-place :around #'my--org-msg-fix-jump)
 
 
   (defun my-mu4e-add-attachment-icons ()
