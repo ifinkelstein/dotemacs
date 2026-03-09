@@ -591,8 +591,13 @@ Execute search with that query."
                               ))
 
   ;; how to handle html-formatted emails
-  ;; View in browser
+  ;; View in browser (works from both headers and view via raw file dissection)
   (add-to-list 'mu4e-view-actions '("view in browser" . mu4e-action-view-in-browser) t)
+  (add-to-list 'mu4e-headers-actions '("view in browser" . mu4e-action-view-in-browser) t)
+  ;; Remove xwidget duplicate — "view in browser" covers it
+  (setq mu4e-view-actions
+        (cl-remove-if (lambda (a) (equal (car a) "xview in xwidget"))
+                       mu4e-view-actions))
 
   ;; other display settings
   (setq mu4e-speedbar-support t)
