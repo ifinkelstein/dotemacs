@@ -1351,13 +1351,12 @@ select one email at a time.
   (add-hook 'message-sent-hook
             (lambda ()
               (interactive)
-              ;; Kill stale article buffer so it doesn't confuse mu4e's
-              ;; window restoration (do NOT call mu4e-view-quit here —
-              ;; that navigates to headers and races with mu4e's own
-              ;; post-compose window-config restore, producing duplicate
-              ;; headers windows).
-              (when-let* ((buf (get-buffer "*mu4e-article*")))
-                (kill-buffer buf))
+              ;; Do NOT kill *mu4e-article* here — it must survive until
+              ;; `mu4e-compose-post-restore-window-configuration' runs
+              ;; (via mu4e-compose-post-hook).  Killing it before the
+              ;; restore causes `set-window-configuration' to substitute
+              ;; the headers buffer into the dead article window slot,
+              ;; producing duplicate headers windows.
               (when-let* ((buf (get-buffer "*Org ASCII Export*")))
                 (kill-buffer buf))))
 
