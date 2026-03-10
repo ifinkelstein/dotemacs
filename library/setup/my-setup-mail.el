@@ -498,12 +498,28 @@ Execute search with that query."
     
     )
 
-  ;; define 'z' as the shortcut
-  (add-to-list 'mu4e-view-actions
-               '("zsearch for sender" . my-mu4e-search-for-sender) t)
-
-  (add-to-list 'mu4e-headers-actions
-               '("zsearch for sender" . my-mu4e-search-for-sender) t)
+  ;;* mu4e actions (headers & view)
+  ;; Shortcut key is the first character of the action name.
+  ;;   a → add contact          g → gcal add
+  ;;   o → org link             r → retag message
+  ;;   R → Remove all tags      t → todo
+  ;;   v → view in browser      y → yank path
+  ;;   z → search for sender
+  (dolist (action '(("add contact"       . mu4e-action-add-org-contact)
+                    ("gcal add"           . my-mu4e-action-add-to-calendar)
+                    ("org link"           . org-store-link)
+                    ("retag message"      . mu4e-action-retag-message)
+                    ("Remove all tags"    . my-mu4e-remove-all-tags-message)
+                    ("todo"              . my-mu4e-capture-mail-gtd)
+                    ("view in browser"   . mu4e-action-view-in-browser)
+                    ("yank path"         . my-mu4e-copy-message-path)
+                    ("zsearch for sender" . my-mu4e-search-for-sender)))
+    (add-to-list 'mu4e-headers-actions action t)
+    (add-to-list 'mu4e-view-actions action t))
+  ;; Remove xwidget duplicate — "view in browser" covers it
+  (setq mu4e-view-actions
+        (cl-remove-if (lambda (a) (equal (car a) "xview in xwidget"))
+                       mu4e-view-actions))
 
   ;;* Viewing
   (defun mu4e-get-account (msg)
@@ -589,13 +605,6 @@ Execute search with that query."
                               ))
 
   ;; how to handle html-formatted emails
-  ;; View in browser (works from both headers and view via raw file dissection)
-  (add-to-list 'mu4e-view-actions '("view in browser" . mu4e-action-view-in-browser) t)
-  (add-to-list 'mu4e-headers-actions '("view in browser" . mu4e-action-view-in-browser) t)
-  ;; Remove xwidget duplicate — "view in browser" covers it
-  (setq mu4e-view-actions
-        (cl-remove-if (lambda (a) (equal (car a) "xview in xwidget"))
-                       mu4e-view-actions))
 
   ;; other display settings
   (setq mu4e-speedbar-support t)
@@ -673,11 +682,7 @@ Execute search with that query."
       (mu4e-message (concat "All tags removed."))
       (mu4e--refresh-message path)))
 
-  (add-to-list 'mu4e-view-actions
-	           '("Rremove all tags" . my-mu4e-remove-all-tags-message) t)
 
-  (add-to-list 'mu4e-headers-actions
-	           '("Rremove all tags" . my-mu4e-remove-all-tags-message) t)
 
   (defun my-mu4e-copy-message-path (msg)
     "Copy the file path of MSG to the kill ring."
@@ -685,17 +690,9 @@ Execute search with that query."
       (kill-new path)
       (message "Copied: %s" path)))
 
-  (add-to-list 'mu4e-view-actions
-               '("yank path" . my-mu4e-copy-message-path) t)
 
-  (add-to-list 'mu4e-headers-actions
-               '("yank path" . my-mu4e-copy-message-path) t)
 
-  (add-to-list 'mu4e-view-actions
-	           '("retag message" . mu4e-action-retag-message) t)
 
-  (add-to-list 'mu4e-headers-actions
-	           '("retag message" . mu4e-action-retag-message) t)
 
 
   (defun my-mu4e-last-month ()
@@ -720,20 +717,12 @@ Note: this function is actually not necessary because I learned how to use mu fi
 
   ;; create org link to message
   (require 'mu4e-org)
-  (add-to-list 'mu4e-view-actions
-               '("org link" . org-store-link) t)
-  (add-to-list 'mu4e-headers-actions
-               '("org link" . org-store-link) t)
 
-  ;; add sender to org-contacts (press 'a' then 'o' in view/headers)
+  ;; org-contacts file for "add contact" action
   ;; NOTE: org-contacts can aggressively override mu4e's native contact
   ;; completion. If that happens, set `org-contacts-enable-completion' to
   ;; nil in the org-contacts use-package (in my-setup-notes.el).
   (setq mu4e-org-contacts-file (concat org-directory "contacts.org"))
-  (add-to-list 'mu4e-headers-actions
-               '("org-contact-add" . mu4e-action-add-org-contact) t)
-  (add-to-list 'mu4e-view-actions
-               '("org-contact-add" . mu4e-action-add-org-contact) t)
 
   ;; TODO: implement this function to open mu4e links from org in another frame
   ;; I need to modify how the org-link behavior works in org
@@ -1061,11 +1050,7 @@ Falls back to a plain capture buffer if the LLM fails."
                     (when (buffer-live-p proc-buf) (kill-buffer proc-buf))))))))
         (set-process-query-on-exit-flag proc nil))))
 
-  ;; Add custom actions for our capture templates
-  (add-to-list 'mu4e-headers-actions
-               '("todo" . my-mu4e-capture-mail-gtd) t)
-  (add-to-list 'mu4e-view-actions
-               '("todo" . my-mu4e-capture-mail-gtd) t)
+
 
   
   ;; copy fields to kill ring
