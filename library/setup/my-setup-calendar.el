@@ -106,12 +106,7 @@ Works from headers and view mode."
                 (gcal-add--run-gws event-plist summary)
               (message "Cancelled.")))
         ;; No ICS — fall through to LLM extraction via gcal-add.
-        (gcal-add))))
-
-  (add-to-list 'mu4e-view-actions
-               '("Add to gcal" . my-mu4e-action-add-to-calendar) t)
-  (add-to-list 'mu4e-headers-actions
-               '("Add to gcal" . my-mu4e-action-add-to-calendar) t))
+        (gcal-add)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (provide 'my-setup-calendar)
