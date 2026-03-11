@@ -269,8 +269,12 @@
     (save-excursion
       (dolist (buf (buffer-list))
         (set-buffer buf)
-        (if (and (buffer-file-name) (buffer-modified-p))
-            (basic-save-buffer)))))
+        (when (and (buffer-file-name) (buffer-modified-p))
+          (condition-case err
+              (basic-save-buffer)
+            (error
+             (message "Auto-save failed for %s: %s"
+                      (buffer-name buf) (error-message-string err))))))))
 
   (add-hook 'auto-save-hook 'my-full-auto-save)
 

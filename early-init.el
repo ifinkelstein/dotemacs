@@ -62,6 +62,11 @@
 (setopt tool-bar-mode nil
         scroll-bar-mode nil)
 
+;; Disable tooltip frames; show help-echo in the echo area instead.
+;; Tooltip frames are actual child frames, and their creation/destruction
+;; triggers OS-level window resize events via the tiling window manager.
+(setopt tooltip-mode nil)
+
 ;; Fundamental mode at startup.
 ;; This helps with load-time since no extra libraries are loaded.
 (setopt initial-major-mode 'fundamental-mode)
