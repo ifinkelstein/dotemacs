@@ -4,7 +4,7 @@
 
 ;;* gcal-add — Add events to Google Calendar via AI extraction
 ;; Package source and tests: ~/projects/elisp/gcal-add/
-(defvar my-gcal-add-pi-model "claude-haiku-latest"
+(defvar my-gcal-add-pi-model "claude-haiku-4-5"
   "LLM model passed to the pi CLI backend for gcal-add.")
 
 (use-package gcal-add
