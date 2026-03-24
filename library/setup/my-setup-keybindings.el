@@ -632,6 +632,7 @@
   ["Window Management"
    ["Split/Rotate"
     ("b" "Balance Windows" balance-windows)
+    ("B" "Cycle 1/2 → 2/3 → 1/3" my-cycle-window-split-ratio)
     ("o" "Other Window" my-other-window)
     ("h" "Split & Focus Below" my-split-window-below-and-focus)
     ("H" "Split Below" split-window-below)
