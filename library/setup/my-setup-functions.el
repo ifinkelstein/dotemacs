@@ -282,6 +282,24 @@ recently visited directory from `dired-recent-directories' if available."
           (select-window first-win)
           (if this-win-2nd (other-window 1))))))
 
+(defun my-cycle-window-split-ratio ()
+  "Cycle the selected window through 1/2 → 2/3 → 1/3 size.
+Works with exactly two windows in any split direction."
+  (interactive)
+  (unless (= (count-windows) 2)
+    (user-error "Need exactly 2 windows"))
+  (let* ((horiz (window-combined-p nil t))
+         (total (if horiz (frame-width) (frame-height)))
+         (current (if horiz (window-width) (window-height)))
+         (ratio (/ (float current) total))
+         (target (cond
+                  ((< ratio 0.4)  0.5)    ; ~1/3 → 1/2
+                  ((< ratio 0.58) 0.667)  ; ~1/2 → 2/3
+                  (t              0.333))) ; ~2/3 → 1/3
+         (target-size (round (* target total)))
+         (delta (- target-size current)))
+    (window-resize nil delta horiz)))
+
 ;; Jump to Minibuffer Window
 (defun my-goto-minibuffer-window ()
   "locate point to minibuffer window if it is active."

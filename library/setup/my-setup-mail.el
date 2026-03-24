@@ -1400,6 +1400,7 @@ select one email at a time.
   (advice-add 'mu4e--jump-to-a-reasonable-place :around #'my--org-msg-fix-jump)
 
 
+
   (defun my-mu4e-add-attachment-icons ()
     "Display file-type icons next to the PROPERTIES drawer for each attachment.
 Uses `nerd-icons-icon-for-file' to pick an appropriate icon per filename."
