@@ -540,7 +540,7 @@ If FRAME is omitted or nil, use currently selected frame."
         " "
         tab-num
         (propertize " " 'display '(space :width (4)))
-        (alist-get 'name tab)
+        (truncate-string-to-width (alist-get 'name tab) 10 nil nil t)
         (or (and tab-bar-close-button-show
                  (not (eq tab-bar-close-button-show
                           (if current-p 'non-selected 'selected)))

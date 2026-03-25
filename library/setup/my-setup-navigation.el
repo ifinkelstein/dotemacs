@@ -65,6 +65,7 @@
 ;; URL or e-mail address, and either load the URL into a browser of
 ;; your choice using the browse-url package, or if it's an e-mail
 ;; address, to send an e-mail to that address.
+;; Note; turned this off in favor of link-hint package
 ;; (use-package goto-addr
 ;;   :ensure nil
 ;;   :hook ((compilation-mode . goto-address-mode)
@@ -314,7 +315,13 @@ The window scope is determined by `avy-all-windows' (ARG negates it)."
              link-hint-copy-link)
   :config
   ;;show avy shortcuts before the link instead of on top of them
-  (setq link-hint-avy-style 'pre))
+  (setq link-hint-avy-style 'pre)
+  ;; Route DocuSign URLs to Chrome (they don't work with Firefox security settings)
+  (setq browse-url-chrome-program
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+  (setq browse-url-handlers
+        '(("docusign\\.net" . browse-url-chrome)
+          ("docusign\\.com" . browse-url-chrome))))
 
 ;;* avy-like text zapping use avy-style navigation for zapping parts
 ;; of something TODO: patch this repo to add a function that defines
