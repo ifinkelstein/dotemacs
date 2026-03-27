@@ -265,11 +265,16 @@
          )
 
   (defun my-full-auto-save ()
+    "Save all file-visiting buffers silently.
+Skip buffers whose file changed on disk (let auto-revert handle those)."
     (interactive)
     (save-excursion
       (dolist (buf (buffer-list))
         (set-buffer buf)
-        (when (and (buffer-file-name) (buffer-modified-p))
+        (when (and (buffer-file-name) (buffer-modified-p)
+                   ;; Only save if file on disk hasn't changed behind our back.
+                   ;; When it has, auto-revert-mode will pick up the new version.
+                   (verify-visited-file-modtime buf))
           (condition-case err
               (basic-save-buffer)
             (error
