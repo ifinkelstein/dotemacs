@@ -239,7 +239,7 @@ START and END, rather than by the position of point and mark."
   ;; need to not insert text for my custom whisper function
   (whisper-insert-text-at-point t)
   (whisper-install-directory my-var-dir)
-  (whisper-model "base")
+  (whisper-model "large-v3-turbo")
   (whisper-language "en")
   (whisper-translate nil)
   (whisper--ffmpeg-input-device-name "Macbook Pro Microphone")
@@ -414,6 +414,9 @@ Each list contains a list of cons cells, where the car is the device number and 
 
 
 ;;* pi-coding-agent
+(use-package md-ts-mode :ensure t)
+(use-package markdown-table-wrap :ensure t)
+
 (use-package pi-coding-agent
   ;; Using local repo with image paste support (yank-media)
   :load-path "~/projects/elisp/pi-coding-agent"
