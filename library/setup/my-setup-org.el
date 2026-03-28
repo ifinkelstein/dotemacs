@@ -392,7 +392,13 @@
          :prepend t
          :empty-lines 1
          :created t)  ; template
-        ("m" "Mail todo"
+        ("M" "Mail todo (simple)"
+         entry (file+headline org-default-notes-file "Mail")
+         "* TODO %?\n:PROPERTIES:\n:Created: %U\n:END:\n%a\n"
+         :prepend t
+         :created t
+         :empty-lines 1)
+        ("m" "Mail todo (AI)"
          entry (file+headline org-default-notes-file "Mail")
          "* TODO %i%?\n%(my-mu4e-todo--deadline-string):PROPERTIES:\n:Created: %U\n:END:\nLink: %a\n%(my-mu4e-todo--body-string)"
          :prepend t

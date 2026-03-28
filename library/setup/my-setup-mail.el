@@ -502,15 +502,16 @@ Execute search with that query."
   ;; Shortcut key is the first character of the action name.
   ;;   a → add contact          g → gcal add
   ;;   o → org link             r → retag message
-  ;;   R → Remove all tags      t → todo
-  ;;   v → view in browser      y → yank path
-  ;;   z → search for sender
+  ;;   R → Remove all tags      t → todo from email
+  ;;   T → Todo (AI)            v → view in browser
+  ;;   y → yank path            z → search for sender
   (dolist (action '(("add contact"       . mu4e-action-add-org-contact)
                     ("gcal add"           . my-mu4e-action-add-to-calendar)
                     ("org link"           . org-store-link)
                     ("retag message"      . mu4e-action-retag-message)
                     ("Remove all tags"    . my-mu4e-remove-all-tags-message)
-                    ("todo"              . my-mu4e-capture-mail-gtd)
+                    ("todo from email"   . my-mu4e-capture-mail-todo)
+                    ("Todo (AI)"         . my-mu4e-capture-mail-gtd)
                     ("view in browser"   . mu4e-action-view-in-browser)
                     ("yank path"         . my-mu4e-copy-message-path)
                     ("zsearch for sender" . my-mu4e-search-for-sender)))
@@ -967,6 +968,12 @@ Consumes the pending value.  Called by %(sexp) in the \"m\" template."
 
   (declare-function my-todo-from-email--build-body "private")
   (declare-function my-remove-triple-ticks "my-setup-ai")
+
+  (defun my-mu4e-capture-mail-todo (msg)
+    "Capture email MSG as a simple TODO with an org-link to the message."
+    (interactive)
+    (org-store-link nil t)
+    (org-capture nil "M"))
 
   (defun my-mu4e-capture-mail-gtd (msg)
     "Capture email MSG as a TODO with LLM-generated summary.
