@@ -19,18 +19,28 @@
   :bind ( (:map slack-mode-map
                 (("@" . slack-message-embed-mention)
                  ("#" . slack-message-embed-channel)
-                 ("M-o" . my-transient-slack)
+                 ("M-o" . casual-slack-dispatch)
                  ("C-." . flyspell-auto-correct-word)))
           (:map slack-thread-message-buffer-mode-map
                 (("C-c '" . slack-message-write-another-buffer)
                  ("@" . slack-message-embed-mention)
                  ("#" . slack-message-embed-channel)
+                 ("M-o" . casual-slack-dispatch)
                  ("C-." . flyspell-auto-correct-word)))
           (:map slack-message-buffer-mode-map
                 (("C-c '" . slack-message-write-another-buffer)
+                 ("M-o" . casual-slack-dispatch)
+                 ("C-." . flyspell-auto-correct-word)))
+          (:map slack-message-edit-buffer-mode-map
+                (("@" . slack-message-embed-mention)
+                 ("#" . slack-message-embed-channel)
+                 ("M-o" . casual-slack-dispatch)
                  ("C-." . flyspell-auto-correct-word)))
           (:map slack-message-compose-buffer-mode-map
-                (("C-c '" . slack-message-send-from-buffer)
+                (("@" . slack-message-embed-mention)
+                 ("#" . slack-message-embed-channel)
+                 ("C-c '" . slack-message-send-from-buffer)
+                 ("M-o" . casual-slack-dispatch)
                  ("C-." . flyspell-auto-correct-word))))
   :config
   (setq slack-extra-subscribed-channels (mapcar 'intern (list "some-channel")))
@@ -88,35 +98,36 @@
   (setq emojify-display-style 'image) ;;switching to unicode crashes slack
   (setq emojify-emoji-styles '(unicode github)))
 
-;;** transient for dealing with emacs-slack
+;;** Slack Workspace (tabspaces)
+
+(defun my-open-slack-in-workspace ()
+  "Open Slack in its own tab-bar workspace.
+If the workspace already exists, switch to it."
+  (interactive)
+  (if (member "Slack" (tabspaces--list-tabspaces))
+      (tab-bar-switch-to-tab "Slack")
+    (tab-bar-new-tab)
+    (tab-bar-rename-tab "Slack")
+    (delete-other-windows)
+    (slack-select-unread-rooms)))
+
+;;** Helpers
 
 (defun my-slack-message-add-reaction (str)
-  "Modified slack add-reaction that takes an emoji as input.
-  The str var has to be 'emoji-name,' without the :...:
-  For example, pass 'tent' but not ':tent:'"
-  (interactive)
+  "Add reaction STR to message at point.
+STR should be the emoji name without colons, e.g. \"tent\" not \":tent:\"."
+  (interactive "sEmoji name: ")
   (slack-if-let* ((buf slack-current-buffer)
                   (team (slack-buffer-team buf))
-                  ;; later, add some error correction to remove :...: colons
-                  (str-emoji str))
-      (slack-buffer-add-reaction-to-message buf
-                                            str-emoji
-                                            (slack-get-ts))))
-
-(defclass slack-prefix (transient-prefix) ()
-  "Prefix class for Slack commands.")
-
-(defclass slack-suffix (transient-suffix) ()
-  "Suffix class for Slack commands.")
+                  (str-emoji (string-trim str ":"  ":")))
+      (slack-buffer-add-reaction-to-message buf str-emoji (slack-get-ts))))
 
 (defun my-slack-attach-dired-to-buffer (files)
-  "Attach FILES marked or current file in `dired' to slack converration in other window.
-Precondition: Point must be in a `dired' buffer.
-Idea taken from `org-attach-dired-to-subtree'."
+  "Attach FILES marked in dired to the Slack conversation in other window."
   (interactive
    (list (dired-get-marked-files)))
   (unless (eq major-mode 'dired-mode)
-    (user-error "This command must be triggered in a `dired' buffer"))
+    (user-error "This command must be triggered in a dired buffer"))
   (let ((start-win (selected-window))
         (other-win
          (get-window-with-predicate
@@ -124,120 +135,223 @@ Idea taken from `org-attach-dired-to-subtree'."
             (with-current-buffer (window-buffer window)
               (derived-mode-p 'slack-mode))))))
     (unless other-win
-      (user-error
-       "Can't upload to Slack.  No window displaying a Slack buffer"))
+      (user-error "No window displaying a Slack buffer"))
     (select-window other-win)
     (dolist (file files)
-      ;; this is where the slack attach has to happen
       (slack-file-upload file
                          (slack-file-select-filetype (file-name-extension file))
                          (file-name-nondirectory file)))
-    (select-window start-win)
-    ))
+    (select-window start-win)))
 
-(transient-define-prefix my-transient-slack ()
-  "Slack command menu."
-  [["Basic Operations"
-    ("K" "Stop Slack" slack-stop)
-    ("c" "Select Rooms" slack-select-rooms)
-    ("u" "Select Unread Rooms" slack-select-unread-rooms)
-    ("U" "Select User" slack-user-select)]
-   ["Messages"
-    ("s" "Search Messages" slack-search-from-messages)
-    ("E" "Edit Message" slack-message-edit)
-    ("r" "Add Reaction" slack-message-add-reaction)
-    ("t" "Thread Show/Create" slack-thread-show-or-create)
-    ("g" "Redisplay Message" slack-message-redisplay)]
-   ["Navigation"
-    ("J" "Jump to Browser" slack-jump-to-browser)
-    ("j" "Jump to App" slack-jump-to-app)]]
-  [["Composition"
-    ("@" "Embed Mention" slack-message-embed-mention)
-    ("#" "Embed Channel" slack-message-embed-channel)
-    ("'" "Write in Buffer" slack-message-write-another-buffer)
-    ("RET" "Send from Buffer" slack-message-send-from-buffer)]
-   ["Files"
-    ;; maybe force opening a dired window if not open?
-    ("D" "via dired" my-slack-attach-dired-to-buffer) 
-    ]]
+(defun my-slack-thumbsup ()
+  "Add 👍 reaction or insert emoji depending on context."
+  (interactive)
+  (if (get-text-property (point) 'read-only)
+      (progn
+        (my-slack-message-add-reaction "thumbsup")
+        (goto-char (point-max)))
+    (insert "👍")))
 
-  
-  [["Quoting"
-    ("q" "Quote and Reply" slack-quote-and-reply)
-    ("Q" "Quote and Reply with Link" slack-quote-and-reply-with-link)]
-   ["Updates"
-    ("G" "Update Conversations List" slack-conversations-list-update-quick)]
+(defun my-slack-eyes ()
+  "Add 👀 reaction to message at point."
+  (interactive)
+  (my-slack-message-add-reaction "eyes"))
+
+(defun my-slack-check ()
+  "Add ✅ reaction to message at point."
+  (interactive)
+  (my-slack-message-add-reaction "white_check_mark"))
+
+;;** Context-aware transients (casual-style)
+
+;; Global — available from anywhere, the main entry point
+(transient-define-prefix casual-slack ()
+  "Slack."
+  ["Slack"
+   ["Navigate"
+    ("c" "Channel"       slack-select-rooms)
+    ("u" "Unread"        slack-select-unread-rooms)
+    ("i" "DM"            slack-im-select)
+    ("g" "Group"         slack-group-select)
+    ("a" "Activity Feed" slack-activity-feed-show)
+    ("T" "All Threads"   slack-all-threads)]
+   ["Search"
+    ("s" "Messages"  slack-search-from-messages)
+    ("S" "Files"     slack-search-from-files)]
+   ["Users"
+    ("p" "Profile"  slack-user-select)
+    ("P" "Status"   slack-user-set-status)]
+   ["Connection"
+    ("o" "Start"  slack-start)
+    ("K" "Stop"   slack-stop)
+    ("R" "Refresh Token" slack-refresh-token)]])
+
+;; Message buffer — reading a channel or DM
+(transient-define-prefix casual-slack-message-buffer ()
+  "Slack › Channel"
+  :transient-suffix 'transient--do-stay
+  ["Navigate"
+   ["Move"
+    ("n" "Next msg"  slack-buffer-goto-next-message :transient t)
+    ("p" "Prev msg"  slack-buffer-goto-prev-message :transient t)
+    ("M-<" "First"   slack-buffer-goto-first-message :transient t)
+    ("M->" "Last"    slack-buffer-goto-last-message :transient t)
+    ("m" "Load more" slack-load-more-message :transient t)]
+   ["Open"
+    ("t"   "Thread"     slack-thread-show-or-create :transient nil)
+    ("u"   "Unread"     slack-select-unread-rooms :transient nil)
+    ("c"   "Channel"    slack-select-rooms :transient nil)
+    ("j"   "App"        slack-jump-to-app :transient nil)
+    ("J"   "Browser"    slack-jump-to-browser :transient nil)
+    ("RET" "Open link"  slack-open-link :transient nil)]]
+  ["Act"
+   ["Message"
+    ("e" "Edit"         slack-message-edit :transient nil)
+    ("d" "Delete"       slack-message-delete :transient nil)
+    ("y" "Copy link"    slack-message-copy-link :transient nil)
+    ("s" "Share"        slack-message-share :transient nil)
+    ("g" "Redisplay"    slack-message-redisplay :transient t)]
+   ["React"
+    ("r"  "Add reaction"    slack-message-add-reaction :transient nil)
+    ("R"  "Remove reaction" slack-message-remove-reaction :transient nil)
+    ("1"  "👍"  my-slack-thumbsup :transient t)
+    ("2"  "👀"  my-slack-eyes :transient t)
+    ("3"  "✅"  my-slack-check :transient t)]
+   ["Star & Pin"
+    ("*"  "Star"   slack-message-add-star :transient nil)
+    ("8"  "Unstar" slack-message-remove-star :transient nil)
+    ("+"  "Pin"    slack-message-pins-add :transient nil)
+    ("-"  "Unpin"  slack-message-pins-remove :transient nil)]
+   ["Follow"
+    ("f"  "Follow"   slack-message-follow :transient nil)
+    ("F"  "Unfollow" slack-message-unfollow :transient nil)]]
+  ["Compose & Files"
+   ["Write"
+    ("w"  "Write in buffer" slack-message-write-another-buffer :transient nil)
+    ("q"  "Quote reply"     slack-quote-and-reply :transient nil)
+    ("Q"  "Quote w/ link"   slack-quote-and-reply-with-link :transient nil)
+    ("@"  "Mention"         slack-message-embed-mention :transient nil)
+    ("#"  "Channel link"    slack-message-embed-channel :transient nil)
+    ("l"  "Insert link"     slack-insert-link :transient nil)]
    ["Emoji"
-    ("ee" "Insert Emoji" slack-insert-emoji)
-    ("et" "👍" (lambda ()
-                 (interactive)
-                 (let ((read-only (get-text-property (point) 'read-only)))
-                   (if read-only
-                       (progn
-                         (my-slack-message-add-reaction "thumbsup")
-                         (end-of-buffer))
-                     (insert "👍")))))    ]])
+    ("E"  "Insert emoji" slack-insert-emoji :transient nil)]
+   ["Files"
+    ("U"  "Upload file"      slack-file-upload :transient nil)
+    ("V"  "Upload clipboard" slack-clipboard-image-upload :transient nil)
+    ("C"  "Upload snippet"   slack-file-upload-snippet :transient nil)
+    ("D"  "Dired → Slack"    my-slack-attach-dired-to-buffer :transient nil)]]
+  ["Channel"
+   ["Info"
+    ("b" "Bookmarks" slack-show-channel-bookmarks :transient nil)
+    ("P" "Pins"      slack-room-pins-list :transient nil)
+    ("T" "Threads"   slack-room-unread-threads :transient nil)
+    ("I" "Inspect"   slack-message-inspect :transient nil)]
+   ["Manage"
+    ("G"  "Refresh list" slack-conversations-list-update-quick :transient nil)
+    ("M"  "Mark read"    slack-message-update-mark :transient nil)]])
 
-;; TODO: fix this function
-;; currently, its just a copy/paste from gnus
-(defun my-slack-dired-attach (files-to-attach)
-  "Attach Dired's marked files to an emacs-slack channel.
-If called non-interactively, FILES-TO-ATTACH should be a list of
-filenames."
-  (interactive
-   (list
-    (delq nil
-	      (mapcar
-	       ;; don't attach directories
-	       (lambda (f) (if (file-directory-p f) nil f))
-	       (nreverse (dired-map-over-marks (dired-get-filename) nil)))))
-   dired-mode)
-  (let ((destination nil)
-	    (files-str nil)
-	    (bufs nil))
-    ;; warn if user tries to attach without any files marked
-    (if (null files-to-attach)
-	    (error "No files to attach")
-      (setq files-str
-	        (mapconcat
-	         (lambda (f) (file-name-nondirectory f))
-	         files-to-attach ", "))
-      (setq bufs (gnus-dired-mail-buffers))
+;; Thread buffer
+(transient-define-prefix casual-slack-thread ()
+  "Slack › Thread"
+  ["Thread"
+   ["Navigate"
+    ("n" "Next msg"  slack-buffer-goto-next-message)
+    ("p" "Prev msg"  slack-buffer-goto-prev-message)
+    ("C" "↑ Channel" slack-thread-message-buffer-jump-to-channel-buffer)]
+   ["Compose"
+    ("w" "Write in buffer" slack-message-write-another-buffer)
+    ("@" "Mention"         slack-message-embed-mention)
+    ("#" "Channel link"    slack-message-embed-channel)
+    ("l" "Insert link"     slack-insert-link)
+    ("E" "Insert emoji"    slack-insert-emoji)]
+   ["Message"
+    ("e" "Edit"     slack-message-edit)
+    ("d" "Delete"   slack-message-delete)
+    ("y" "Copy link" slack-message-copy-link)
+    ("s" "Share"    slack-message-share)
+    ("g" "Redisplay" slack-message-redisplay)]
+   ["React"
+    ("r" "Add reaction"    slack-message-add-reaction)
+    ("R" "Remove reaction" slack-message-remove-reaction)
+    ("1" "👍" my-slack-thumbsup)
+    ("2" "👀" my-slack-eyes)
+    ("3" "✅" my-slack-check)]
+   ["Files"
+    ("U" "Upload"    slack-file-upload)
+    ("V" "Clipboard" slack-clipboard-image-upload)]])
 
-      ;; set up destination mail composition buffer
-      (if (and bufs
-	           (y-or-n-p "Attach files to existing mail composition buffer? "))
-	      (setq destination
-		        (if (= (length bufs) 1)
-		            (get-buffer (car bufs))
-		          (gnus-completing-read "Attach to buffer"
-                                        bufs t nil nil (car bufs))))
-	    ;; setup a new mail composition buffer
-	    (let ((mail-user-agent gnus-dired-mail-mode)
-	          ;; A workaround to prevent Gnus from displaying the Gnus
-	          ;; logo when invoking this command without loading Gnus.
-	          ;; Gnus demonstrates it when gnus.elc is being loaded if
-	          ;; a command of which the name is prefixed with "gnus"
-	          ;; causes that autoloading.  See the code in question,
-	          ;; that is the one first found in gnus.el by performing
-	          ;; `C-s this-command'.
-	          (this-command (if (eq gnus-dired-mail-mode 'gnus-user-agent)
-				                'gnoose-dired-attach
-			                  this-command)))
-	      (compose-mail))
-	    (setq destination (current-buffer)))
+;; Compose / edit buffer
+(transient-define-prefix casual-slack-compose ()
+  "Slack › Compose"
+  ["Compose Message"
+   ["Send"
+    ("C-c" "Send" slack-message-send-from-buffer)
+    ("C-k" "Cancel" slack-message-cancel-edit)]
+   ["Embed"
+    ("@" "Mention" slack-message-embed-mention)
+    ("#" "Channel" slack-message-embed-channel)
+    ("l" "Link"    slack-insert-link)
+    ("E" "Emoji"   slack-insert-emoji)]
+   ["Attach"
+    ("U" "Upload file" slack-file-upload)
+    ("V" "Clipboard"   slack-clipboard-image-upload)
+    ("C" "Snippet"     slack-file-upload-snippet)]])
 
-      ;; set buffer to destination buffer, and attach files
-      (set-buffer destination)
-      (when gnus-dired-attach-at-end
-        (goto-char (point-max)))		;attach at end of buffer
-      (while files-to-attach
-	    (mml-attach-file (car files-to-attach)
-			             (or (mm-default-file-type (car files-to-attach))
-			                 "application/octet-stream")
-			             nil)
-	    (setq files-to-attach (cdr files-to-attach)))
-      (message "Attached file(s) %s" files-str))))
+;; Search results
+(transient-define-prefix casual-slack-search ()
+  "Slack › Search Results"
+  ["Search Results"
+   ["Navigate"
+    ("RET" "Open message" slack-search-result-open-message)
+    ("n"   "Next msg"     slack-buffer-goto-next-message)
+    ("p"   "Prev msg"     slack-buffer-goto-prev-message)]
+   ["Search"
+    ("s" "Search messages" slack-search-from-messages)
+    ("S" "Search files"    slack-search-from-files)]
+   ["Go"
+    ("c" "Select rooms"   slack-select-rooms)
+    ("u" "Unread rooms"   slack-select-unread-rooms)]])
+
+;; Stars
+(transient-define-prefix casual-slack-stars ()
+  "Slack › Starred Items"
+  ["Starred Items"
+   ["Navigate"
+    ("n" "Next"  slack-buffer-goto-next-message)
+    ("p" "Prev"  slack-buffer-goto-prev-message)]
+   ["Actions"
+    ("RET" "Open" slack-pinned-items-open-message)
+    ("8"   "Unstar" slack-message-remove-star)]])
+
+;; Activity feed
+(transient-define-prefix casual-slack-activity ()
+  "Slack › Activity Feed"
+  ["Activity Feed"
+   ["Navigate"
+    ("n"   "Next"   slack-buffer-goto-next-message)
+    ("p"   "Prev"   slack-buffer-goto-prev-message)
+    ("RET" "Open"   slack-activity-feed-open-message)]
+   ["Go"
+    ("c" "Channel" slack-select-rooms)
+    ("u" "Unread"  slack-select-unread-rooms)]])
+
+;; Smart dispatcher — picks the right transient for current context
+(defun casual-slack-dispatch ()
+  "Context-aware Slack transient dispatch.
+Selects the appropriate transient based on the current major mode."
+  (interactive)
+  (cond
+   ((derived-mode-p 'slack-message-compose-buffer-mode)  (casual-slack-compose))
+   ((derived-mode-p 'slack-message-edit-buffer-mode)     (casual-slack-compose))
+   ((derived-mode-p 'slack-thread-message-buffer-mode)   (casual-slack-thread))
+   ((derived-mode-p 'slack-message-buffer-mode)          (casual-slack-message-buffer))
+   ((derived-mode-p 'slack-search-result-buffer-mode)    (casual-slack-search))
+   ((derived-mode-p 'slack-stars-buffer-mode)            (casual-slack-stars))
+   ((derived-mode-p 'slack-activity-feed-buffer-mode)    (casual-slack-activity))
+   ((derived-mode-p 'slack-all-threads-buffer-mode)      (casual-slack-thread))
+   ((derived-mode-p 'slack-mode)                         (casual-slack-message-buffer))
+   ((derived-mode-p 'slack-buffer-mode)                  (casual-slack))
+   (t                                                    (casual-slack))))
 
 (provide 'my-setup-slack)
 ;;; my-setup-slack.el ends here
