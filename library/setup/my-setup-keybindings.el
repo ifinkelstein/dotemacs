@@ -689,7 +689,8 @@
     ("1" "Agenda" my-open-agenda-in-workspace)
     ("2" "Email" my-open-email-in-workspace)
     ("3" "Notes" my-open-notes-in-workspace)
-    ("4" "Notes" my-open-terminal-in-workspace)
+    ("4" "Slack" my-open-slack-in-workspace)
+    ("5" "Terminal" my-open-terminal-in-workspace)
     ]])
 
 
