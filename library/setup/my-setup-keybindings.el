@@ -98,6 +98,7 @@
    '("a" . my-open-agenda-in-workspace)
    '("A" . my-transient-AI)
    '("b" . my-transient-buffer)
+   '("B" . my-bookmarks-tmenu)
    '("c" . my-transient-comment)
    '("c" . org-capture)
    '("C" . my-transient-config)
