@@ -98,19 +98,6 @@
   :bind (([remap move-beginning-of-line] . 'mwim-beginning)
 	     ([remap move-end-of-line] . 'mwim-end)))
 
-;;* Dogears for auto-bookmarks
-(use-package dogears
-  :bind (:map global-map
-              ("M-g d" . dogears-go)
-              ("M-g M-b" . dogears-back)
-              ("M-g M-f" . dogears-forward)
-              ("M-g M-d" . dogears-list)
-              ("M-g M-r" . dogears-remember)
-              ("M-g M-D" . dogears-sidebar))
-  :config
-  ;; auto-remember the place every 5 sec
-  (dogears-mode 1))
-
 ;;* avy
 (use-package avy
   :bind   (("C-c C-j" . avy-resume)
@@ -307,6 +294,14 @@ The window scope is determined by `avy-all-windows' (ARG negates it)."
                     (avy--regex-candidates (regexp-quote string))))))
   ) ;;use-package avy
 
+;;* Browse-url
+;; Route DocuSign URLs to Chrome (they don't work with Firefox security settings)
+(setq browse-url-chrome-program
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+(setq browse-url-handlers
+      '(("docusign\\.net" . browse-url-chrome)
+        ("docusign\\.com" . browse-url-chrome)))
+
 ;;* Link-Hint
 ;; use avy to navigate links
 (use-package link-hint
@@ -315,13 +310,7 @@ The window scope is determined by `avy-all-windows' (ARG negates it)."
              link-hint-copy-link)
   :config
   ;;show avy shortcuts before the link instead of on top of them
-  (setq link-hint-avy-style 'pre)
-  ;; Route DocuSign URLs to Chrome (they don't work with Firefox security settings)
-  (setq browse-url-chrome-program
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
-  (setq browse-url-handlers
-        '(("docusign\\.net" . browse-url-chrome)
-          ("docusign\\.com" . browse-url-chrome))))
+  (setq link-hint-avy-style 'pre))
 
 ;;* avy-like text zapping use avy-style navigation for zapping parts
 ;; of something TODO: patch this repo to add a function that defines

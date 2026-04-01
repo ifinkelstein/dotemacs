@@ -579,12 +579,6 @@ questions.  Otherwise use completion to select the tab."
             (t
              (tab-bar-switch-to-tab
               (completing-read "Select tab: " tabs nil t)))))))
-;;* Bookmarks
-(use-package bookmark
-  :ensure nil
-  :defer 2
-  :config
-  (setq bookmark-default-file (concat my-cache-dir "bookmarks")))
 ;;* Colors
 ;; Colorize color names in buffers
 (use-package rainbow-mode
