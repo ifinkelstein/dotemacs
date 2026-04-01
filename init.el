@@ -219,6 +219,7 @@ Loading modules
 (require 'my-setup-ui)
 (require 'my-setup-functions) ;; load a bunch of helper functions for many things
 (require 'my-setup-navigation)
+(require 'my-setup-bookmarks)
 (require 'my-setup-buffers)
 (require 'my-setup-search)
 (require 'my-setup-completion)

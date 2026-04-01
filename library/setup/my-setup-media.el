@@ -114,6 +114,17 @@ and sends a message of the current volume status."
   :config
   (ready-player-mode +1))
 
+;;* arr.el (*arr application interface)
+(use-package arr
+  :load-path "~/projects/elisp/arr/lisp"
+  :commands (arr-prowlarr-search arr-prowlarr-menu
+             arr-radarr-list arr-radarr-menu
+             arr-sonarr-list arr-sonarr-menu)
+  :custom
+  (arr-prowlarr-url "http://10.0.1.10:9696")
+  (arr-radarr-url "http://10.0.1.10:7878")
+  (arr-sonarr-url "http://10.0.1.10:8989"))
+
 ;;* Provide my-setup-media.el
 (provide 'my-setup-media)
 ;;* my-setup-media.el ends here
