@@ -132,6 +132,17 @@
     (dogears-remember)
     (message "Dogeared %s" (file-name-nondirectory file))))
 
+(defun my-embark-bookmark-file (file)
+  "Set a bookmark at the beginning of FILE."
+  (save-window-excursion
+    (find-file file)
+    (call-interactively #'bookmark-set)))
+
+(defun my-embark-bookmark-buffer (buffer)
+  "Set a bookmark at point in BUFFER."
+  (with-current-buffer buffer
+    (call-interactively #'bookmark-set)))
+
 (defun my-embark-target-dogears-at-point ()
   "Target the dogear entry at point in `dogears-list-mode'."
   (when (derived-mode-p 'dogears-list-mode)
@@ -173,6 +184,9 @@
   (keymap-set embark-buffer-map "J" #'my-embark-javelin-pin)
   (keymap-set embark-bookmark-map "J" #'my-embark-javelin-pin)
   (keymap-set embark-file-map "E" #'my-embark-dogears-remember-file)
+  (keymap-set embark-file-map "m" #'my-embark-bookmark-file)
+  (keymap-set embark-buffer-map "m" #'my-embark-bookmark-buffer)
+  (keymap-set embark-general-map "m" #'bookmark-set)
 
   (add-to-list 'embark-target-finders #'my-embark-target-dogears-at-point)
   (add-to-list 'embark-keymap-alist '(dogears . embark-dogears-map)))
