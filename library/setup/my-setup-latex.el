@@ -763,6 +763,166 @@ Adapted by the er/mark-LaTeX-inside-environment function"
     (ignore-errors (org-ref-latex-jump-to-bibtex))
     (if (eq current (point))
         (reftex-goto-label))))
+;;* Embark: LaTeX macro argument targets
+;; Extensible embark integration for LaTeX macros like \input{}, \include{},
+;; \includegraphics{}, etc. Uses AUCTeX primitives for robust parsing.
+
+(eval-when-compile
+  (require 'cl-lib))
+
+;; Forward declarations for AUCTeX functions
+(declare-function TeX-current-macro "tex")
+(declare-function TeX-find-macro-boundaries "tex")
+(defvar TeX-esc)
+
+;; Forward declarations for embark
+(defvar embark-general-map)
+(defvar embark-target-finders)
+(defvar embark-keymap-alist)
+(defvar embark-default-action-overrides)
+
+(defun my-TeX-macro-arguments ()
+  "Return list of arguments for macro at point.
+Each element is (CONTENT START END DELIM) where DELIM is ?{ or ?[."
+  (when-let* ((bounds (TeX-find-macro-boundaries))
+              (macro-start (car bounds))
+              (macro-end (cdr bounds)))
+    (save-excursion
+      (goto-char macro-start)
+      ;; Skip past \macroname
+      (forward-char (length TeX-esc))
+      (skip-chars-forward "A-Za-z@*")
+      (let (args)
+        (while (< (point) macro-end)
+          (skip-chars-forward " \t\n")
+          (when (and (< (point) macro-end)
+                     (memq (char-after) '(?\{ ?\[)))
+            (let* ((open-char (char-after))
+                   (arg-start (point))
+                   (arg-end (save-excursion
+                              (forward-sexp 1)
+                              (point)))
+                   (content (buffer-substring-no-properties
+                             (1+ arg-start) (1- arg-end))))
+              (push (list content arg-start arg-end open-char) args)
+              (goto-char arg-end))))
+        (nreverse args)))))
+
+(defun my-TeX-arg-at-point ()
+  "Return info about macro argument at point.
+Returns (MACRO-NAME ARG-INDEX CONTENT START END) or nil."
+  (when-let* ((macro (TeX-current-macro))
+              (args (my-TeX-macro-arguments)))
+    (cl-loop for (content start end _delim) in args
+             for idx from 1
+             when (and (>= (point) start) (<= (point) end))
+             return (list macro idx content start end))))
+
+(defvar my-embark-latex-macro-targets
+  '((("input" . 1)           . latex-input-file)
+    (("include" . 1)         . latex-input-file)
+    (("subfile" . 1)         . latex-input-file)
+    (("includeonly" . 1)     . latex-input-file)
+    (("includegraphics" . 1) . latex-graphics-file)
+    (("includegraphics" . 2) . latex-graphics-file)
+    (("bibliography" . 1)    . latex-bib-file)
+    (("addbibresource" . 1)  . latex-bib-file))
+  "Alist mapping (MACRO . ARG-INDEX) to embark target types.
+Add entries here to extend embark support for additional macros.")
+
+(defun my-embark-target-latex-macro-arg ()
+  "Embark target finder for LaTeX macro arguments.
+Recognizes macros registered in `my-embark-latex-macro-targets'."
+  (when (derived-mode-p 'latex-mode 'LaTeX-mode)
+    (when-let* ((info (my-TeX-arg-at-point))
+                (macro (nth 0 info))
+                (idx   (nth 1 info))
+                (content (nth 2 info))
+                (start (1+ (nth 3 info)))
+                (end   (1- (nth 4 info)))
+                (key (cons (downcase macro) idx))
+                (type (alist-get key my-embark-latex-macro-targets
+                                 nil nil #'equal)))
+      `(,type ,content . (,start . ,end)))))
+
+;;** Embark actions
+
+(defun my-latex-open-input-file (filename)
+  "Open FILENAME as LaTeX input file, adding .tex if needed.
+Searches relative to the current buffer's directory."
+  (let* ((dir (file-name-directory (or buffer-file-name default-directory)))
+         (file (expand-file-name filename dir))
+         (candidates (list file (concat file ".tex") (concat file ".ltx"))))
+    (if-let* ((found (cl-find-if #'file-exists-p candidates)))
+        (find-file found)
+      (if (y-or-n-p (format "Create %s.tex? " filename))
+          (find-file (concat file ".tex"))
+        (user-error "File not found: %s" filename)))))
+
+(defun my-latex-open-input-file-other-window (filename)
+  "Open FILENAME in other window, adding .tex if needed."
+  (let* ((dir (file-name-directory (or buffer-file-name default-directory)))
+         (file (expand-file-name filename dir))
+         (candidates (list file (concat file ".tex") (concat file ".ltx"))))
+    (if-let* ((found (cl-find-if #'file-exists-p candidates)))
+        (find-file-other-window found)
+      (user-error "File not found: %s" filename))))
+
+(defun my-latex-open-graphics-file (filename)
+  "Open FILENAME as graphics file.
+Tries common extensions: pdf, png, jpg, jpeg, eps."
+  (let* ((dir (file-name-directory (or buffer-file-name default-directory)))
+         (file (expand-file-name filename dir))
+         (extensions '("" ".pdf" ".png" ".jpg" ".jpeg" ".eps"))
+         (candidates (mapcar (lambda (ext) (concat file ext)) extensions)))
+    (if-let* ((found (cl-find-if #'file-exists-p candidates)))
+        (find-file found)
+      (user-error "Graphics file not found: %s" filename))))
+
+(defun my-latex-open-bib-file (filename)
+  "Open FILENAME as bibliography file, adding .bib if needed."
+  (let* ((dir (file-name-directory (or buffer-file-name default-directory)))
+         (file (expand-file-name filename dir))
+         (with-ext (if (string-suffix-p ".bib" file) file (concat file ".bib"))))
+    (if (file-exists-p with-ext)
+        (find-file with-ext)
+      (user-error "Bib file not found: %s" with-ext))))
+
+;;** Embark keymaps and registration
+
+(with-eval-after-load 'embark
+  (add-to-list 'embark-target-finders #'my-embark-target-latex-macro-arg)
+
+  (defvar-keymap embark-latex-input-file-map
+    :doc "Embark actions for LaTeX input files."
+    :parent embark-general-map
+    "RET" #'my-latex-open-input-file
+    "o"   #'my-latex-open-input-file
+    "4"   #'my-latex-open-input-file-other-window)
+
+  (defvar-keymap embark-latex-graphics-file-map
+    :doc "Embark actions for LaTeX graphics files."
+    :parent embark-general-map
+    "RET" #'my-latex-open-graphics-file
+    "o"   #'my-latex-open-graphics-file)
+
+  (defvar-keymap embark-latex-bib-file-map
+    :doc "Embark actions for LaTeX bibliography files."
+    :parent embark-general-map
+    "RET" #'my-latex-open-bib-file
+    "o"   #'my-latex-open-bib-file)
+
+  (add-to-list 'embark-keymap-alist '(latex-input-file . embark-latex-input-file-map))
+  (add-to-list 'embark-keymap-alist '(latex-graphics-file . embark-latex-graphics-file-map))
+  (add-to-list 'embark-keymap-alist '(latex-bib-file . embark-latex-bib-file-map))
+
+  (setf (alist-get 'latex-input-file embark-default-action-overrides)
+        #'my-latex-open-input-file)
+  (setf (alist-get 'latex-graphics-file embark-default-action-overrides)
+        #'my-latex-open-graphics-file)
+  (setf (alist-get 'latex-bib-file embark-default-action-overrides)
+        #'my-latex-open-bib-file))
+
 ;;* provide my-setup-latex
 (provide 'my-setup-latex)
-;;* end my-setup-latex
+;;; my-setup-latex.el ends here
