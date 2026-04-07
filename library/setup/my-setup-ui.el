@@ -14,6 +14,12 @@
   (setq-default visible-bell t)
   ;; (Don't) Blink the cursor
   (blink-cursor-mode 0)
+  ;; Skip bidi reordering for LTR-only text (perf win in large files)
+  (setq-default bidi-display-reordering 'left-to-right
+                bidi-paragraph-direction 'left-to-right)
+  (setq bidi-inhibit-bpa t)
+  ;; Defer fontification while typing (smoother scrolling/input)
+  (setq redisplay-skip-fontification-on-input t)
   ;; Use "y" and "n" to confirm/negate prompt instead of "yes" and "no"
   ;; Using `advice' here to make it easy to reverse in custom
   ;; configurations with `(advice-remove 'yes-or-no-p #'y-or-n-p)'
@@ -71,7 +77,11 @@
   (line-move-visual t)
   ;; reduce mark ring
   (global-mark-ring-max 256)
-  (mark-ring-max 256))
+  (mark-ring-max 256)
+  ;; After first C-u C-SPC, keep popping with just C-SPC
+  (set-mark-command-repeat-pop t)
+  ;; Don't store duplicate kills
+  (kill-do-not-save-duplicates t))
 
 ;; line Numbers
 (use-package display-line-numbers
@@ -222,6 +232,14 @@
   (add-to-list 'savehist-additional-variables 'mark-ring)
   (add-to-list 'savehist-additional-variables 'search-ring)
   (add-to-list 'savehist-additional-variables 'regexp-search-ring)
+
+  ;; Strip text properties from kill-ring before saving to prevent
+  ;; bloated savehist files (fonts, overlays from org-mode, etc.)
+  (add-hook 'savehist-save-hook
+            (lambda ()
+              (setq kill-ring
+                    (mapcar #'substring-no-properties
+                            (cl-remove-if-not #'stringp kill-ring)))))
   (savehist-mode 1)) ;; Save History
 
 
@@ -282,6 +300,9 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
                       (buffer-name buf) (error-message-string err))))))))
 
   (add-hook 'auto-save-hook 'my-full-auto-save)
+
+  ;; Auto-chmod files with shebang lines on save
+  (add-hook 'after-save-hook #'executable-make-buffer-file-executable-if-script-p)
 
   ;; Save all buffers after idle time
   (run-with-idle-timer 5 t (lambda () (my-full-auto-save)))) ;; use-package files
@@ -454,6 +475,17 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
   :ensure nil
   :hook (after-init . winner-mode))
 
+;; Make C-x 1 reversible: press once to delete other windows,
+;; press again to restore the previous layout via winner-undo
+(defun my-toggle-delete-other-windows ()
+  "Delete other windows in frame if any, or restore previous window config."
+  (interactive)
+  (if (and winner-mode
+           (equal (selected-window) (next-window)))
+      (winner-undo)
+    (delete-other-windows)))
+
+(global-set-key (kbd "C-x 1") #'my-toggle-delete-other-windows)
 
 ;;* Frames
 ;;;; Frame defaults

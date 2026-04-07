@@ -87,6 +87,10 @@
           context-menu-undo
           context-menu-dictionary)))
 
+;; Prevent ffap from pinging hostnames (avoids multi-second hangs
+;; when point is on something that looks like a hostname)
+(setq ffap-machine-p-known 'reject)
+
 
 ;; Switch to Buffer Preserve Window
 
