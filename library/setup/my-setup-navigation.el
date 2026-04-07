@@ -23,7 +23,12 @@
   :hook (emacs-startup . save-place-mode)
   :config
   (setq save-place-file (concat my-cache-dir "saved-places"))
-  (setq save-place-forget-unreadable-files nil))
+  (setq save-place-forget-unreadable-files nil)
+  ;; Recenter view after save-place jumps to restored position,
+  ;; so the cursor isn't stranded at the edge of the window
+  (advice-add 'save-place-find-file-hook :after
+              (lambda (&rest _)
+                (when buffer-file-name (ignore-errors (recenter))))))
 
 ;; This package keeps track of recently opened files.
 (use-package recentf

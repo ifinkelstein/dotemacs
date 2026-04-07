@@ -59,6 +59,11 @@
 (use-package wgrep
   :vc (:url "https://github.com/mhayashi1120/Emacs-wgrep"))
 
+;;** re-builder
+;; Use string syntax in re-builder so regexps look like normal Emacs
+;; regexps (no double-escaping)
+(setq reb-re-syntax 'string)
+
 ;;* Replace
 ;;** visual regexp
 (use-package visual-regexp

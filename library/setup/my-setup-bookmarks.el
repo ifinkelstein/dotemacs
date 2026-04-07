@@ -260,6 +260,17 @@
   (setq bookmark-fringe-mark (not bookmark-fringe-mark))
   (message "Bookmark fringe marks: %s" (if bookmark-fringe-mark "on" "off")))
 
+(defun my-bookmarks--set ()
+  "Set a bookmark, deferring prompt to avoid transient conflicts."
+  (interactive)
+  (run-at-time 0 nil #'call-interactively #'bookmark-set))
+
+(defun my-bookmarks--list ()
+  "Show bookmark list buffer."
+  (interactive)
+  (bookmark-bmenu-list)
+  (switch-to-buffer "*Bookmark List*"))
+
 ;;; Transient menus
 
 ;;;###autoload (autoload 'my-bookmarks-settings-tmenu "my-setup-bookmarks" nil t)
@@ -287,11 +298,11 @@
 (transient-define-prefix my-bookmarks-tmenu ()
   "Unified bookmark management."
   [["Bookmarks"
-    ("m" "Set..." bookmark-set)
+    ("m" "Set..." my-bookmarks--set)
     ("j" "Jump..." consult-bookmark)
     ("J" "Jump (no preview)..." bookmark-jump)
     ("A" "Annotate..." bookmark-set-no-overwrite)
-    ("L" "List all" list-bookmarks)
+    ("L" "List all" my-bookmarks--list)
     ("d" "Delete..." bookmark-delete)
     ("S" "Save now" bookmark-save :transient t)
     ("<" "More..." casual-editkit-bookmarks-tmenu)]
