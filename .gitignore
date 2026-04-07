@@ -44,6 +44,13 @@ library/llm-prompts/
 # Embedded git repos
 library/my-org-export-themes/latex-mimore/
 
+# Tree-sitter grammar dylibs (downloaded at runtime)
+tree-sitter/
+
+# Runtime data dirs
+emojis/
+multisession/
+
 # Claude settings
 .claude/
 library/setup/.claude/
