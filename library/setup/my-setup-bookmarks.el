@@ -310,18 +310,18 @@
    ["Javelin"
     ("t" "Throw (pin here)" javelin-add-file)
     ("T" "Assign to slot..." javelin-assign-to)
-    ("1" javelin-go-or-assign-to-1 :description (lambda () (my-bookmarks--javelin-slot-desc 1)) :transient t)
-    ("2" javelin-go-or-assign-to-2 :description (lambda () (my-bookmarks--javelin-slot-desc 2)) :transient t)
-    ("3" javelin-go-or-assign-to-3 :description (lambda () (my-bookmarks--javelin-slot-desc 3)) :transient t)
-    ("4" javelin-go-or-assign-to-4 :description (lambda () (my-bookmarks--javelin-slot-desc 4)) :transient t)
-    ("5" javelin-go-or-assign-to-5 :description (lambda () (my-bookmarks--javelin-slot-desc 5)) :transient t)]
+    ("1" javelin-go-or-assign-to-1 :description (lambda () (my-bookmarks--javelin-slot-desc 1)))
+    ("2" javelin-go-or-assign-to-2 :description (lambda () (my-bookmarks--javelin-slot-desc 2)))
+    ("3" javelin-go-or-assign-to-3 :description (lambda () (my-bookmarks--javelin-slot-desc 3)))
+    ("4" javelin-go-or-assign-to-4 :description (lambda () (my-bookmarks--javelin-slot-desc 4)))
+    ("5" javelin-go-or-assign-to-5 :description (lambda () (my-bookmarks--javelin-slot-desc 5)))]
 
    ["Javelin 6-0"
-    ("6" javelin-go-or-assign-to-6 :description (lambda () (my-bookmarks--javelin-slot-desc 6)) :transient t)
-    ("7" javelin-go-or-assign-to-7 :description (lambda () (my-bookmarks--javelin-slot-desc 7)) :transient t)
-    ("8" javelin-go-or-assign-to-8 :description (lambda () (my-bookmarks--javelin-slot-desc 8)) :transient t)
-    ("9" javelin-go-or-assign-to-9 :description (lambda () (my-bookmarks--javelin-slot-desc 9)) :transient t)
-    ("0" javelin-go-or-assign-to-10 :description (lambda () (my-bookmarks--javelin-slot-desc 10)) :transient t)
+    ("6" javelin-go-or-assign-to-6 :description (lambda () (my-bookmarks--javelin-slot-desc 6)))
+    ("7" javelin-go-or-assign-to-7 :description (lambda () (my-bookmarks--javelin-slot-desc 7)))
+    ("8" javelin-go-or-assign-to-8 :description (lambda () (my-bookmarks--javelin-slot-desc 8)))
+    ("9" javelin-go-or-assign-to-9 :description (lambda () (my-bookmarks--javelin-slot-desc 9)))
+    ("0" javelin-go-or-assign-to-10 :description (lambda () (my-bookmarks--javelin-slot-desc 10)))
     ("x" "Delete slot..." javelin-delete :transient t)]
 
    ["Dogears"
