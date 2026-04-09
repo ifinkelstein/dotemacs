@@ -725,21 +725,89 @@ Note: this function is actually not necessary because I learned how to use mu fi
   ;; nil in the org-contacts use-package (in my-setup-notes.el).
   (setq mu4e-org-contacts-file (concat org-directory "contacts.org"))
 
-  ;; TODO: implement this function to open mu4e links from org in another frame
-  ;; I need to modify how the org-link behavior works in org
-  (defun mu4e-org-open-new-frame (link)
-    "Open the org LINK in another frame.
-Open the mu4e message (for links starting with \"msgid:\") or run
-the query (for links starting with \"query:\")."
+  ;;** Triage minor mode
+  ;;
+  ;; WORKFLOW (from triage.org):
+  ;;   1. Point on a mu4e: link, press RET (or `C-c t')
+  ;;   2. A new frame opens showing the email in mu4e-view
+  ;;   3. The pi email-assistant chat panel auto-opens on the right
+  ;;   4. Interact: draft replies, use AI, forward, etc.
+  ;;   5. Close the frame (C-x 5 0 / ⌘-W) → you're back in triage.org
+  ;;
+  ;; Extra actions without leaving triage.org:
+  ;;   - `C-c r' on a mu4e link marks the message as read (Seen)
+
+  (defun my-mu4e-triage--extract-msgid ()
+    "Return the msgid of the mu4e link at point, or nil."
+    (when-let* ((context (org-element-context))
+                ((equal (org-element-property :type context) "mu4e"))
+                (path (org-element-property :path context))
+                ((string-match "^msgid:\\(.+\\)" path)))
+      (match-string 1 path)))
+
+  (defun my-mu4e-triage-open-link ()
+    "Open the mu4e link at point in a new frame with the AI chat panel.
+Designed for use in `triage.org'.  The link must be a mu4e:msgid:
+link.  Opens the email in a fresh frame, then launches the
+mu4e-goodies chat side panel so you can immediately interact
+with the AI assistant.
+
+Close the frame when done to return to triage.org."
+    (interactive)
     (require 'mu4e)
-    (cond
-     ((string-match "^msgid:\\(.+\\)" link)
-      (select-frame-set-input-focus (make-frame))
-      (mu4e-view-message-with-message-id (match-string 1 link)))
-     ((string-match "^query:\\(.+\\)" link)
-      (select-frame-set-input-focus (make-frame))
-      (mu4e-search (match-string 1 link) current-prefix-arg))
-     (t (mu4e-error "Unrecognized link type '%s'" link))))
+    (require 'mu4e-goodies-chat)
+    (if-let* ((msgid (my-mu4e-triage--extract-msgid)))
+        (progn
+          ;; Ensure mu4e server is running
+          (mu4e 'background)
+          ;; Create and focus a new frame (WM handles sizing)
+          (let ((frame (make-frame)))
+            (select-frame-set-input-focus frame)
+            ;; Open the message
+            (mu4e-view-message-with-message-id msgid)
+            ;; Give mu4e a moment to render, then open the AI chat panel.
+            ;; Using a timer because mu4e-view is async (waits for the
+            ;; mu server to return the message).
+            (run-at-time 0.5 nil
+                         (lambda ()
+                           (when (derived-mode-p 'mu4e-view-mode)
+                             (mu4e-goodies-chat))))))
+      (user-error "Not on a mu4e:msgid: link")))
+
+  (defun my-mu4e-triage-mark-read ()
+    "Mark the mu4e message at point as read and set heading to DONE.
+Sets the Seen flag via the mu4e server and changes the enclosing
+org heading's TODO state to DONE."
+    (interactive)
+    (require 'mu4e)
+    (if-let* ((msgid (my-mu4e-triage--extract-msgid)))
+        (progn
+          (mu4e 'background)
+          (mu4e--server-move msgid nil "+S-N" 'noview)
+          (save-excursion
+            (org-back-to-heading t)
+            (org-todo 'done))
+          (message "Marked as read/DONE: %s"
+                   (truncate-string-to-width msgid 40 nil nil t)))
+      (user-error "Not on a mu4e:msgid: link")))
+
+  (defvar my-mu4e-triage-mode-map nil
+    "Keymap for `my-mu4e-triage-mode'.")
+  (setq my-mu4e-triage-mode-map
+        (define-keymap
+          "C-c t"   #'my-mu4e-triage-open-link
+          "C-c r"   #'my-mu4e-triage-mark-read))
+
+  (define-minor-mode my-mu4e-triage-mode
+    "Minor mode for triaging emails from an org buffer.
+\\`C-c t' on a mu4e: link opens the email in a dedicated frame
+with the AI chat panel.
+\\`C-c r' marks the message as read and sets the heading to DONE.
+
+Toggle with \\[my-mu4e-triage-mode].  Activate automatically in
+triage.org via file-local variables."
+    :lighter " ✉Triage"
+    :keymap my-mu4e-triage-mode-map)
 
 ;;;; Composing Email
   (add-hook 'mu4e-compose-mode-hook
@@ -1112,7 +1180,10 @@ Falls back to a plain capture buffer if the LLM fails."
           (:name "Price Watch"
                  :query ,(mu4e-make-query
                           '(or (from "REDACTED@example.com") (from "REDACTED@example.com")))
-                 :key ?P)))
+                 :key ?P)
+          (:name "Unread + Untagged"
+                 :query "flag:unread AND NOT tag:/.+/ AND maildir:/Inbox$/"
+                 :key ?U)))
   ;; (setq mu4e-bookmarks
   ;;       '((:name "Unread"
   ;;                :query (lambda ()
