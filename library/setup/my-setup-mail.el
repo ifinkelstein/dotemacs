@@ -499,16 +499,13 @@ Execute search with that query."
   ;; Shortcut key is the first character of the action name.
   ;;   a → add contact          g → gcal add
   ;;   o → org link             r → retag message
-  ;;   R → Remove all tags      t → todo from email
-  ;;   T → Todo (AI)            v → view in browser
+  ;;   R → Remove all tags      v → view in browser
   ;;   y → yank path            z → search for sender
   (dolist (action '(("add contact"       . mu4e-action-add-org-contact)
                     ("gcal add"           . my-mu4e-action-add-to-calendar)
                     ("org link"           . org-store-link)
                     ("retag message"      . mu4e-action-retag-message)
                     ("Remove all tags"    . my-mu4e-remove-all-tags-message)
-                    ("todo from email"   . my-mu4e-capture-mail-todo)
-                    ("Todo (AI)"         . my-mu4e-capture-mail-gtd)
                     ("view in browser"   . mu4e-action-view-in-browser)
                     ("yank path"         . my-mu4e-copy-message-path)
                     ("zsearch for sender" . my-mu4e-search-for-sender)))
@@ -722,90 +719,6 @@ Note: this function is actually not necessary because I learned how to use mu fi
   ;; nil in the org-contacts use-package (in my-setup-notes.el).
   (setq mu4e-org-contacts-file (concat org-directory "contacts.org"))
 
-  ;;** Triage minor mode
-  ;;
-  ;; WORKFLOW (from triage.org):
-  ;;   1. Point on a mu4e: link, press RET (or `C-c t')
-  ;;   2. A new frame opens showing the email in mu4e-view
-  ;;   3. The pi email-assistant chat panel auto-opens on the right
-  ;;   4. Interact: draft replies, use AI, forward, etc.
-  ;;   5. Close the frame (C-x 5 0 / ⌘-W) → you're back in triage.org
-  ;;
-  ;; Extra actions without leaving triage.org:
-  ;;   - `C-c r' on a mu4e link marks the message as read (Seen)
-
-  (defun my-mu4e-triage--extract-msgid ()
-    "Return the msgid of the mu4e link at point, or nil."
-    (when-let* ((context (org-element-context))
-                ((equal (org-element-property :type context) "mu4e"))
-                (path (org-element-property :path context))
-                ((string-match "^msgid:\\(.+\\)" path)))
-      (match-string 1 path)))
-
-  (defun my-mu4e-triage-open-link ()
-    "Open the mu4e link at point in a new frame with the AI chat panel.
-Designed for use in `triage.org'.  The link must be a mu4e:msgid:
-link.  Opens the email in a fresh frame, then launches the
-mu4e-goodies chat side panel so you can immediately interact
-with the AI assistant.
-
-Close the frame when done to return to triage.org."
-    (interactive)
-    (require 'mu4e)
-    (require 'mu4e-goodies-chat)
-    (if-let* ((msgid (my-mu4e-triage--extract-msgid)))
-        (progn
-          ;; Ensure mu4e server is running
-          (mu4e 'background)
-          ;; Create and focus a new frame (WM handles sizing)
-          (let ((frame (make-frame)))
-            (select-frame-set-input-focus frame)
-            ;; Open the message
-            (mu4e-view-message-with-message-id msgid)
-            ;; Give mu4e a moment to render, then open the AI chat panel.
-            ;; Using a timer because mu4e-view is async (waits for the
-            ;; mu server to return the message).
-            (run-at-time 0.5 nil
-                         (lambda ()
-                           (when (derived-mode-p 'mu4e-view-mode)
-                             (mu4e-goodies-chat))))))
-      (user-error "Not on a mu4e:msgid: link")))
-
-  (defun my-mu4e-triage-mark-read ()
-    "Mark the mu4e message at point as read and set heading to DONE.
-Sets the Seen flag via the mu4e server and changes the enclosing
-org heading's TODO state to DONE."
-    (interactive)
-    (require 'mu4e)
-    (if-let* ((msgid (my-mu4e-triage--extract-msgid)))
-        (progn
-          (mu4e 'background)
-          (mu4e--server-move msgid nil "+S-N" 'noview)
-          (save-excursion
-            (org-back-to-heading t)
-            (org-todo 'done))
-          (message "Marked as read/DONE: %s"
-                   (truncate-string-to-width msgid 40 nil nil t)))
-      (user-error "Not on a mu4e:msgid: link")))
-
-  (defvar my-mu4e-triage-mode-map nil
-    "Keymap for `my-mu4e-triage-mode'.")
-  (setq my-mu4e-triage-mode-map
-        (define-keymap
-          "C-c t"   #'my-mu4e-triage-open-link
-          "C-c r"   #'my-mu4e-triage-mark-read))
-
-  (define-minor-mode my-mu4e-triage-mode
-    "Minor mode for triaging emails from an org buffer.
-\\`C-c t' on a mu4e: link opens the email in a dedicated frame
-with the AI chat panel.
-\\`C-c r' marks the message as read and sets the heading to DONE.
-
-Toggle with \\[my-mu4e-triage-mode].  Activate automatically in
-triage.org via file-local variables."
-    :lighter " ✉Triage"
-    :keymap my-mu4e-triage-mode-map)
-
 ;;;; Composing Email
   (add-hook 'mu4e-compose-mode-hook
             (defun my-mu4e-compose-settings ()
@@ -1005,126 +918,6 @@ Strips surrounding angle brackets if present."
   ;; Helpful discussion at
   ;; https://github.com/daviwil/emacs-from-scratch/blob/master/show-notes/Emacs-Mail-05.org
 
-  ;;*** LLM-enhanced TODO capture from email
-  ;; Uses pi + haiku to analyze the email, then opens org-capture
-  ;; with title, deadline, actions, context pre-populated.
-  ;; Template "m" in `org-capture-templates' uses %(sexp) to pull
-  ;; pending deadline and body from these variables.
-
-  (defvar my-mu4e-todo--pending-deadline nil
-    "Pending deadline string for the next org-capture, or nil.")
-
-  (defvar my-mu4e-todo--pending-body nil
-    "Pending body string for the next org-capture, or nil.")
-
-  (defun my-mu4e-todo--deadline-string ()
-    "Return DEADLINE line if pending, empty string otherwise.
-Consumes the pending value.  Called by %(sexp) in the \"m\" template."
-    (prog1 (if my-mu4e-todo--pending-deadline
-                (format "DEADLINE: <%s>\n" my-mu4e-todo--pending-deadline)
-              "")
-      (setq my-mu4e-todo--pending-deadline nil)))
-
-  (defun my-mu4e-todo--body-string ()
-    "Return body content if pending, empty string otherwise.
-Consumes the pending value.  Called by %(sexp) in the \"m\" template."
-    (prog1 (or my-mu4e-todo--pending-body "")
-      (setq my-mu4e-todo--pending-body nil)))
-
-  (declare-function my-todo-from-email--build-body "private")
-  (declare-function my-remove-triple-ticks "my-setup-ai")
-
-  (defun my-mu4e-capture-mail-todo (msg)
-    "Capture email MSG as a simple TODO with an org-link to the message."
-    (interactive)
-    (org-store-link nil t)
-    (org-capture nil "M"))
-
-  (defun my-mu4e-capture-mail-gtd (msg)
-    "Capture email MSG as a TODO with LLM-generated summary.
-Stores the mu4e link, sends the email body to pi CLI (haiku) for
-analysis, then opens `org-capture' with the heading, deadline,
-action items, and context pre-populated.  The user can edit
-everything in the capture buffer before confirming.
-
-Falls back to a plain capture buffer if the LLM fails."
-    (interactive)
-    (org-store-link nil t)
-    (let* ((pi-program (or my-todo-from-email-pi-program
-                           (executable-find "pi")))
-           (subject    (mu4e-message-field msg :subject))
-           (email-body (mu4e-view-message-text msg))
-           (tmpfile    (make-temp-file "mu4e-todo-" nil ".txt"))
-           (proc-buf   (generate-new-buffer " *todo-from-email*"))
-           (prompt     (concat
-                        "Analyze this email for " user-full-name ".  "
-                        "Subject: " subject "\n\n"
-                        "Return ONLY a valid JSON object:\n"
-                        "{\"title\": \"brief imperative action (5-8 words, use names)\","
-                        " \"actions\": [\"specific next step 1\", \"next step 2\"],"
-                        " \"deadline\": \"YYYY-MM-DD or null if none mentioned\","
-                        " \"context\": \"1-2 sentences of essential context\","
-                        " \"refs\": [\"bare URLs (no labels) or plain email addresses\"]}\n\n"
-                        "Focus on what " user-full-name " must DO.  Be terse.  "
-                        "Only include deadline if explicitly stated.")))
-      (unless pi-program
-        (user-error "Cannot find `pi' binary on PATH"))
-      (with-temp-file tmpfile (insert email-body))
-      (message "[todo] Analyzing: %s..." subject)
-      (let ((proc
-             (make-process
-              :name "todo-from-email"
-              :buffer proc-buf
-              :command (list pi-program
-                             "--print" "--mode" "text"
-                             "--no-tools" "--no-session"
-                             "--no-extensions" "--no-skills"
-                             "--no-prompt-templates" "--no-themes"
-                             "--provider" "anthropic"
-                             "--model" "claude-haiku-4-5"
-                             "--system-prompt"
-                             "Respond with valid JSON only. No markdown fences."
-                             (concat "@" tmpfile)
-                             prompt)
-              :sentinel
-              (lambda (process _signal)
-                (when (eq (process-status process) 'exit)
-                  (unwind-protect
-                      (let ((title nil)
-                            (ok (zerop (process-exit-status process))))
-                        (when ok
-                          (condition-case err
-                              (let* ((output (with-current-buffer proc-buf
-                                               (buffer-substring-no-properties
-                                                (point-min) (point-max))))
-                                     (cleaned (my-remove-triple-ticks output))
-                                     (result (json-parse-string
-                                              cleaned
-                                              :object-type 'plist
-                                              :array-type 'list
-                                              :null-object nil
-                                              :false-object nil)))
-                                (setq title (or (plist-get result :title) "Process email"))
-                                (setq my-mu4e-todo--pending-deadline
-                                      (plist-get result :deadline))
-                                (setq my-mu4e-todo--pending-body
-                                      (let ((body (my-todo-from-email--build-body result)))
-                                        (unless (string-empty-p body)
-                                          (concat body "\n")))))
-                            (error
-                             (message "[todo] LLM parse error: %s"
-                                      (error-message-string err)))))
-                        ;; Open capture — with or without LLM pre-population.
-                        (if title
-                            (org-capture-string title "m")
-                          (org-capture nil "m")))
-                    (when (file-exists-p tmpfile) (delete-file tmpfile))
-                    (when (buffer-live-p proc-buf) (kill-buffer proc-buf))))))))
-        (set-process-query-on-exit-flag proc nil))))
-
-
-
-  
   ;; copy fields to kill ring
   (defun my-copy-email-field-to-kill-ring (FIELD)
     "Copy FIELD from the open org-msg buffer to the kill-ring"
