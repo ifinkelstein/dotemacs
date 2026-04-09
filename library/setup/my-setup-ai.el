@@ -1,23 +1,26 @@
 ;; my-setup-ai.el -*- lexical-binding: t -*-
 (message "Setting up AI packages...")
 ;;* Aider interface for emacs
-(use-package aidermacs
-  :vc (:url "https://github.com/MatthewZMD/aidermacs" :rev :newest)
-  :bind (("C-c p" . aidermacs-transient-menu))
-
-  :config
-  ;; TODO: fix getting API key from gptel, which I think is the easiest
-  (if
-      (not (= (length (getenv "ANTHROPIC_API_KEY")) 108))
-      (setenv "ANTHROPIC_API_KEY" (my-get-anthropic-api-key)))
-  ;; Enable minor mode for Aider files
-  (aidermacs-setup-minor-mode)
-
-  :custom
-                                        ; See the Configuration section below
-  (aidermacs-auto-commits t)
-  (aidermacs-use-architect-mode t)
-  (aidermacs-default-model "sonnet"))
+;; 2026-04-09: commented out aidermacs — upstream defface bug causes
+;; "Invalid face reference: quote" (same ':inherit 'face' issue as elpy).
+;; TODO: remove from config entirely if not missed after a few weeks.
+;; (use-package aidermacs
+;;   :vc (:url "https://github.com/MatthewZMD/aidermacs" :rev :newest)
+;;   :bind (("C-c p" . aidermacs-transient-menu))
+;;
+;;   :config
+;;   ;; TODO: fix getting API key from gptel, which I think is the easiest
+;;   (if
+;;       (not (= (length (getenv "ANTHROPIC_API_KEY")) 108))
+;;       (setenv "ANTHROPIC_API_KEY" (my-get-anthropic-api-key)))
+;;   ;; Enable minor mode for Aider files
+;;   (aidermacs-setup-minor-mode)
+;;
+;;   :custom
+;;                                         ; See the Configuration section below
+;;   (aidermacs-auto-commits t)
+;;   (aidermacs-use-architect-mode t)
+;;   (aidermacs-default-model "sonnet"))
 
 ;;* GPTel
 (use-package gptel
