@@ -15,11 +15,7 @@
               ("c" . mu4e-copy-thing-at-point)
               ("f" . link-hint-open-link)
               ;; Quickly switch between plain text and HTML mime type.
-              ("K" . (lambda ()
-                       (interactive)
-                       (gnus-article-jump-to-part 1)
-                       (gnus-article-press-button)
-                       (gnus-article-press-button)))
+              ("K" . my-mu4e-copy-message-to-kill-ring)
               ("r" . mu4e-view-mark-for-read)
               ("u" . mu4e-view-mark-for-unread)
               ("!" . mu4e-view-mark-for-refile)
@@ -31,7 +27,8 @@
               ("u" . mu4e-headers-mark-for-unread)
               ("!" . mu4e-headers-mark-for-refile)
               ("?" . mu4e-headers-mark-for-unmark)
-              ("M-o" . my-transient-email) 
+              ("K" . my-mu4e-copy-message-to-kill-ring)
+              ("M-o" . my-transient-email)
               :map mu4e-main-mode-map
               ("u" . mu4e-update-index )
               ("M-o" . my-transient-email))
@@ -1244,29 +1241,44 @@ Tested with mu4e 1.12.2"
   (define-key mu4e-compose-minor-mode-map (kbd "R")
               #'my-mu4e-compose-reply-ask-wide)
 
-  ;; TODO: need to check if this works
-  (defun my-email-message-to-kill-ring ()
-    "Yank the current mu4e message body text into the kill ring.
-Must be in mu4e-view-mode major mode."
+  (defun my-mu4e-copy-message-to-kill-ring ()
+    "Copy the current mu4e message (headers + body) to the kill ring.
+Works in both `mu4e-headers-mode' and `mu4e-view-mode'.
+Formats the message as structured text suitable for pasting into
+Claude Code or other LLM contexts."
     (interactive)
-    (if (eq major-mode 'mu4e-view-mode)
-        (progn
-          (save-excursion
-            (let ((start (message-goto-body))
-                  (end (point-max)))
-              (kill-ring-save start end)
-              (message "E-mail copied to the kill ring"))))
-      (message "Not a mu4e-view-mode buffer")))
-
-  (defun my-mu4e-yank-message ()
-    "Yank the current message text into the kill ring"
-    ;; TODO: make sure cursor is in mu4e-view mode
-    (interactive)
-
-    (save-excursion
-      (let ((start (message-goto-body))
-            (end (point-max)))
-        (kill-ring-save start end))))
+    (let* ((msg (or (mu4e-message-at-point)
+                    (user-error "No message at point")))
+           (from (mapconcat
+                  (lambda (c)
+                    (let ((name (plist-get c :name))
+                          (email (plist-get c :email)))
+                      (if name (format "%s <%s>" name email) email)))
+                  (mu4e-message-field msg :from) ", "))
+           (to (mapconcat
+                (lambda (c)
+                  (let ((name (plist-get c :name))
+                        (email (plist-get c :email)))
+                    (if name (format "%s <%s>" name email) email)))
+                (mu4e-message-field msg :to) ", "))
+           (subject (or (mu4e-message-field msg :subject) "(no subject)"))
+           (date (format-time-string "%Y-%m-%d %a %H:%M"
+                                     (mu4e-message-field msg :date)))
+           (msgid (mu4e-message-field msg :message-id))
+           (body (when-let* ((path (mu4e-message-field msg :path))
+                             ((file-exists-p path)))
+                   (condition-case nil
+                       (mail-triage--mime-extract-text path)
+                     (error nil))))
+           (text (concat "From: " from "\n"
+                         "To: " to "\n"
+                         "Subject: " subject "\n"
+                         "Date: " date "\n"
+                         (when msgid (concat "Message-ID: " msgid "\n"))
+                         "\n"
+                         (or body "(body not available)"))))
+      (kill-new text)
+      (message "Copied: %s" (truncate-string-to-width subject 60 nil nil t))))
 
   (defun my-email-to-kill-ring ()
     "Prompt user to search for an email address. Save selected ones to the kill ring.
@@ -1690,6 +1702,20 @@ A shell script queries mu every five minutes via the xbar app."
   :after mu4e
   :ensure nil
   :load-path "/opt/homebrew/share/emacs/site-lisp/mu/mu4e")
+
+(use-package mail-triage
+  :after mu4e
+  :ensure nil
+  :load-path "~/projects/elisp/mail-triage"
+  :bind (:map mail-triage-mode-map
+         ("M-o" . mail-triage-menu))
+  :config
+  (mail-triage-setup)
+  (add-hook 'mail-triage-mode-hook
+            (lambda ()
+              (face-remap-set-base 'magit-section-heading
+                                   :inherit 'default
+                                   :foreground "#727d97"))))
 
 ;;* provide my-setup-mail
 (provide 'my-setup-mail)
