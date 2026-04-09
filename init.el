@@ -238,6 +238,15 @@ Loading modules
 (require 'my-setup-vc)
 (require 'my-setup-shell) ;; various shell and CLI-related functions
 (require 'my-setup-mail)
+(use-package mail-triage
+  :load-path "~/projects/elisp/mail-triage"
+  :after (mu4e gptel)
+  :config
+  (setq mail-triage-llm-backend "Gemini"
+        mail-triage-llm-model 'gemini-3-flash-preview
+        mail-triage-user-description "a professor (REDACTED) at UT Austin"
+        mail-triage-capture-llm-function #'my-mu4e-capture-mail-gtd)
+  (mail-triage-setup))
 (require 'my-setup-calendar)
 
 (require 'my-setup-ai)
