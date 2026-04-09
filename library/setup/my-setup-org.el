@@ -365,12 +365,6 @@
   (interactive)
   (org-capture nil "t"))
 
-(defun my-capture-mail-gtd (msg)
-  "Capture message as a TODO item"
-  (interactive)
-  (call-interactively 'org-store-link)
-  (org-capture nil "m"))
-
 (setq org-capture-templates
       ;; Note the ` and , to get concat to evaluate properly
       `(
@@ -392,18 +386,6 @@
          :prepend t
          :empty-lines 1
          :created t)  ; template
-        ("M" "Mail todo (simple)"
-         entry (file+headline org-default-notes-file "Mail")
-         "* TODO %?\n:PROPERTIES:\n:Created: %U\n:END:\n%a\n"
-         :prepend t
-         :created t
-         :empty-lines 1)
-        ("m" "Mail todo (AI)"
-         entry (file+headline org-default-notes-file "Mail")
-         "* TODO %i%?\n%(my-mu4e-todo--deadline-string):PROPERTIES:\n:Created: %U\n:END:\nLink: %a\n%(my-mu4e-todo--body-string)"
-         :prepend t
-         :created t
-         :empty-lines 1)
         ("W"
          "Weight"
          table-line
