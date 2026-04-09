@@ -287,6 +287,13 @@
           (auto-directory)
           (auto-mode)))
 
+  ;; Fix upstream pretty-hydra defface bug: ':inherit 'face' inside defface
+  ;; makes Emacs read (quote face) as a two-face inherit list, producing
+  ;; "Invalid face reference: quote". Patch to use bare symbols.
+  (with-eval-after-load 'pretty-hydra
+    (set-face-attribute 'pretty-hydra-toggle-on-face nil :inherit 'font-lock-keyword-face)
+    (set-face-attribute 'pretty-hydra-toggle-off-face nil :inherit 'font-lock-comment-face))
+
   (bufler-mode t))
 ;; ** Provide
 (provide 'my-setup-buffers)

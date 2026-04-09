@@ -230,14 +230,18 @@
 ;;* Programming modes
 ;; reminder to run eglot-upgrade-eglot every so often
 ;;** Python
-(use-package elpy
-  :vc (:url "https://github.com/jorgenschaefer/elpy")
-  :custom
-  (python-shell-interpreter "ipython")
-  (python-shell-interpreter-args "-i --simple-prompt")
-
-  :init
-  (elpy-enable))
+;; 2026-04-09: commented out elpy — upstream defface bug causes
+;; "Invalid face reference: quote" (uses ':inherit 'face' inside defface,
+;; the extra quote makes Emacs read it as (quote face) = two-face inherit list).
+;; TODO: remove from config entirely if not missed after a few weeks.
+;; (use-package elpy
+;;   :vc (:url "https://github.com/jorgenschaefer/elpy")
+;;   :custom
+;;   (python-shell-interpreter "ipython")
+;;   (python-shell-interpreter-args "-i --simple-prompt")
+;;
+;;   :init
+;;   (elpy-enable))
 
 
 
