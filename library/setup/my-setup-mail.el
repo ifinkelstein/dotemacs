@@ -1497,12 +1497,15 @@ A shell script queries mu every five minutes via the xbar app."
   :load-path "/opt/homebrew/share/emacs/site-lisp/mu/mu4e")
 
 (use-package mail-triage
-  :after mu4e
+  :after (mu4e gptel)
   :ensure nil
   :load-path "~/projects/elisp/mail-triage"
   :bind (:map mail-triage-mode-map
          ("M-o" . mail-triage-menu))
   :config
+  (setq mail-triage-llm-backend "Gemini"
+        mail-triage-llm-model 'gemini-3-flash-preview
+        mail-triage-user-description "a professor (REDACTED) at UT Austin")
   (mail-triage-setup)
   (add-hook 'mail-triage-mode-hook
             (lambda ()
