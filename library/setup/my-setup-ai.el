@@ -410,7 +410,11 @@ Each list contains a list of cons cells, where the car is the device number and 
   (setq claude-code-ide-window-side 'bottom)
   (setq claude-code-ide-window-height 10)
   ;; Optionally enable Emacs MCP tools
-  (claude-code-ide-emacs-tools-setup))
+  (claude-code-ide-emacs-tools-setup)
+  ;; mu4e email tools for Claude Code
+  (add-to-list 'load-path "~/projects/elisp/mu4e-mcp/")
+  (require 'mu4e-mcp)
+  (mu4e-mcp-setup))
 
 
 ;;* pi-coding-agent
