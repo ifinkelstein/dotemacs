@@ -386,6 +386,12 @@
          :prepend t
          :empty-lines 1
          :created t)  ; template
+        ("M" "Mail todo"
+         entry (file+headline org-default-notes-file "Mail")
+         "* TODO %?\n:PROPERTIES:\n:Created: %U\n:END:\n%a\n"
+         :prepend t
+         :created t
+         :empty-lines 1)
         ("W"
          "Weight"
          table-line
