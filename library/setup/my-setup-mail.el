@@ -1034,6 +1034,71 @@ Tested with mu4e 1.12.2"
   (define-key mu4e-compose-minor-mode-map (kbd "R")
               #'my-mu4e-compose-reply-ask-wide)
 
+  (defun my-mu4e--extract-body (path)
+    "Extract plain text body from email at PATH.
+Prefer HTML part (rendered to text via shr), fall back to text/plain.
+Strip non-text characters for clean LLM input."
+    (require 'mm-decode)
+    (require 'shr)
+    (with-temp-buffer
+      (insert-file-contents-literally path)
+      (let* ((handles (mm-dissect-buffer t))
+             (text (my-mu4e--extract-from-handles handles)))
+        (when handles (mm-destroy-parts handles))
+        (when text
+          ;; Decode any remaining entities, collapse whitespace
+          (with-temp-buffer
+            (insert text)
+            ;; Strip non-text chars: keep newline, tab, printable ASCII + unicode letters
+            (goto-char (point-min))
+            (while (re-search-forward "[^\n\t[:print:]]" nil t)
+              (replace-match "" nil t))
+            ;; Collapse runs of blank lines
+            (goto-char (point-min))
+            (while (re-search-forward "\n\\{3,\\}" nil t)
+              (replace-match "\n\n"))
+            (string-trim (buffer-string)))))))
+
+  (defun my-mu4e--extract-from-handles (handles)
+    "Walk MIME HANDLES and return body text.
+Prefer text/html (rendered via shr), fall back to text/plain."
+    (cond
+     ;; Leaf node: a handle is (buffer . rest)
+     ((and (listp handles) (bufferp (car handles)))
+      (let ((type (mm-handle-media-type handles)))
+        (cond
+         ((string= type "text/html")
+          (let ((content (mm-get-part handles)))
+            (when (and content (not (string-empty-p content)))
+              (with-temp-buffer
+                (insert content)
+                (let ((dom (libxml-parse-html-region (point-min) (point-max))))
+                  (erase-buffer)
+                  (shr-insert-document dom)
+                  (buffer-substring-no-properties (point-min) (point-max)))))))
+         ((string= type "text/plain")
+          (mm-get-part handles)))))
+     ;; Multipart: walk children, prefer HTML
+     ((listp handles)
+      (let ((parts (if (stringp (car handles)) (cdr handles) handles))
+            html-text plain-text)
+        (dolist (part parts)
+          (when (listp part)
+            (if (and (listp part) (bufferp (car part)))
+                (let ((type (mm-handle-media-type part)))
+                  (cond
+                   ((string= type "text/html")
+                    (unless html-text
+                      (setq html-text (my-mu4e--extract-from-handles part))))
+                   ((string= type "text/plain")
+                    (unless plain-text
+                      (setq plain-text (my-mu4e--extract-from-handles part))))))
+              ;; Nested multipart
+              (let ((result (my-mu4e--extract-from-handles part)))
+                (when result
+                  (unless html-text (setq html-text result)))))))
+        (or html-text plain-text)))))
+
   (defun my-mu4e-copy-message-to-kill-ring ()
     "Copy the current mu4e message (headers + body) to the kill ring.
 Works in both `mu4e-headers-mode' and `mu4e-view-mode'.
@@ -1060,9 +1125,11 @@ Claude Code or other LLM contexts."
            (msgid (mu4e-message-field msg :message-id))
            (body (when-let* ((path (mu4e-message-field msg :path))
                              ((file-exists-p path)))
-                   (condition-case nil
-                       (mail-triage--mime-extract-text path)
-                     (error nil))))
+                   (condition-case err
+                       (my-mu4e--extract-body path)
+                     (error
+                      (message "Body extraction failed: %s" err)
+                      nil))))
            (text (concat "From: " from "\n"
                          "To: " to "\n"
                          "Subject: " subject "\n"
