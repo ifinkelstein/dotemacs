@@ -83,6 +83,8 @@
   ;; Sync imap servers w/mbsync (via isync installed w/homebrew):
   ;; redirect STDERR to STDOUT to a log file
   (setq mu4e-get-mail-command (concat (executable-find "mbsync") " -c ~/.config/.mbsyncrc  -aV 2>&1 > ~/.config/.mbsync.log"))
+  ;; Skip files whose ctime/mtime haven't changed — much faster with 200K+ messages
+  (setq mu4e-index-lazy-check t)
   ;; Change filenames when moving
   ;; This is set to 't' to avoid mail syncing issues when using mbsync
   ;; i.e. makes sure that moving a message (like to Trash) causes the
@@ -1220,9 +1222,13 @@ select one email at a time.
     "Advice to set `org-export-show-temporary-export-buffer' to `nil'."
     (let ((org-export-show-temporary-export-buffer nil))
       (apply orig-fun args)) )
+  (defun my-org-msg-maybe-enable ()
+    "Enable org-msg-mode except when forwarding."
+    (unless (eq mu4e-compose-type 'forward)
+      (org-msg-mode)))
   :bind (:map org-msg-edit-mode-map
               ("s-<return>" . org-msg-goto-body))  ;; Firefox tridactyl-like bindings
-  :hook ((mu4e-compose-pre . org-msg-mode))
+  :hook ((mu4e-compose-pre . my-org-msg-maybe-enable))
   :config
   ;; rapid navigation between composition fields
   (transient-define-prefix my-transient-email-compose ()
