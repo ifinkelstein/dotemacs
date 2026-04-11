@@ -1484,7 +1484,11 @@ use 'server-force-delete' and 'server-mode' to restart."
 (use-package origami
   :hook (org-agenda-mode . origami-mode)
   :bind (:map org-super-agenda-header-map
-              ("<tab>" . origami-toggle-node)))
+              ("<tab>" . origami-toggle-node))
+  :config
+  ;; Fix upstream defface bug: ':inherit 'face' makes Emacs read (quote face)
+  ;; as a two-face inherit list, producing "Invalid face reference: quote".
+  (set-face-attribute 'origami-fold-replacement-face nil :inherit 'font-lock-comment-face))
 
 
 

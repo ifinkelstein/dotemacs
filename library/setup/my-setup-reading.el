@@ -127,7 +127,13 @@
   :config
   (setq elfeed-goodies/entry-pane-position 'bottom) ;; split with content on the bottom like mu4e
   (setq elfeed-goodies/entry-pane-size 0.5)
-  (elfeed-goodies/setup))
+  (elfeed-goodies/setup)
+
+  ;; Fix upstream defface bug: ':inherit 'face' makes Emacs read (quote face)
+  ;; as a two-face inherit list, producing "Invalid face reference: quote".
+  (set-face-attribute 'elfeed-goodies-show-header-tag nil :inherit 'elfeed-search-tag-face)
+  (set-face-attribute 'elfeed-goodies-show-header-title nil :inherit 'elfeed-search-title-face)
+  (set-face-attribute 'elfeed-goodies-show-header-feed nil :inherit 'elfeed-search-feed-face))
 
 ;;* calibre integration
 ;; for ebook support
