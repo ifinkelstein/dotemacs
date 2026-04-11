@@ -730,6 +730,8 @@ Within those groups, sort by date and priority."
   ;; ref: https://yiming.dev/blog/2018/03/02/my-org-refile-workflow/
   (run-with-idle-timer 300 t (lambda ()
                                (org-refile-cache-clear)
+                               ;; ignore-errors: non-org buffers (e.g. *elfeed-entry*) cause
+                               ;; "Major mode must be org-mode" errors when scanned as refile targets
                                (ignore-errors (org-refile-get-targets)))))
 
 ;;** Open Files in Default Application
