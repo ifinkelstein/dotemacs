@@ -730,7 +730,7 @@ Within those groups, sort by date and priority."
   ;; ref: https://yiming.dev/blog/2018/03/02/my-org-refile-workflow/
   (run-with-idle-timer 300 t (lambda ()
                                (org-refile-cache-clear)
-                               (org-refile-get-targets))))
+                               (ignore-errors (org-refile-get-targets)))))
 
 ;;** Open Files in Default Application
 ;;Open files in their default applications (ms word being the prime example)
