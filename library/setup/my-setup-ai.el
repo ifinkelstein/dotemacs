@@ -1,23 +1,6 @@
 ;; my-setup-ai.el -*- lexical-binding: t -*-
 (message "Setting up AI packages...")
-;;* Aider interface for emacs
-;; (use-package aidermacs
-;;   :vc (:url "https://github.com/MatthewZMD/aidermacs" :rev :newest)
-;;   :bind (("C-c p" . aidermacs-transient-menu))
-;;
-;;   :config
-;;   ;; TODO: fix getting API key from gptel, which I think is the easiest
-;;   (if
-;;       (not (= (length (getenv "ANTHROPIC_API_KEY")) 108))
-;;       (setenv "ANTHROPIC_API_KEY" (my-get-anthropic-api-key)))
-;;   ;; Enable minor mode for Aider files
-;;   (aidermacs-setup-minor-mode)
-;;
-;;   :custom
-;;                                         ; See the Configuration section below
-;;   (aidermacs-auto-commits t)
-;;   (aidermacs-use-architect-mode t)
-;;   (aidermacs-default-model "sonnet"))
+
 
 ;;* GPTel
 (use-package gptel
@@ -194,14 +177,6 @@ START and END, rather than by the position of point and mark."
   ;; Ensure prompts are updated if prompt files change
   (gptel-prompts-add-update-watchers))
 
-;; 2026-04-12: commented out gptel-aibo — not currently using it,
-;; and its test files were loading during init causing lexbind warnings.
-;; (use-package gptel-aibo
-;;   :vc (:url "https://github.com/dolmens/gptel-aibo" :rev :newest :branch "master")
-;;   :after (gptel)
-;;   :config
-;;   (define-key gptel-aibo-mode-map
-;;               (kbd "C-c /") #'gptel-aibo-apply-last-suggestions))
 ;;** MCP (model context protocol) and integration with gptel
 (use-package mcp
   :vc (:url "https://github.com/lizqwerscott/mcp.el" :rev :newest)
@@ -332,57 +307,6 @@ Each list contains a list of cons cells, where the car is the device number and 
              do (push (cons (string-to-number (match-string 1 line)) (match-string 2 line)) audio-devices)
              finally return (list (nreverse video-devices) (nreverse audio-devices)))))
 
-
-;;* elisp introspection and semantic search
-;; usage example: https://share.karthinks.com/ragmacs-test-simple.html
-(use-package ragmacs
-  :vc (:url "https://github.com/positron-solutions/ragmacs" :rev :newest :branch "master")
-  :after gptel
-  :defer
-  :init
-  (gptel-make-preset 'introspect
-    :pre (lambda () (require 'ragmacs))
-    :system
-    "You are pair programming with the user in Emacs and on Emacs.
- 
- Your job is to dive into Elisp code and understand the APIs and
- structure of elisp libraries and Emacs.  Use the provided tools to do
- so, but do not make duplicate tool calls for information already
- available in the chat.
- 
- <tone>
- 1. Be terse and to the point.  Speak directly.
- 2. Explain your reasoning.
- 3. Do NOT hedge or qualify.
- 4. If you don't know, say you don't know.
- 5. Do not offer unprompted advice or clarifications.
- 6. Never apologize.
- 7. Do NOT summarize your answers.
- </tone>
- 
- <code_generation>
- When generating code:
- 1. Always check that functions or variables you use in your code exist.
- 2. Also check their calling convention and function-arity before you use them.
- 3. Write code that can be tested by evaluation, and offer to evaluate
- code using the `elisp_eval` tool.
- </code_generation>
- 
- <formatting>
- 1. When referring to code symbols (variables, functions, tags etc) enclose them in markdown quotes.
-    Examples: `read_file`, `getResponse(url, callback)`
-    Example: `<details>...</details>`
- 2. If you use LaTeX notation, enclose math in \( and \), or \[ and \] delimiters.
- </formatting>"
-    :tools '("introspection")))
-
-;;* Semantic search with semext
-(use-package semext
-  :vc (:url "https://github.com/ahyatt/semext/"  :rev :newest :branch "master")
-  :init
-  (require 'llm-openai)
-  ;; Replace provider with whatever you want, see https://github.com/ahyatt/llm
-  (setopt semext-provider (make-llm-openai :key gptel-api-key :chat-model "gpt-4o-mini")))
 
 ;;* claude-code
 ;; install required inheritenv dependency:

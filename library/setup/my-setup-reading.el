@@ -140,22 +140,5 @@
   (face-spec-set 'elfeed-goodies-show-header-feed
                  '((t :inherit elfeed-search-feed-face))))
 
-;;* calibre integration
-;; for ebook support
-(use-package calibredb
-  :config
-  (setq calibredb-root-dir "~/Documents/eBooks")
-  (setq calibredb-db-dir (expand-file-name "metadata.db" calibredb-root-dir))
-  (setq calibredb-library-alist '(("~/Documents/eBooks"))))
-
-;;* nov.el
-;; for reading EPUBs in emacs
-;; check out xwidget-based nov.el integration at some point
-;; https://www.reddit.com/r/emacs/comments/v2fjec/a_new_epub_reader_in_emacs_novxwidgetel/
-(use-package nov
-  :config
-  (add-to-list 'auto-mode-alist '("\\.epub\\'" . nov-mode))
-  (add-hook 'nov-mode-hook 'olivetti-mode))
-
 ;;* end my-setup-reading
 (provide 'my-setup-reading)
