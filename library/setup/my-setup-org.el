@@ -1486,9 +1486,12 @@ use 'server-force-delete' and 'server-mode' to restart."
   :bind (:map org-super-agenda-header-map
               ("<tab>" . origami-toggle-node))
   :config
-  ;; Fix upstream defface bug: ':inherit 'face' makes Emacs read (quote face)
-  ;; as a two-face inherit list, producing "Invalid face reference: quote".
-  (set-face-attribute 'origami-fold-replacement-face nil :inherit 'font-lock-comment-face))
+  ;; Fix upstream defface bug: ':inherit 'face' inside defface is data, not
+  ;; code, so the reader produces (quote face) — a two-face inherit list.
+  ;; Use face-spec-set to overwrite both the live attribute AND the stored
+  ;; defface-spec, so theme recalculation cannot re-apply the buggy spec.
+  (face-spec-set 'origami-fold-replacement-face
+                 '((t :inherit font-lock-comment-face))))
 
 
 
