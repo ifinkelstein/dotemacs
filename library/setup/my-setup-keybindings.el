@@ -291,7 +291,6 @@
     ("f" "Transcribe from File" whisper-file)]
    
    ["Assistants"
-    ("o" "gptel-aibo" gptel-aibo)
     ("O" "Toggle gptel-mode" (lambda ()
                                (interactive)
                                "Enable gptel-mode in Org and Markdown buffers."
