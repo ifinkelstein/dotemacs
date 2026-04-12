@@ -391,7 +391,7 @@ Each list contains a list of cons cells, where the car is the device number and 
 
 ;; install claude-code.el
 (use-package claude-code
-  :load-path "~/projects/elisp/claude-code"
+  :vc (:url "https://github.com/stevemolitor/claude-code.el" :rev :newest)
   :config
   ;; optional IDE integration with Monet
   ;; (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
@@ -406,7 +406,7 @@ Each list contains a list of cons cells, where the car is the device number and 
   (:repeat-map my-claude-code-map ("M" . claude-code-cycle-mode)))
 
 (use-package claude-code-ide
-  :load-path "~/projects/elisp/claude-code-ide"
+  :vc (:url "https://github.com/manzaltu/claude-code-ide.el" :rev :newest)
   :bind ("C-c C-'" . claude-code-ide-menu) ; Set your favorite keybinding
   :config
   (setq claude-code-ide-window-side 'bottom)
