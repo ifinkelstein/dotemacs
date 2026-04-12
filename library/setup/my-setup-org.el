@@ -1442,10 +1442,12 @@ the current region, if a region is selected, or the current tree."
   (setq org-pomodoro-expiry-time 999999) ;; stop command from asking about resetting count
   (setq org-pomodoro-length 45)
 
-  ;; Defined here (inside use-package) so that org-pomodoro symbols
-  ;; like `org-pomodoro-active-p' are available when the defun is evaluated.
-  (defun my-org-clock-task ()
-    "If org-pomodoro is running, return the pomodoro state and time.
+  ) ;; org-pomodoro
+
+;; Defined at top level so hammerspoon/org-timer.sh can call it via
+;; emacsclient before org-pomodoro has been loaded (deferred by :defer 5).
+(defun my-org-clock-task ()
+  "If org-pomodoro is running, return the pomodoro state and time.
 If org-clock is running without a pomodoro timer, return the
 minutes on the current clock period. NOTE: I explicitly return
 just the clock-in on the current period; not the entire
@@ -1456,21 +1458,22 @@ Usage: I use this with xbar to display the current clock in the
 menu bar on MacOS. So the message is truncated to fit on screen.
 Also, server-mode must be enabled. If the server gets confused,
 use 'server-force-delete' and 'server-mode' to restart."
-    (interactive)
-    (cond ((org-pomodoro-active-p)
-           (cl-case org-pomodoro-state
-             (:pomodoro
-              (format "🍅%d m: %s" (/ (org-pomodoro-remaining-seconds) 60) (string-limit org-clock-heading 20)))
-             (:short-break
-              (format "🍅Short: %d m" (/ (org-pomodoro-remaining-seconds) 60)))
-             (:long-break
-              (format "🍅Long: %d m" (/ (org-pomodoro-remaining-seconds) 60)))
-             (:overtime
-              (format "🍅Overtime! %d m" (/ (org-pomodoro-remaining-seconds) 60)))))
-          ((and (org-clocking-p) (not (org-pomodoro-active-p)))
-           (format "⏳%d m: %s" (/ (org-time-convert-to-integer (time-since org-clock-start-time)) 60) (string-limit org-clock-heading 20)))
-          (t
-           (format "What's the next task?"))))) ;; org-pomodoro
+  (interactive)
+  (require 'org-pomodoro)
+  (cond ((org-pomodoro-active-p)
+         (cl-case org-pomodoro-state
+           (:pomodoro
+            (format "🍅%d m: %s" (/ (org-pomodoro-remaining-seconds) 60) (string-limit org-clock-heading 20)))
+           (:short-break
+            (format "🍅Short: %d m" (/ (org-pomodoro-remaining-seconds) 60)))
+           (:long-break
+            (format "🍅Long: %d m" (/ (org-pomodoro-remaining-seconds) 60)))
+           (:overtime
+            (format "🍅Overtime! %d m" (/ (org-pomodoro-remaining-seconds) 60)))))
+        ((and (org-clocking-p) (not (org-pomodoro-active-p)))
+         (format "⏳%d m: %s" (/ (org-time-convert-to-integer (time-since org-clock-start-time)) 60) (string-limit org-clock-heading 20)))
+        (t
+         (format "What's the next task?"))))
 
 ;;** org-timeblock to schedule the day
 (use-package org-timeblock
