@@ -398,9 +398,10 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
   :disabled t)
 
 ;; I generally like 
+;; TODO: revert to upstream once https://github.com/Lambda-Emacs/lambda-line/pull/25 is merged
+;; :vc (:url "https://github.com/Lambda-Emacs/lambda-line" :branch "main")
 (use-package lambda-line
-  :vc (:url "https://github.com/Lambda-Emacs/lambda-line" :branch "main")
-  ;; :load-path "/Users/ilya/projects/lambda-line/"
+  :vc (:url "https://github.com/ifinkelstein/lambda-line" :rev "fix/quoted-face-refs")
   :custom
   (lambda-line-abbrev t)
   (lambda-line-position 'top)

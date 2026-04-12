@@ -161,8 +161,14 @@
 ;;* eglot and treesitter for language server protocols (LSP)
 (use-package eglot
   :ensure nil
-  :hook (prog-mode . eglot-ensure)
+  :hook (prog-mode . my/maybe-eglot-ensure)
   :init
+  ;; No LSP server exists for emacs-lisp-mode; built-in eldoc, xref, and
+  ;; completion-at-point already cover what an LSP would provide.
+  (defun my/maybe-eglot-ensure ()
+    "Start eglot only in modes that have an LSP server configured."
+    (unless (derived-mode-p 'emacs-lisp-mode)
+      (eglot-ensure)))
   (setq eglot-stay-out-of '(flymake))
   :bind (:map
          eglot-mode-map
@@ -230,10 +236,6 @@
 ;;* Programming modes
 ;; reminder to run eglot-upgrade-eglot every so often
 ;;** Python
-;; 2026-04-09: commented out elpy — upstream defface bug causes
-;; "Invalid face reference: quote" (uses ':inherit 'face' inside defface,
-;; the extra quote makes Emacs read it as (quote face) = two-face inherit list).
-;; TODO: remove from config entirely if not missed after a few weeks.
 ;; (use-package elpy
 ;;   :vc (:url "https://github.com/jorgenschaefer/elpy")
 ;;   :custom
