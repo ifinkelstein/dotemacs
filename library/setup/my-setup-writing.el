@@ -157,8 +157,10 @@
              langtool-correct-buffer)
   :init (setq langtool-default-language "en-US")
   :custom-face
-  ;; add subtle line under the error as opposed to the ugliness before
-  (langtool-errline ((t (:background nil :foreground nil :inherit 'flyspell-duplicate))))
+  ;; Add subtle line under the error as opposed to the ugliness before.
+  ;; NB: no quote before flyspell-duplicate — :custom-face specs are data,
+  ;; so 'face becomes the two-face list (quote face).
+  (langtool-errline ((t (:background nil :foreground nil :inherit flyspell-duplicate))))
 
   :config
   (setq langtool-java-user-arguments '("-Dfile.encoding=UTF-8"))
