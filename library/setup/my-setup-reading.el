@@ -129,11 +129,16 @@
   (setq elfeed-goodies/entry-pane-size 0.5)
   (elfeed-goodies/setup)
 
-  ;; Fix upstream defface bug: ':inherit 'face' makes Emacs read (quote face)
-  ;; as a two-face inherit list, producing "Invalid face reference: quote".
-  (set-face-attribute 'elfeed-goodies-show-header-tag nil :inherit 'elfeed-search-tag-face)
-  (set-face-attribute 'elfeed-goodies-show-header-title nil :inherit 'elfeed-search-title-face)
-  (set-face-attribute 'elfeed-goodies-show-header-feed nil :inherit 'elfeed-search-feed-face))
+  ;; Fix upstream defface bug: ':inherit 'face' inside defface is data, not
+  ;; code, so the reader produces (quote face) — a two-face inherit list.
+  ;; Use face-spec-set to overwrite both the live attribute AND the stored
+  ;; defface-spec, so theme recalculation cannot re-apply the buggy spec.
+  (face-spec-set 'elfeed-goodies-show-header-tag
+                 '((t :inherit elfeed-search-tag-face)))
+  (face-spec-set 'elfeed-goodies-show-header-title
+                 '((t :inherit elfeed-search-title-face)))
+  (face-spec-set 'elfeed-goodies-show-header-feed
+                 '((t :inherit elfeed-search-feed-face))))
 
 ;;* calibre integration
 ;; for ebook support
