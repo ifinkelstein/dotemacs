@@ -7,12 +7,6 @@
 ;; from this gist:https://gist.github.com/jthaman/c4eb411defc98f82cfd85c8c0d4c67e0#file-consult-ripgrep-all-el
 ;; (load "/Users/ilya/.config/.emacs/library/consult-ripgrep-all.el")
 
-;;** Ag -- the silver searcher
-;;** Deadgrep
-;; Deadgrep uses ripgrep for extremely fast text searches and provides a
-;; separate buffer for results.
-(use-package deadgrep)
-
 ;;** Ripgrep
 ;; Ripgrep is a replacement for both grep like (search one file) and ag like
 ;; (search many files) tools. It's fast and versatile and written in Rust.
