@@ -1,9 +1,6 @@
 ;; my-setup-ai.el -*- lexical-binding: t -*-
 (message "Setting up AI packages...")
 ;;* Aider interface for emacs
-;; 2026-04-09: commented out aidermacs — upstream defface bug causes
-;; "Invalid face reference: quote" (same ':inherit 'face' issue as elpy).
-;; TODO: remove from config entirely if not missed after a few weeks.
 ;; (use-package aidermacs
 ;;   :vc (:url "https://github.com/MatthewZMD/aidermacs" :rev :newest)
 ;;   :bind (("C-c p" . aidermacs-transient-menu))
@@ -197,12 +194,14 @@ START and END, rather than by the position of point and mark."
   ;; Ensure prompts are updated if prompt files change
   (gptel-prompts-add-update-watchers))
 
-(use-package gptel-aibo
-  :vc (:url "https://github.com/dolmens/gptel-aibo" :rev :newest :branch "master")
-  :after (gptel)
-  :config
-  (define-key gptel-aibo-mode-map
-              (kbd "C-c /") #'gptel-aibo-apply-last-suggestions))
+;; 2026-04-12: commented out gptel-aibo — not currently using it,
+;; and its test files were loading during init causing lexbind warnings.
+;; (use-package gptel-aibo
+;;   :vc (:url "https://github.com/dolmens/gptel-aibo" :rev :newest :branch "master")
+;;   :after (gptel)
+;;   :config
+;;   (define-key gptel-aibo-mode-map
+;;               (kbd "C-c /") #'gptel-aibo-apply-last-suggestions))
 ;;** MCP (model context protocol) and integration with gptel
 (use-package mcp
   :vc (:url "https://github.com/lizqwerscott/mcp.el" :rev :newest)
@@ -391,8 +390,8 @@ Each list contains a list of cons cells, where the car is the device number and 
   :vc (:url "https://github.com/purcell/inheritenv" :rev :newest))
 
 ;; install claude-code.el
-(use-package claude-code :ensure t
-  :vc (:url "https://github.com/stevemolitor/claude-code.el" :rev :newest)
+(use-package claude-code
+  :load-path "~/projects/elisp/claude-code"
   :config
   ;; optional IDE integration with Monet
   ;; (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
@@ -407,7 +406,7 @@ Each list contains a list of cons cells, where the car is the device number and 
   (:repeat-map my-claude-code-map ("M" . claude-code-cycle-mode)))
 
 (use-package claude-code-ide
-  :vc (:url "https://github.com/manzaltu/claude-code-ide.el" :rev :newest)
+  :load-path "~/projects/elisp/claude-code-ide"
   :bind ("C-c C-'" . claude-code-ide-menu) ; Set your favorite keybinding
   :config
   (setq claude-code-ide-window-side 'bottom)
