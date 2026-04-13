@@ -212,7 +212,14 @@ Version 2022-09-14"
               (progn (list @fname))
             (if (or (string-equal major-mode "dired-mode") (string-equal major-mode "dirvish-mode"))
                 (dired-get-marked-files)
-              (list (buffer-file-name)))))
+              ;; `buffer-file-name' returns nil for buffers that don't visit a
+              ;; file (e.g. *mu4e-headers*, *Messages*, *scratch*).  The original
+              ;; code did (list (buffer-file-name)) unconditionally, which put nil
+              ;; into the list and then crashed with "wrong-type-argument: arrayp,
+              ;; nil" when shell-quote-argument tried to quote it.  The `when'
+              ;; guard makes $file-list nil in that case, so the (when $do-it-p …)
+              ;; block below simply does nothing.
+              (when (buffer-file-name) (list (buffer-file-name))))))
          ($do-it-p (if (<= (length $file-list) 5)
                        t
                      (y-or-n-p "Open more than 5 files? "))))
