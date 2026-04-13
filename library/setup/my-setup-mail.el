@@ -20,14 +20,16 @@
               ("u" . mu4e-view-mark-for-unread)
               ("!" . mu4e-view-mark-for-refile)
               ("?" . mu4e-view-mark-for-unmark)
-              ("M-o" . my-transient-email) 
-              
+              ("L" . org-store-link)
+              ("M-o" . my-transient-email)
+
               :map mu4e-headers-mode-map
               ("r" . mu4e-headers-mark-for-read)
               ("u" . mu4e-headers-mark-for-unread)
               ("!" . mu4e-headers-mark-for-refile)
               ("?" . mu4e-headers-mark-for-unmark)
               ("K" . my-mu4e-copy-message-to-kill-ring)
+              ("L" . org-store-link)
               ("M-o" . my-transient-email)
               :map mu4e-main-mode-map
               ("u" . mu4e-update-index )
@@ -258,6 +260,17 @@ blocking bothers you, reduce `my-mu4e--network-wait-seconds'."
         ;; Timed out.
         nil)))
 
+  ;; ---- Stamp update-process start time ----
+
+  (defun my-mu4e--stamp-update-process (&rest _)
+    "Record start time on the mu4e update process so we can detect stuck syncs."
+    (when-let* ((buf (and (buffer-live-p mu4e--update-buffer) mu4e--update-buffer))
+                (proc (get-buffer-process buf)))
+      (unless (process-get proc 'my-start-time)
+        (process-put proc 'my-start-time (current-time)))))
+
+  (advice-add 'mu4e-update-mail-and-index :after #'my-mu4e--stamp-update-process)
+
   ;; ---- Stale process cleanup ----
 
   (defun my-mu4e--kill-stale-update-process ()
@@ -287,10 +300,11 @@ Returns non-nil if a stale process was cleaned up."
                         ;; "running" for > 10 minutes, it's definitely stuck.
                         ;; Normal mbsync finishes in 30-60 seconds.
                         (and (eq (process-status proc) 'run)
-                             (> (float-time
-                                 (time-subtract (current-time)
-                                                (process-start-time proc)))
-                                600)))))
+                             (let ((start (process-get proc 'my-start-time)))
+                               (and start
+                                    (> (float-time
+                                        (time-subtract (current-time) start))
+                                       600)))))))
         (when stale
           (mu4e-message "Cleaning up stale mu4e update process")
           (when (and proc (process-live-p proc))
