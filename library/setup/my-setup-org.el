@@ -1478,7 +1478,50 @@ use 'server-force-delete' and 'server-mode' to restart."
 ;;** org-timeblock to schedule the day
 (use-package org-timeblock
   :vc (:url "https://github.com/ifinkelstein/org-timeblock" :rev :newest :branch "master")
-  :after org)
+  :after org
+  :config
+  (defun my-org-timeblock-avy-jump ()
+    "Jump to a timeblock entry using avy.
+
+Works from either `org-timeblock-mode' (the SVG calendar view) or
+`org-timeblock-list-mode' (the text list view).
+
+Collects all task lines in `*org-timeblock-list*' — skipping date
+headers — and passes them to `avy-process' as (point . window)
+candidates.  After avy lands on a line, calls
+`org-timeblock-select-block-for-current-entry' so the SVG view
+highlights the corresponding block.
+
+If the list buffer is not currently displayed in any window, it is
+popped up temporarily via `display-buffer' so avy has a window to
+work in."
+    (interactive)
+    (let* ((list-buf (get-buffer org-timeblock-list-buffer))
+           (list-win (and list-buf (get-buffer-window list-buf))))
+      (unless list-buf
+        (user-error "No org-timeblock-list buffer; run `org-timeblock' first"))
+      (unless list-win
+        (display-buffer list-buf)
+        (setq list-win (get-buffer-window list-buf)))
+      (with-selected-window list-win
+        (let ((candidates
+               (save-excursion
+                 (goto-char (point-min))
+                 (let (acc)
+                   (while (not (eobp))
+                     ;; Only task lines carry the 'id property;
+                     ;; date-header lines do not.
+                     (when (get-text-property (point) 'id)
+                       (push (cons (point) list-win) acc))
+                     (forward-line 1))
+                   (nreverse acc)))))
+          (if (null candidates)
+              (message "No timeblock entries to jump to.")
+            (avy-process candidates)
+            ;; Sync the SVG view to the newly selected line.
+            (org-timeblock-select-block-for-current-entry))))))
+  (define-key org-timeblock-mode-map      (kbd "j") #'my-org-timeblock-avy-jump)
+  (define-key org-timeblock-list-mode-map (kbd "j") #'my-org-timeblock-avy-jump))
 ;;** org-agenda improvements
 ;;*** origami -- fold agenda elements
 ;; useful for folding elements in org-agenda
