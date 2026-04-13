@@ -1,5 +1,5 @@
 ;; my-setup-writing.el -*- lexical-binding: t -*-
-;; Author: REDACTED
+;; Author: Ilya Finkelstein
 (message "Setting up writing settings...")
 
 ;; Personal tweaks to improve writing and other text-based manipulations
