@@ -313,7 +313,5 @@ Loading modules
 (put 'ns-print-buffer 'disabled nil)
 
 ;;*  User settings
-;; Give Emacs some personal info
-(setq-default user-full-name "REDACTED"
-              user-mail-address "REDACTED@example.com")
+;; user-full-name and user-mail-address are set in private.el
 
