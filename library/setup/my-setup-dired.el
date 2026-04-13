@@ -15,7 +15,8 @@
               ("E" . gnus-dired-attach)
               ("G" . gptel-add)
               ("O" . org-attach-dired-to-subtree)
-              ("S" . xah-open-in-external-app))
+              ("S" . xah-open-in-external-app)
+              ("TAB" . dired-cycle-dired-windows))
   :custom
   ;; compress to .zip files by default with dired "Z" command (otherwise its .tar.gz)
   (dired-compress-directory-default-suffix ".zip")
@@ -41,6 +42,19 @@
   ;; drag files from dired into other programs (!!!)
   (dired-mouse-drag-files t)
   :config
+  ;; Cycle between dired windows like an orthodox file manager (tere-style)
+  ;; ref: https://mbork.pl/2026-04-13_Binding_TAB_in_Dired_to_something_useful
+  (defun dired-cycle-dired-windows ()
+    "Switch to the next Dired window in the selected frame."
+    (interactive)
+    (select-window
+     (cadr (seq-filter
+            (lambda (window)
+              (eq (buffer-local-value
+                   'major-mode (window-buffer window))
+                  'dired-mode))
+            (window-list)))))
+
   ;; Function to move up a directory like in ranger
   (defun my-dired-updirectory ()
     (interactive)
