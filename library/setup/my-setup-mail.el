@@ -947,18 +947,6 @@ Strips surrounding angle brackets if present."
                          :query (mu4e-make-query (plist-get bm :query-sexp))
                          :key (plist-get bm :key)))
                  my-mu4e-personal-bookmarks)))
-  ;; (setq mu4e-bookmarks
-  ;;       '((:name "Unread"
-  ;;                :query (lambda ()
-  ;;                         (concat "flag:unread AND NOT flag:trashed AND " my-mu4e-inboxes))
-  ;;                :key ?u)
-  ;;         ;; (:name "UT Staff" :query "from:REDACTED" :key ?M)
-
-  ;;         (:name "Search"
-  ;;                :query "flag:unread AND (from:jobalerts-noreply@linkedin.com OR from:noreply@jobmail.naturecareers.com OR from:noreply@jobrxiv.org OR from:reply@sciencecareers.org OR from:support@academicjobsonline.org OR from:jobseeker@higheredjobs.com OR from:alert@mail.jobs.chronicle.com OR from:no-reply@postmaster.cell.com OR jobalert@higheredjobs.com)"
-  ;;                :key ?J)
-  ;;         ))
-
 
 
 ;;;;; Maildirs
