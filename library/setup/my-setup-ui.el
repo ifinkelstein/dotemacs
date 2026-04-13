@@ -11,6 +11,7 @@
   ;; .. it can overlap characters we want to see.
   (setq make-pointer-invisible t)
   ;; No audible bell/alert
+  (setq ring-bell-function 'ignore)
   (setq-default visible-bell t)
   ;; (Don't) Blink the cursor
   (blink-cursor-mode 0)
