@@ -23,6 +23,10 @@ emms/
 dired-history
 projects.eld
 tabsession.el
+eshell/
+tramp
+triage-draft-style.md
+triage-training.eld
 
 # Backup & lock files
 *~

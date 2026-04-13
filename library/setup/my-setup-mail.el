@@ -753,8 +753,7 @@ Note: this function is actually not necessary because I learned how to use mu fi
 
   (set-variable 'read-mail-command 'mu4e)
   ;; List of your email adresses:
-  (setq mu4e-user-mail-address-list '("REDACTED@example.com"
-                                      "REDACTED@example.com"))
+  (setq mu4e-user-mail-address-list my-email-addresses)
 
   ;; Compose in new buffer (can make 'window for new window)
   (setq mu4e-compose-switch nil)
@@ -797,28 +796,19 @@ Note: this function is actually not necessary because I learned how to use mu fi
   ;; https://emacs.stackexchange.com/questions/47789/how-to-remove-email-address-from-local-database-in-mu4e
   ;; https://www.djcbsoftware.nl/code/mu/mu4e/Contact-functions.html
   (defun my-mu4e-contact-filter (addr)
-    "Remove annoying completions from the email autocomplete. Uses regex to identify offending emails."
+    "Remove annoying completions from the email autocomplete.
+Checks `my-mu4e-suppressed-addresses' (private.el) and generic patterns."
     (cond
-     ;; remove unwanted auto-completes
-     ((string-match-p "REDACTED@example.com" addr) nil) ;; unwanted gmail
-     ((string-match-p "REDACTED@example.com" addr) nil) ;; unwanted alt email
+     ;; Suppress specific addresses from private.el
+     ((seq-some (lambda (a) (string-match-p (regexp-quote a) addr))
+                my-mu4e-suppressed-addresses)
+      nil)
+     ;; Generic patterns
      ((string-match-p "no-reply" addr) nil)
      ((string-match-p "noreply" addr) nil)
      ((string-match-p "@finkelteinlab" addr) nil)
      ((string-match-p "@fortelabs" addr) nil)
-     ((string-match-p "noreply@box.com" addr) nil) ;; random Box emails
-     ((string-match-p "REDACTED@example.com" addr) nil)
-     ((string-match-p "REDACTED@example.com" addr) nil)
-     ((string-match-p "REDACTED@example.com" addr) nil) ;; alt email do not use
-     ((string-match-p "REDACTED@example.com" addr) nil)
      ((string-match-p "via Canvas" addr) nil)
-     ((string-match-p "REDACTED@example.com" addr) nil) ;; old email
-     ((string-match-p "unwanted.user@somedomain.com)" addr) nil)
-     ((string-match-p "REDACTED@example.com)" addr) nil) ;; alt email do not use
-     ;; auto-corrects -->
-     ;; jonh smiht --> John Smith
-     ;; ((string-match "jonh smiht" contact)
-     ;;  (replace-regexp-in-string "jonh smiht" "John Smith" contact))
      (t addr)))
 
   (setq mu4e-contact-process-function 'my-mu4e-contact-filter)
@@ -831,12 +821,14 @@ Note: this function is actually not necessary because I learned how to use mu fi
     (save-excursion (message-add-header "Cc: \nBcc: \n")))
 
   (defun my-swap-email-from-field ()
-    "Swap from field in emails to REDACTED@example.com to redirect e-mails to that account"
+    "Swap the From header to the primary email address.
+Uses `my-email-primary-name' and `my-email-primary-address' from private.el."
     (interactive)
     (save-excursion
-      (message-remove-header "From" nil 'FIRST) ;;remove only first instance of header to deal with replies
+      (message-remove-header "From" nil 'FIRST)
       (goto-char (point-min))
-      (insert "From: " (message-make-from "REDACTED" "REDACTED@example.com") "\n")))
+      (insert "From: " (message-make-from my-email-primary-name
+                                           my-email-primary-address) "\n")))
 
   ;; a few helper functions to navigate & copy message fields quickly
   (defun my-kill-email-address-at-point ()
@@ -880,51 +872,27 @@ Strips surrounding angle brackets if present."
 
 
   ;;** Contexts
+  ;; Account data lives in `my-mu4e-context-accounts' (private.el)
+  (defun my--build-mu4e-context (account)
+    "Build a `mu4e-context' from ACCOUNT plist."
+    (let ((name   (plist-get account :name))
+          (prefix (plist-get account :maildir-prefix)))
+      (make-mu4e-context
+       :name name
+       :match-func
+       (lambda (msg)
+         (when msg
+           (string-prefix-p prefix (mu4e-message-field msg :maildir))))
+       :vars `((user-mail-address   . ,(plist-get account :email))
+               (user-full-name      . ,(plist-get account :full-name))
+               (mu4e-drafts-folder  . ,(plist-get account :drafts))
+               (mu4e-sent-folder    . ,(plist-get account :sent))
+               (mu4e-refile-folder  . ,(plist-get account :refile))
+               (mu4e-trash-folder   . ,(plist-get account :trash))
+               (smtpmail-smtp-user  . ,(plist-get account :smtp-user))))))
+
   (setq mu4e-contexts
-        (list
-         ;; Work account(s). First one is considered default for picking policies
-         (make-mu4e-context
-          :name "Lab"
-          :match-func
-          (lambda (msg)
-            (when msg
-              (string-prefix-p "/Lab" (mu4e-message-field msg :maildir))))
-          :vars '((user-mail-address   . "REDACTED@example.com")
-                  (user-full-name      . "REDACTED")
-                  (mu4e-drafts-folder  . "/Lab/Drafts")
-                  (mu4e-sent-folder    . "/Lab/Sent")
-                  (mu4e-refile-folder  . "/Lab/Archive")
-                  (mu4e-trash-folder   . "/Lab/Trash")
-                  (smtpmail-smtp-user  . "REDACTED@example.com")))
-
-         (make-mu4e-context
-          :name "UT"
-          :match-func
-          (lambda (msg)
-            (when msg
-              (string-prefix-p "/UT" (mu4e-message-field msg :maildir))))
-          :vars '((user-mail-address   . "REDACTED@example.com")
-                  (user-full-name      . "REDACTED")
-                  (mu4e-drafts-folder  . "/UT/Drafts")
-                  (mu4e-sent-folder    . "/UT/Sent")
-                  (mu4e-refile-folder  . "/UT/Archive")
-                  (mu4e-trash-folder   . "/UT/Trash")
-                  (smtpmail-smtp-user  . "REDACTED@example.com")))
-
-         (make-mu4e-context
-          :name "Test"
-          :match-func
-          (lambda (msg)
-            (when msg
-              (string-prefix-p "/gmail-test" (mu4e-message-field msg :maildir))))
-          :vars '((user-mail-address   . "REDACTED@example.com")
-                  (user-full-name      . "Test account")
-                  (mu4e-drafts-folder  . "/gmail-test/[Gmail]/Drafts")
-                  (mu4e-sent-folder    . "/gmail-test/[Gmail]/Sent Mail")
-                  (mu4e-refile-folder  . "/gmail-test/Archive")
-                  (mu4e-trash-folder   . "/gmail-test/[Gmail]/Trash")
-                  (smtpmail-smtp-user  . "REDACTED@example.com")))
-))
+        (mapcar #'my--build-mu4e-context my-mu4e-context-accounts))
 
   ;; Ask for context if none is set
   (setq mu4e-context-policy 'pick-first)
@@ -946,50 +914,39 @@ Strips surrounding angle brackets if present."
   (setq mu4e-headers-show-threads nil)
 
   ;; Note that :hide-unread is implied when the query is not a string; this for the common case where the query function involves some user input, which would be disruptive in this case.
+  ;; Personal bookmarks from `my-mu4e-personal-bookmarks' (private.el)
   (setq mu4e-bookmarks
-        `((:name "Unread"
-                 :query ,(mu4e-make-query
-                          '(and (flag unread) (not (flag trashed)) (maildir (regex "Inbox$"))))
-                 :key ?u)
-          (:name "Today"
-                 :query ,(mu4e-make-query
-                          '(and (date (today .. now)) (not (flag trashed)) (maildir (regex "Inbox$"))))
-                 :key ?t)
-          (:name "New This Week"
-                 :query ,(mu4e-make-query
-                          '(and (date (1w .. now)) (flag unread) (not (flag trashed)) (maildir (regex "Inbox$"))))
-                 :key ?w)
-          (:name "New This Month"
-                 :query ,(mu4e-make-query
-                          '(and (date (1m .. now)) (flag unread) (not (flag trashed)) (maildir (regex "Inbox$"))))
-                 :key ?m)
-          (:name "New Last Month"
-                 :query ,(mu4e-make-query
-                          '(and (date (2m .. 1m)) (flag unread) (not (flag trashed)) (maildir (regex "Inbox$"))))
-                 :key ?M)
-          (:name "Home"
-                 :query ,(mu4e-make-query
-                          '(from "REDACTED@example.com"))
-                 :key ?h)
-          (:name "HR"
-                 :query ,(mu4e-make-query
-                          '(from "REDACTED@example.com"))
-                 :key ?H)
-          (:name "From Contact"
-                 :query ,(mu4e-make-query
-                          '(from "REDACTED"))
-                 :key ?j)
-          (:name "Running"
-                 :query ,(mu4e-make-query
-                          '(or (from "REDACTED@example.com") ("REDACTED")))
-                 :key ?R)
-          (:name "Price Watch"
-                 :query ,(mu4e-make-query
-                          '(or (from "REDACTED@example.com") (from "REDACTED@example.com")))
-                 :key ?P)
-          (:name "Unread + Untagged"
-                 :query "flag:unread AND NOT tag:/.+/ AND maildir:/Inbox$/"
-                 :key ?U)))
+        (append
+         ;; Generic bookmarks
+         `((:name "Unread"
+                  :query ,(mu4e-make-query
+                           '(and (flag unread) (not (flag trashed)) (maildir (regex "Inbox$"))))
+                  :key ?u)
+           (:name "Today"
+                  :query ,(mu4e-make-query
+                           '(and (date (today .. now)) (not (flag trashed)) (maildir (regex "Inbox$"))))
+                  :key ?t)
+           (:name "New This Week"
+                  :query ,(mu4e-make-query
+                           '(and (date (1w .. now)) (flag unread) (not (flag trashed)) (maildir (regex "Inbox$"))))
+                  :key ?w)
+           (:name "New This Month"
+                  :query ,(mu4e-make-query
+                           '(and (date (1m .. now)) (flag unread) (not (flag trashed)) (maildir (regex "Inbox$"))))
+                  :key ?m)
+           (:name "New Last Month"
+                  :query ,(mu4e-make-query
+                           '(and (date (2m .. 1m)) (flag unread) (not (flag trashed)) (maildir (regex "Inbox$"))))
+                  :key ?M)
+           (:name "Unread + Untagged"
+                  :query "flag:unread AND NOT tag:/.+/ AND maildir:/Inbox$/"
+                  :key ?U))
+         ;; Personal bookmarks (PII in private.el)
+         (mapcar (lambda (bm)
+                   (list :name (plist-get bm :name)
+                         :query (mu4e-make-query (plist-get bm :query-sexp))
+                         :key (plist-get bm :key)))
+                 my-mu4e-personal-bookmarks)))
   ;; (setq mu4e-bookmarks
   ;;       '((:name "Unread"
   ;;                :query (lambda ()
@@ -1271,20 +1228,18 @@ select one email at a time.
       ("ew" "🔥" (lambda () (interactive) (insert "🔥")))]
      [("eR" "recent" emoji-recent)
       ("eS" "search" emoji-search)]
-     [("ra" "Contact A" (lambda ()
-                      (interactive)
-                      (insert "REDACTED@example.com")))
-      ("rc" "Contact C" (lambda ()
-                      (interactive)
-                      (insert "REDACTED@example.com")))
-      ("rj" "Contact J" (lambda ()
-                         (interactive)
-                         (insert "REDACTED@example.com")))
-      ("rh" "HR" (lambda ()
-                   (interactive)
-                   (insert "REDACTED@example.com")))]
      [("l" "llm expand" my-mail-llm-expand)]
      ])
+  ;; Inject quick-insert contacts from private.el (chained after "l" suffix)
+  (when (bound-and-true-p my-email-quick-contacts)
+    (let ((prev-key "l"))
+      (dolist (entry my-email-quick-contacts)
+        (let ((key   (nth 0 entry))
+              (label (nth 1 entry))
+              (email (nth 2 entry)))
+          (transient-append-suffix 'my-transient-email-compose prev-key
+            `(,key ,label (lambda () (interactive) (insert ,email))))
+          (setq prev-key key)))))
   ;; (define-key message-mode-map (kbd "M-o") 'my-transient-email-compose)
   (define-key org-msg-edit-mode-map (kbd "M-o") 'my-transient-email-compose)
 
@@ -1592,7 +1547,7 @@ A shell script queries mu every five minutes via the xbar app."
   :config
   (setq mail-triage-llm-backend "Gemini"
         mail-triage-llm-model 'gemini-3-flash-preview
-        mail-triage-user-description "a professor (REDACTED) at UT Austin")
+        mail-triage-user-description my-email-user-description)
   (mail-triage-setup)
   (add-hook 'mail-triage-mode-hook
             (lambda ()
