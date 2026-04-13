@@ -316,6 +316,9 @@ Each list contains a list of cons cells, where the car is the device number and 
 ;; install claude-code.el
 (use-package claude-code
   :vc (:url "https://github.com/stevemolitor/claude-code.el" :rev :newest)
+  :init
+  (defvar claude-code-mode-map (make-sparse-keymap)
+    "Keymap for `claude-code-mode'.")
   :config
   ;; optional IDE integration with Monet
   ;; (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
@@ -325,9 +328,12 @@ Each list contains a list of cons cells, where the car is the device number and 
   (claude-code-mode)
   :bind-keymap ("C-c c" . claude-code-command-map)
 
-  ;; Optionally define a repeat map so that "M" will cycle thru Claude auto-accept/plan/confirm modes after invoking claude-code-cycle-mode / C-c M.
   :bind
-  (:repeat-map my-claude-code-map ("M" . claude-code-cycle-mode)))
+  ;; C-c C-l → org-insert-link (overrides vterm-clear-scrollback in claude buffers)
+  (:map claude-code-mode-map
+        ("C-c C-l" . org-insert-link)
+   ;; Optionally define a repeat map so that "M" will cycle thru Claude auto-accept/plan/confirm modes after invoking claude-code-cycle-mode / C-c M.
+   :repeat-map my-claude-code-map ("M" . claude-code-cycle-mode)))
 
 (use-package claude-code-ide
   :vc (:url "https://github.com/manzaltu/claude-code-ide.el" :rev :newest)
