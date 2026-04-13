@@ -1,5 +1,5 @@
 ;;; init.el  -*- lexical-binding: t -*-
-;; Author: REDACTED
+;; Author: Ilya Finkelstein
 ;; Version: 0.1
 
 ;;; Commentary:
