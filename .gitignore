@@ -51,6 +51,9 @@ tree-sitter/
 emojis/
 multisession/
 
+# Scratch buffer (may contain pasted PII)
+library/scratch
+
 # Claude settings
 .claude/
 library/setup/.claude/
