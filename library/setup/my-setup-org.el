@@ -1481,30 +1481,38 @@ use 'server-force-delete' and 'server-mode' to restart."
   :after org
   :config
   (defun my-org-timeblock-avy-jump ()
-    "Jump to a timeblock entry using avy.
+    "Jump to a timeblock entry using avy and select it in the SVG view.
 
 Works from either `org-timeblock-mode' (the SVG calendar view) or
 `org-timeblock-list-mode' (the text list view).
 
 Collects all task lines in `*org-timeblock-list*' — skipping date
-headers — and passes them to `avy-process' as (point . window)
-candidates.  After avy lands on a line, calls
-`org-timeblock-select-block-for-current-entry' so the SVG view
-highlights the corresponding block.
+headers, which carry no \\='id property — and passes them to
+`avy-process' as (point . window) candidates.
 
-If the list buffer is not currently displayed in any window, it is
-popped up temporarily via `display-buffer' so avy has a window to
-work in."
+After avy lands on a line, calls
+`org-timeblock-select-block-for-current-entry' inside
+`with-current-buffer' for the list buffer.  That function reads
+\\='id and \\='timestamp text properties at point, finds the
+matching rect node in `org-timeblock-svg' via `dom-by-id', sets
+its :select attribute, and calls `org-timeblock-redisplay' so the
+SVG highlights the block.  Focus then returns to the SVG window.
+
+Note: `select-block-for-current-entry' requires the SVG buffer to
+be visible in a window (it calls `get-buffer-window' internally).
+If only the list buffer is shown, split the frame first with \\[org-timeblock-toggle-timeblock-list]."
     (interactive)
     (let* ((list-buf (get-buffer org-timeblock-list-buffer))
-           (list-win (and list-buf (get-buffer-window list-buf))))
+           (list-win (and list-buf (get-buffer-window list-buf)))
+           (svg-win  (get-buffer-window org-timeblock-buffer)))
       (unless list-buf
         (user-error "No org-timeblock-list buffer; run `org-timeblock' first"))
       (unless list-win
         (display-buffer list-buf)
         (setq list-win (get-buffer-window list-buf)))
-      (with-selected-window list-win
-        (let ((candidates
+      ;; Collect candidates from the list buffer.
+      (let ((candidates
+             (with-current-buffer list-buf
                (save-excursion
                  (goto-char (point-min))
                  (let (acc)
@@ -1514,12 +1522,20 @@ work in."
                      (when (get-text-property (point) 'id)
                        (push (cons (point) list-win) acc))
                      (forward-line 1))
-                   (nreverse acc)))))
-          (if (null candidates)
-              (message "No timeblock entries to jump to.")
-            (avy-process candidates)
-            ;; Sync the SVG view to the newly selected line.
-            (org-timeblock-select-block-for-current-entry))))))
+                   (nreverse acc))))))
+        (if (null candidates)
+            (message "No timeblock entries to jump to.")
+          ;; Select the list window so avy overlays appear there.
+          (select-window list-win)
+          (avy-process candidates)
+          ;; avy has moved point to the chosen line inside list-buf.
+          ;; `select-block-for-current-entry' reads text properties at
+          ;; (line-beginning-position), so we must be in list-buf.
+          (with-current-buffer list-buf
+            (org-timeblock-select-block-for-current-entry))
+          ;; Return focus to the SVG window.
+          (when-let ((w (or svg-win (get-buffer-window org-timeblock-buffer))))
+            (select-window w))))))
   (define-key org-timeblock-mode-map      (kbd "j") #'my-org-timeblock-avy-jump)
   (define-key org-timeblock-list-mode-map (kbd "j") #'my-org-timeblock-avy-jump))
 ;;** org-agenda improvements
