@@ -319,27 +319,7 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
   ;; <ESC> to close the transient
   :bind
   (:map transient-map
-        ("<escape>" . transient-quit-one))
-  :config
-  ;; Workaround for a bug in the transient version built into Emacs 31.0.50.
-  ;;
-  ;; When a transient "keypad" exits (e.g. you press C-g or finish a command),
-  ;; there is a brief window where `transient-current-command' is nil but
-  ;; transient's pre-command and post-command hooks are still installed.  The
-  ;; next keypress fires those hooks, they try to call methods on nil, and you
-  ;; see this in *Messages*:
-  ;;   "Error in pre-command-hook (transient--pre-command):
-  ;;    (wrong-type-argument (or eieio-object cl-structure-object oclosure) nil)"
-  ;;
-  ;; The fix wraps each hook with :around advice that simply skips the real
-  ;; function when transient-current-command is nil, so the stale hook call
-  ;; is a safe no-op instead of an error.
-  (advice-add 'transient--pre-command :around
-              (lambda (fn &rest args)
-                (when transient-current-command (apply fn args))))
-  (advice-add 'transient--post-command :around
-              (lambda (fn &rest args)
-                (when transient-current-command (apply fn args)))))
+        ("<escape>" . transient-quit-one)))
 
 ;;* Fonts
 ;; With the following snippet, we configure the three “faces” that are
