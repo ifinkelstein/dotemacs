@@ -115,6 +115,15 @@ to directory DIR."
 ;; - notes
 ;; - [x] mail
 
+;;** Open Agenda + Notes + Email in Workspaces
+(defun my-open-agenda-notes-email-in-workspaces ()
+  "Open Agenda, Notes, and Email workspaces.
+Email is opened last because mu4e starts asynchronously."
+  (interactive)
+  (my-open-agenda-in-workspace)
+  (my-open-notes-in-workspace)
+  (my-open-email-in-workspace))
+
 ;;** Open Agenda in Workspace
 (defun my-open-agenda-in-workspace ()
   "Open agenda in its own workspace. Create workspace, if necessary"
