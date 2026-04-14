@@ -686,6 +686,7 @@
     ("o" "Open or create project" tabspaces-open-or-create-project-and-workspace)
     ("r" "Remove current buffer" tabspaces-remove-current-buffer)]
    ["Workspaces"
+    ("a" "Agenda+Notes+Email" my-open-agenda-notes-email-in-workspaces)
     ("1" "Agenda" my-open-agenda-in-workspace)
     ("2" "Email" my-open-email-in-workspace)
     ("3" "Notes" my-open-notes-in-workspace)
