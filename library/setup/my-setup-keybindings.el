@@ -125,7 +125,7 @@
    '("S" . my-transient-slack)
    ;; '("S" . cpm/search-in-input-dir)
    '("t" . my-org-capture-todo)
-   ;; '("T" . my+toggle-keys)
+   '("T" . my-transient-toggle)
    ;; '("u" . my+user-keys)
    ;; '("v" . my-transient-vc)
    ;; '("V" . multi-vterm-dedicated-toggle)
@@ -585,29 +585,25 @@
 ;;*** Toggle Keybindings
 (transient-define-prefix my-transient-toggle ()
   "Toggle modes and settings."
-  [["Toggle Modes"
-    ("b" "Buffer Line" buffer-line-mode)
-    ("g" "Git Gutter" git-gutter-mode)
+  [["Display"
     ("h" "Highlight Line" hl-line-mode)
-    ("H" "Hidden Mode Line" hidden-mode-line-mode)
     ("e" "Empty Lines" toggle-indicate-empty-lines)
-    ("E" "Eldoc" eldoc-mode)
-    ("F" "Flymake" flymake-mode)
     ("l" "Line Spacing" my-toggle-line-spacing)
-    ("m" "Display Markup" my-toggle-display-markup)
     ("n" "Line Numbers" display-line-numbers-mode)
-    ("N" "Org Numbers Overlay" org-numbers-overlay-mode)
-    ("o" "Imenu List" imenu-list-smart-toggle)
-    ("O" "Olivetti" olivetti-mode)
+    ("m" "Display Markup" my-toggle-display-markup)
+    ("t" "Load Theme" consult-theme)]
+   ["Editing"
     ("p" "Puni Global" puni-global-mode)
     ("P" "Show Paren" show-paren-mode)
-    ("r" "Rainbow Identifiers" rainbow-identifiers-mode)
     ("s" "Flyspell" flyspell-mode)
     ("S" "Flyspell Correct" flyspell-correct-wrapper)
-    ("t" "Dark/Light Theme" toggle-dark-light-theme)
-    ("T" "Load Theme" my-load-theme)
-    ("z" "Zone" zone)
-    ]])
+    ("E" "Eldoc" eldoc-mode)
+    ("F" "Flymake" flymake-mode)]
+   ["UI"
+    ("o" "Imenu List" imenu-list-smart-toggle)
+    ("O" "Olivetti" olivetti-mode)
+    ("r" "Rainbow Identifiers" rainbow-identifiers-mode)
+    ("z" "Zone" zone)]])
 
 ;;*** Version Control (Git) Keybindings
 (transient-define-prefix my-transient-vc ()
@@ -618,8 +614,6 @@
     ("d" "Magit Diff"                 magit-diff)
     ("l" "Magit Log"                  magit-log)
     ("L" "Magit Log Buffer File"      magit-log-buffer-file)
-    ;; ("n" "Next Hunk"                  git-gutter:next-hunk)
-    ;; ("p" "Previous Hunk"              git-gutter:previous-hunk)
     ("P" "Magit Pull from Pushremote" magit-pull-from-pushremote)
     ("n" "VC Next Action"             vc-next-action)
     ;; ("r" "Magit Reflog"               magit-reflog)
