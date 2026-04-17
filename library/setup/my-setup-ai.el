@@ -322,10 +322,20 @@ Each list contains a list of cons cells, where the car is the device number and 
   ;; (monet-mode 1)
   (setq claude-code-terminal-backend 'vterm)
   (setq eat-term-scrollback-size 500000)  ; Increase to 500k characters
-  ;; Create keymap for claude-code-mode (package doesn't define one)
-  (unless (and (boundp 'claude-code-mode-map) (keymapp claude-code-mode-map))
-    (setq claude-code-mode-map (make-sparse-keymap)))
-  (define-key claude-code-mode-map (kbd "C-c C-l") #'org-insert-link)
+  (defun my-claude-code-insert-org-link ()
+    "Insert an org link from stored links into the vterm Claude Code buffer."
+    (interactive)
+    (let ((link-text
+           (with-temp-buffer
+             (org-mode)
+             (call-interactively #'org-insert-link)
+             (buffer-string))))
+      (when (and link-text (not (string-empty-p link-text)))
+        (vterm-send-string link-text))))
+
+  ;; Bind in vterm-mode-map so it's active in Claude Code vterm buffers
+  (with-eval-after-load 'vterm
+    (define-key vterm-mode-map (kbd "C-c C-l") #'my-claude-code-insert-org-link))
   (claude-code-mode)
   :bind-keymap ("C-c c" . claude-code-command-map)
 
