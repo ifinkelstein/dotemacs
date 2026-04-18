@@ -169,7 +169,7 @@
     "Start eglot only in modes that have an LSP server configured."
     (unless (derived-mode-p 'emacs-lisp-mode)
       (eglot-ensure)))
-  (setq eglot-stay-out-of '(flymake))
+  (setq eglot-stay-out-of nil)
   :bind (:map
          eglot-mode-map
          ("C-c c a" . eglot-code-actions)

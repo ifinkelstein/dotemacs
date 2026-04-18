@@ -141,14 +141,20 @@
   (ispell-word))
 
 ;;* Grammar
-;; This is apparently a non-trivial problem.
-;; Some solutions for general text:
-;; https://www.reddit.com/r/emacs/comments/ril2m4/grammar_checker_for_scientific_writing/
 
+;;** LTeX+ (LanguageTool via LSP, fully offline)
+(use-package eglot-ltex-plus
+  :vc (:url "https://github.com/emacs-languagetool/eglot-ltex-plus")
+  :hook (text-mode . (lambda ()
+                       (require 'eglot-ltex-plus)
+                       (eglot-ensure)))
+  :init
+  (setq eglot-ltex-plus-server-path (expand-file-name "~/bin/ltex-ls-plus/bin/ltex-ls-plus")
+        eglot-ltex-plus-communication-channel 'stdio))
+
+;;** Langtool (legacy)
 ;; https://github.com/mhayashi1120/Emacs-langtool
-;; with this to remove annoyances:
 ;; https://github.com/cjl8zf/langtool-ignore-fonts
-;; or
 ;; https://github.com/amperser/proselint
 (use-package langtool
   :commands (langtool-check
