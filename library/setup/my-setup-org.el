@@ -1479,6 +1479,8 @@ use 'server-force-delete' and 'server-mode' to restart."
 (use-package org-timeblock
   :vc (:url "https://github.com/ifinkelstein/org-timeblock" :rev :newest :branch "master")
   :after org
+  :custom
+  (org-timeblock-span 1)
   :config
   (defun my-org-timeblock-avy-jump ()
     "Jump to a timeblock entry using avy and select it in the SVG view.
