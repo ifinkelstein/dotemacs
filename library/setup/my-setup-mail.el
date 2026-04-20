@@ -511,17 +511,25 @@ Execute search with that query."
     
     )
 
+  (defun my-mu4e-capture-mail-todo (msg)
+    "Capture email MSG as a TODO with an org-link to the message."
+    (interactive)
+    (org-store-link nil t)
+    (org-capture nil "M"))
+
   ;;* mu4e actions (headers & view)
   ;; Shortcut key is the first character of the action name.
   ;;   a → add contact          g → gcal add
   ;;   o → org link             r → retag message
-  ;;   R → Remove all tags      v → view in browser
-  ;;   y → yank path            z → search for sender
+  ;;   R → Remove all tags      t → todo from email
+  ;;   v → view in browser      y → yank path
+  ;;   z → search for sender
   (dolist (action '(("add contact"       . mu4e-action-add-org-contact)
                     ("gcal add"           . my-mu4e-action-add-to-calendar)
                     ("org link"           . org-store-link)
                     ("retag message"      . mu4e-action-retag-message)
                     ("Remove all tags"    . my-mu4e-remove-all-tags-message)
+                    ("todo from email"   . my-mu4e-capture-mail-todo)
                     ("view in browser"   . mu4e-action-view-in-browser)
                     ("yank path"         . my-mu4e-copy-message-path)
                     ("zsearch for sender" . my-mu4e-search-for-sender)))
