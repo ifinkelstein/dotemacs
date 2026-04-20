@@ -166,7 +166,7 @@
   ;; Add subtle line under the error as opposed to the ugliness before.
   ;; NB: no quote before flyspell-duplicate — :custom-face specs are data,
   ;; so 'face becomes the two-face list (quote face).
-  (langtool-errline ((t (:background nil :foreground nil :inherit flyspell-duplicate))))
+  (langtool-errline ((t (:inherit flyspell-duplicate))))
 
   :config
   (setq langtool-java-user-arguments '("-Dfile.encoding=UTF-8"))
