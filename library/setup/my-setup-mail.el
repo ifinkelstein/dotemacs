@@ -519,6 +519,7 @@ Execute search with that query."
 
   ;;* mu4e actions (headers & view)
   ;; Shortcut key is the first character of the action name.
+  ;;   A → AI chat (via mu4e-goodies-chat)
   ;;   a → add contact          g → gcal add
   ;;   o → org link             r → retag message
   ;;   R → Remove all tags      t → todo from email
@@ -533,8 +534,8 @@ Execute search with that query."
                     ("view in browser"   . mu4e-action-view-in-browser)
                     ("yank path"         . my-mu4e-copy-message-path)
                     ("zsearch for sender" . my-mu4e-search-for-sender)))
-    (add-to-list 'mu4e-headers-actions action t)
-    (add-to-list 'mu4e-view-actions action t))
+    (setf (alist-get (car action) mu4e-headers-actions nil nil #'equal) (cdr action))
+    (setf (alist-get (car action) mu4e-view-actions nil nil #'equal) (cdr action)))
   ;; Remove xwidget duplicate — "view in browser" covers it
   (setq mu4e-view-actions
         (cl-remove-if (lambda (a) (equal (car a) "xview in xwidget"))
@@ -741,7 +742,7 @@ Note: this function is actually not necessary because I learned how to use mu fi
   ;; NOTE: org-contacts can aggressively override mu4e's native contact
   ;; completion. If that happens, set `org-contacts-enable-completion' to
   ;; nil in the org-contacts use-package (in my-setup-notes.el).
-  (setq mu4e-org-contacts-file (concat org-directory "contacts.org"))
+  (setq mu4e-org-contacts-file my-org-contacts-file)
 
 ;;;; Composing Email
   (add-hook 'mu4e-compose-mode-hook
