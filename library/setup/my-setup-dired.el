@@ -266,8 +266,7 @@ Version 2022-09-14"
   (dired-recent-mode 1))
 
 ;;** Narrow Dired to Match Filter
-(use-package dired-hacks
-  :vc (:url "https://github.com/Fuco1/dired-hacks")
+(use-package dired-narrow
   :after (dired)
   :bind (:map dired-mode-map
               ("/" . dired-narrow)))

@@ -4,7 +4,6 @@
 
 ;;* GPTel
 (use-package gptel
-  :vc (:url "https://github.com/karthink/gptel" :rev :newest :branch "master")
   :commands (gptel my-gptel-process-message gptel-request)
   :config
   (setq gptel-default-mode 'org-mode)
@@ -179,7 +178,6 @@ START and END, rather than by the position of point and mark."
 
 ;;** MCP (model context protocol) and integration with gptel
 (use-package mcp
-  :vc (:url "https://github.com/lizqwerscott/mcp.el" :rev :newest)
   :after (gptel)
   :config
   (require 'mcp-hub)
@@ -209,7 +207,6 @@ START and END, rather than by the position of point and mark."
 ;; (rk/find-device-matching "Macbook Pro Microphone" :audio)
 ;; (rk/select-default-audio-device)
 (use-package whisper
-  :vc (:url "https://github.com/natrys/whisper.el"  :rev :newest :branch "master")
   :commands (whisper-run whisper-file rk/select-default-audio-device)
   :bind ("s-R" . whisper-run)
   :custom
@@ -310,12 +307,10 @@ Each list contains a list of cons cells, where the car is the device number and 
 
 ;;* claude-code
 ;; install required inheritenv dependency:
-(use-package inheritenv
-  :vc (:url "https://github.com/purcell/inheritenv" :rev :newest))
+(use-package inheritenv)
 
 ;; install claude-code.el
 (use-package claude-code
-  :vc (:url "https://github.com/stevemolitor/claude-code.el" :rev :newest)
   :config
   ;; optional IDE integration with Monet
   ;; (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
