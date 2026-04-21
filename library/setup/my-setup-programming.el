@@ -5,7 +5,6 @@
 ;;* Prettify and rice code
 ;;** prism to color programming blocks
 (use-package prism
-  :vc (:url "https://github.com/alphapapa/prism.el" :rev :latest)
   :hook
   (emacs-lisp-mode . prism-mode)
   (latex-mode . prism-mode)

@@ -544,7 +544,6 @@ Within those groups, sort by date and priority."
 ;; as of January 13, 2025, not merged into the main package
 ;; confirming that this fork works with - [ ] lists
 (use-package org-autolist
-  :vc (:url "https://github.com/ucizi-turintech/org-autolist" :rev :newest)
   :hook (org-mode . org-autolist-mode))
 
 
@@ -553,7 +552,6 @@ Within those groups, sort by date and priority."
 ;; seems to be working after an update.
 ;; Need better org-mode variable pitch font
 (use-package org-modern
-  :vc (:url "https://github.com/minad/org-modern" :rev :newest)
   :after org
   :hook ((org-mode . org-modern-mode)
          (org-agenda-finalize . org-modern-agenda))

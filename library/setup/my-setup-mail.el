@@ -83,8 +83,13 @@
   ;; Maildir
   (setq mu4e-maildir "~/Mail")
   ;; Sync imap servers w/mbsync (via isync installed w/homebrew):
-  ;; redirect STDERR to STDOUT to a log file
-  (setq mu4e-get-mail-command (concat (executable-find "mbsync") " -c ~/.config/.mbsyncrc  -aV 2>&1 > ~/.config/.mbsync.log"))
+  ;; tee so both mu4e and the log file see stdout+stderr;
+  ;; pipefail preserves mbsync's exit code through the pipe
+  (setq mu4e-get-mail-command
+        (concat "bash -o pipefail -c '"
+                (executable-find "mbsync")
+                " -c ~/.config/.mbsyncrc -aV 2>&1"
+                " | tee ~/.config/.mbsync.log'"))
   ;; Skip files whose ctime/mtime haven't changed — much faster with 200K+ messages
   (setq mu4e-index-lazy-check t)
   ;; Change filenames when moving
