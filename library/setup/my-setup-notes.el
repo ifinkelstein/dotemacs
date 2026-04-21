@@ -113,6 +113,9 @@ Marked 2 is a mac app that renders markdown."
   (setf (alist-get consult-notes-category embark-exporters-alist) #'embark-export-dired))
 
 ;;* Org Contacts
+(defvar my-org-contacts-file (concat org-directory "contacts/contacts.org")
+  "Path to the org-contacts file.")
+
 (use-package org-contacts
   :after org org-roam
   :custom
