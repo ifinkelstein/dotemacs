@@ -4,8 +4,7 @@
 (message "Setting up Slack...")
 
 ;;* Slack
-(use-package emacs-slack
-  :vc (:url "https://github.com/emacs-slack/emacs-slack")
+(use-package slack
   :commands (slack-start slack-register-team)
   :hook ((slack-mode . variable-pitch-mode)
          (slack-mode . emojify-mode)

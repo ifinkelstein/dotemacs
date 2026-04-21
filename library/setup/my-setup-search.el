@@ -19,8 +19,7 @@
   :defer 10)
 
 ;;** wgrep to edit grep results like wdired
-(use-package wgrep
-  :vc (:url "https://github.com/mhayashi1120/Emacs-wgrep"))
+(use-package wgrep)
 
 ;;** re-builder
 ;; Use string syntax in re-builder so regexps look like normal Emacs

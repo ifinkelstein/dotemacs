@@ -44,7 +44,6 @@
 ;;* Go To Change
 ;; Navigate to last edits.
 (use-package goto-chg
-  :vc (:url "https://github.com/emacs-evil/goto-chg")
   :bind (("M-'" . goto-last-change)
          ("M-\"" . goto-last-change-reverse)
          :map org-mode-map
@@ -363,7 +362,6 @@ The window scope is determined by `avy-all-windows' (ARG negates it)."
 
 ;;** easy-kill-extras
 (use-package easy-kill-extras
-  :vc (:url "https://github.com/knu/easy-kill-extras.el")
   :after (easy-kill)
   :config
   ;; Integrate `expand-region' functionality with easy-kill
@@ -384,7 +382,6 @@ The window scope is determined by `avy-all-windows' (ARG negates it)."
 
 ;;* keyfreq to remember command usage
 (use-package keyfreq
-  :vc (:url "https://github.com/dacap/keyfreq")
   :config
   ;; where to store info
   (setq keyfreq-file (expand-file-name ".emacs.keyfreq" my-library-dir))

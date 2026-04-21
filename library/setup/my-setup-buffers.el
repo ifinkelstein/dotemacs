@@ -64,7 +64,6 @@
 
 ;; ultra-smooth scrolling across images and with fast mouse wheels
 (use-package ultra-scroll
-  :vc (:url "https://github.com/jdtsmith/ultra-scroll" :branch "main" :rev :newest)
   :init
   (setq scroll-conservatively 101 ; important!
         scroll-margin 0) 
