@@ -22,9 +22,8 @@
 
 Relies on the command-line utility 'trash' to be installed.
 Get it from:  <http://hasseg.org/trash/>"
-  (shell-command (concat "trash -vF \"" path "\""
-                         "| sed -e 's/^/Trashed: /'")
-                 nil ;; Name of output buffer
+  (shell-command (concat "trash -v " (shell-quote-argument path))
+                 nil
                  "*Trash Error Buffer*"))
 ;;* Frames & Fullscreen
 ;; (Do not) make new frames when opening a new file with Emacs unless on scratch buffer
