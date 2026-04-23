@@ -1371,6 +1371,12 @@ Pass ARGS through to ORIG-FUN, then redraw icons."
   :after org-msg
   :commands (org-heading-mail-send))
 
+;;* Org Heading to Slack (org-heading-slack)
+;; Send Slack messages from org headings via agent-slack CLI
+(use-package org-heading-slack
+  :load-path "~/projects/elisp/org-heading-slack"
+  :commands (org-heading-slack-send))
+
 (defun my-mu4e-attach-png-from-clipboard ()
   "Save a PNG image from the clipboard to a temp file and attach it. MacOS or linux only, for now."
   (interactive)

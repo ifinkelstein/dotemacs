@@ -513,7 +513,8 @@
     ("l" "Store Link" org-store-link)
     ("L" "Grab FF Link" (lambda () (interactive)
                           (grab-mac-link-dwim 'firefox)))
-    ("m" "Email from header" org-heading-mail-send)]
+    ("m" "Email from header" org-heading-mail-send)
+    ("s" "Slack from header" org-heading-slack-send)]
    ["Export"
     ("ep" "Export to PDF & Open" (lambda ()
                                    (interactive)
@@ -527,7 +528,7 @@
     ("h" "Timeblock" org-timeblock)
     ("p" "Pomodoro" org-pomodoro)
     ("f" "Agenda search" my-consult-org-ql-agenda-jump)
-    ("s" "Search with org-ql" org-ql-search)
+    ("F" "Search with org-ql" org-ql-search)
     ("S" "Org reschedule" my-org-reschedule)
     ("w" "Refile" org-refile)]
    ])
