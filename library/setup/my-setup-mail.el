@@ -1377,6 +1377,27 @@ Pass ARGS through to ORIG-FUN, then redraw icons."
   :load-path "~/projects/elisp/org-heading-slack"
   :commands (org-heading-slack-send))
 
+(defun my-org-heading-send-dwim ()
+  "Send org heading as email or Slack message.
+Dispatches based on heading fields: Channel -> Slack, To/In-Reply-To -> email."
+  (interactive)
+  (save-excursion
+    (org-back-to-heading t)
+    (let* ((end (org-entry-end-position))
+           (text (buffer-substring-no-properties (point) end))
+           (slack-p (or (string-match-p "^\\*+ Channel$" text)
+                        (string-match-p "^Channel:" text)))
+           (email-p (or (string-match-p "^\\*+ To$" text)
+                        (string-match-p "^To:" text)
+                        (string-match-p "^\\*+ Reply-To$" text)
+                        (string-match-p "^In-Reply-To:" text))))
+      (cond
+       ((and slack-p email-p)
+        (user-error "Heading has both Channel and To/In-Reply-To fields"))
+       (slack-p (org-heading-slack-send))
+       (email-p (org-heading-mail-send))
+       (t (user-error "Heading has no Channel (Slack) or To/In-Reply-To (email) field"))))))
+
 (defun my-mu4e-attach-png-from-clipboard ()
   "Save a PNG image from the clipboard to a temp file and attach it. MacOS or linux only, for now."
   (interactive)
