@@ -282,14 +282,16 @@
     ("a" "GPT Menu" gptel-menu)
     ("r" "Re-write" gptel-rewrite)]
    ["Whisper"
-    ;; ("-r" "Refine" :class 'transient-toggle
-    ;;  :variable 'my-whisper-do-refine :format "Refine: %-3s")
-
-    ;; Suffix commands for actions
     ("d" "Transcribe Audio" whisper-run)
     ("D" "Select Audio Device" rk/select-default-audio-device)
     ("f" "Transcribe from File" whisper-file)]
-   
+   ["Claude Code"
+    ("c" "Start Claude" claude-code)
+    ("C" "Claude in Dir" claude-code-start-in-directory)
+    ("s" "Send Region" my-claude-code-send-region-with-prompt)
+    ("t" "Toggle Window" claude-code-toggle)
+    ("m" "Claude Menu" claude-code-transient)
+    ("i" "IDE Menu" claude-code-ide-menu)]
    ["Assistants"
     ("O" "Toggle gptel-mode" (lambda ()
                                (interactive)
@@ -297,13 +299,7 @@
                                (when (or (derived-mode-p 'org-mode)
                                          (derived-mode-p 'markdown-mode))
                                  (gptel-mode))))
-    ]
-   ["Process"
-    ;; ("b" "Process Message" my-gptel-process-message)
-    ;; ("i" "Create Calendar Event" my-gptel-ical-from-message)
-    ;; ("R" "Reply to Message" my-gptel-reply-to-message)
-    ]
-   ])
+    ]])
 
 (transient-define-prefix my-transient-buffer ()
   "Transient menu for buffer management commands."
