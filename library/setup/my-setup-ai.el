@@ -328,7 +328,8 @@ Each list contains a list of cons cells, where the car is the device number and 
         (claude-code--term-send-string claude-code-terminal-backend link-text))))
 
   (with-eval-after-load 'eat
-    (define-key eat-mode-map (kbd "C-c C-l") #'my-claude-code-insert-org-link))
+    (define-key eat-mode-map (kbd "C-c C-l") #'my-claude-code-insert-org-link)
+    (define-key eat-mode-map (kbd "s-V") #'yank))
 
   ;;** Region sending
   (defun my-claude-code--build-region-cmd (beg end)
@@ -404,7 +405,7 @@ Each list contains a list of cons cells, where the car is the device number and 
     (setq claude-code-program-switches nil)
     (setq my-claude-code-current-profile "personal")
     (message "Claude Code: Switched to personal account."))
-
+  x
   (defun my-claude-code-toggle-account ()
     "Toggle between personal and work Claude Code accounts."
     (interactive)
