@@ -405,7 +405,6 @@ Each list contains a list of cons cells, where the car is the device number and 
     (setq claude-code-program-switches nil)
     (setq my-claude-code-current-profile "personal")
     (message "Claude Code: Switched to personal account."))
-  x
   (defun my-claude-code-toggle-account ()
     "Toggle between personal and work Claude Code accounts."
     (interactive)
