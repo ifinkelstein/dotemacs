@@ -51,20 +51,14 @@
   (setq mm-body-charset-encoding-alist '((iso-8859-1  . utf-8)
                                          (iso-8859-15 . utf-8)
                                          (us-ascii     . utf-8)))
-  ;; Override declared charsets → utf-8 during MIME decoding (fixes the
-  ;; "select encoding" prompt when forwarding messages with
-  ;; mismatched/undeclared charsets).
-  ;;
-  ;; NOTE: Do NOT override windows-1252 → utf-8 here!  Windows-1252
-  ;; bytes 0x80–0x9F (smart quotes, en-dashes, ellipses) are NOT valid
-  ;; UTF-8.  Overriding causes garbage on decode and "unknown characters"
-  ;; prompts on reply.  Emacs already handles cp1252 natively via
-  ;; `set-coding-system-priority' below.
-  (setq mm-charset-override-alist '((iso-8859-1  . utf-8)
-                                    (iso-8859-15 . utf-8)
-                                    (us-ascii    . utf-8)
-                                    (gb2312      . utf-8)
-                                    (gbk         . utf-8)))
+  ;; Override declared charsets → utf-8 during MIME decoding.
+  ;; Only override charsets that are routinely mislabeled; do NOT
+  ;; override iso-8859-1/15 — genuine Latin-1 emails (e.g. "María")
+  ;; contain bytes like 0xED that are invalid UTF-8, causing
+  ;; "unknown encoding" errors on reply.
+  (setq mm-charset-override-alist '((us-ascii . utf-8)
+                                    (gb2312   . utf-8)
+                                    (gbk      . utf-8)))
 
   ;; Ensure Emacs decodes Windows-1252 (cp1252) correctly in mu4e.
   ;; Outlook sends email in Windows-1252 whose 0x80–0x9F bytes (smart
@@ -1200,7 +1194,15 @@ select one email at a time.
     (unless (eq mu4e-compose-type 'forward)
       (org-msg-mode)))
   :bind (:map org-msg-edit-mode-map
-              ("s-<return>" . org-msg-goto-body))  ;; Firefox tridactyl-like bindings
+              ("s-<return>" . org-msg-goto-body)
+              ("M-o" . my-transient-email-compose))
+  :init
+  ;; org-msg-edit-mode-map shares org-mode-map's ESC prefix keymap by
+  ;; reference — give it its own so :bind M-o doesn't collide.
+  (with-eval-after-load 'org
+    (let ((esc-map (make-sparse-keymap)))
+      (set-keymap-parent esc-map (lookup-key org-mode-map [?\e]))
+      (define-key org-msg-edit-mode-map [?\e] esc-map)))
   :hook ((mu4e-compose-pre . my-org-msg-maybe-enable))
   :config
   ;; rapid navigation between composition fields
@@ -1243,7 +1245,7 @@ select one email at a time.
             `(,key ,label (lambda () (interactive) (insert ,email))))
           (setq prev-key key)))))
   ;; (define-key message-mode-map (kbd "M-o") 'my-transient-email-compose)
-  (define-key org-msg-edit-mode-map (kbd "M-o") 'my-transient-email-compose)
+  ;; M-o binding moved to :bind above; ESC prefix fix in :init
 
 
 
@@ -1500,6 +1502,21 @@ directive that was meant to be processed by the LLM."
 
 (add-hook 'message-send-hook #'my-mail-check-tn-directive)
 
+(defun my-mail-sanitize-to-utf8 ()
+  "Recode stray raw bytes in the message body to UTF-8 before sending.
+Interprets eight-bit bytes as Latin-1, which covers the common case
+of quoted Latin-1 text (e.g. \"María\") surviving into the compose
+buffer as raw bytes."
+  (save-excursion
+    (message-goto-body)
+    (while (re-search-forward "[[:nonascii:]]" nil t)
+      (let ((ch (char-before)))
+        (when (eq (char-charset ch) 'eight-bit)
+          (let ((byte (multibyte-char-to-unibyte ch)))
+            (delete-char -1)
+            (insert (decode-coding-string (unibyte-string byte) 'latin-1))))))))
+
+(add-hook 'message-send-hook #'my-mail-sanitize-to-utf8)
 
 (defun my-daily-email-progress ()
   "Plot my daily, weekly, and monthly email progress.
