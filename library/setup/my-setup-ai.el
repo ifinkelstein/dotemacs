@@ -317,15 +317,14 @@ Each list contains a list of cons cells, where the car is the device number and 
   (setq eat-term-scrollback-size 500000)
 
   (defun my-claude-code-insert-org-link ()
-    "Insert an org link from stored links into the Claude Code buffer."
+    "Insert the top stored org link into the Claude Code buffer, no prompts."
     (interactive)
-    (let ((link-text
-           (with-temp-buffer
-             (org-mode)
-             (call-interactively #'org-insert-link)
-             (buffer-string))))
-      (when (and link-text (not (string-empty-p link-text)))
-        (claude-code--term-send-string claude-code-terminal-backend link-text))))
+    (if-let ((entry (car org-stored-links)))
+        (let* ((link (car entry))
+               (desc (or (cadr entry) link))
+               (link-text (format "[[%s][%s]]" link desc)))
+          (claude-code--term-send-string claude-code-terminal-backend link-text))
+      (message "No stored links")))
 
   (with-eval-after-load 'eat
     (define-key eat-mode-map (kbd "C-c C-l") #'my-claude-code-insert-org-link)
@@ -405,6 +404,7 @@ Each list contains a list of cons cells, where the car is the device number and 
     (setq claude-code-program-switches nil)
     (setq my-claude-code-current-profile "personal")
     (message "Claude Code: Switched to personal account."))
+  
   (defun my-claude-code-toggle-account ()
     "Toggle between personal and work Claude Code accounts."
     (interactive)
