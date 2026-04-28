@@ -319,7 +319,7 @@ Each list contains a list of cons cells, where the car is the device number and 
   (defun my-claude-code-insert-org-link ()
     "Insert the top stored org link into the Claude Code buffer, no prompts."
     (interactive)
-    (if-let ((entry (car org-stored-links)))
+    (if-let* ((entry (car org-stored-links)))
         (let* ((link (car entry))
                (desc (or (cadr entry) link))
                (link-text (format "[[%s][%s]]" link desc)))
