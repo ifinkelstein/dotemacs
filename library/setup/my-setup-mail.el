@@ -779,6 +779,12 @@ Note: this function is actually not necessary because I learned how to use mu fi
     (delete-other-windows))
   (add-hook 'mu4e-compose-mode-hook #'my-mu4e-hide-headers-on-compose)
 
+  ;; Inline forwarding of multipart/alternative messages (e.g. from
+  ;; Outlook) leaves the body empty between the forward markers —
+  ;; the content lands in a sibling MIME part that Outlook ignores.
+  ;; Forwarding as message/rfc822 attachment avoids this.
+  (setq message-forward-as-mime t)
+
   ;; Don't keep message compose buffers around after sending:
   (setq message-kill-buffer-on-exit t)
   ;;; Make sure plain text mails flow correctly for recipients
