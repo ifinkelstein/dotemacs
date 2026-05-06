@@ -1377,7 +1377,9 @@ Pass ARGS through to ORIG-FUN, then redraw icons."
 (use-package org-heading-mail
   :load-path "~/projects/elisp/org-heading-mail"
   :after org-msg
-  :commands (org-heading-mail-send))
+  :commands (org-heading-mail-send org-heading-mail-check-scheduled)
+  :custom
+  (org-heading-mail-scheduled-file "~/Work/org/drafts.org"))
 
 ;;* Org Heading to Slack (org-heading-slack)
 ;; Send Slack messages from org headings via agent-slack CLI
