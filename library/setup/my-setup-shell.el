@@ -295,7 +295,9 @@ For virtual buffers, output is saved to ~/Downloads with date-time.docx."
 
 ;;* ghostel (libghostty terminal)
 (use-package ghostel
-  :commands (ghostel ghostel-project ghostel-other))
+  :commands (ghostel ghostel-project ghostel-other)
+  :bind (:map ghostel-mode-map
+         ("C-g" . ghostel-send-C-c)))
 
 ;;* vterm and helpers
 (use-package vterm
