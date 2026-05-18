@@ -116,6 +116,10 @@ straight) and by `my-etc-dir' and `my-cache-dir'.")
         ;; Set location of package directory
         package-user-dir (expand-file-name "elpa/" my-var-dir)
         package-gnupghome-dir (concat package-user-dir "gnupg"))
+;; Let MELPA packages (e.g. transient) override stale built-in versions
+(setopt package-install-upgrade-built-in t
+        ;; But keep org from ELPA — MELPA org can conflict with the built-in
+        package-pinned-packages '((org . "elpa")))
 ;; initialize the package system
 (package-initialize)
 ;;** Use-Package Settings
