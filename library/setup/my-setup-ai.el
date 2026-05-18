@@ -310,11 +310,9 @@ Each list contains a list of cons cells, where the car is the device number and 
 (use-package inheritenv)
 (use-package eat
   :commands (eat eat-project eat-other-window))
-
 (use-package claude-code
   :config
-  (setq claude-code-terminal-backend 'eat)
-  (setq eat-term-scrollback-size 500000)
+  (setq claude-code-terminal-backend 'ghostel)
 
   (defun my-claude-code-insert-org-link ()
     "Insert the top stored org link into the Claude Code buffer, no prompts."
@@ -326,9 +324,16 @@ Each list contains a list of cons cells, where the car is the device number and 
           (claude-code--term-send-string claude-code-terminal-backend link-text))
       (message "No stored links")))
 
-  (with-eval-after-load 'eat
-    (define-key eat-mode-map (kbd "C-c C-l") #'my-claude-code-insert-org-link)
-    (define-key eat-mode-map (kbd "s-V") #'yank))
+  (defun my-claude-code-insert-timestamp ()
+    "Prompt for an org timestamp and send it to the terminal."
+    (interactive)
+    (let ((ts (format "<%s>" (org-read-date))))
+      (claude-code--term-send-string claude-code-terminal-backend ts)))
+
+  (with-eval-after-load 'ghostel
+    (define-key ghostel-mode-map (kbd "C-c C-l") #'my-claude-code-insert-org-link)
+    (define-key ghostel-mode-map (kbd "C-c .") #'my-claude-code-insert-timestamp)
+    (define-key ghostel-mode-map (kbd "s-V") #'yank))
 
   ;;** Region sending
   (defun my-claude-code--build-region-cmd (beg end)

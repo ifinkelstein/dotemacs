@@ -293,6 +293,10 @@ For virtual buffers, output is saved to ~/Downloads with date-time.docx."
   (setq eshell-visual-commands '())
   (eat-eshell-visual-command-mode))
 
+;;* ghostel (libghostty terminal)
+(use-package ghostel
+  :commands (ghostel ghostel-project ghostel-other))
+
 ;;* vterm and helpers
 (use-package vterm
   :commands vterm
