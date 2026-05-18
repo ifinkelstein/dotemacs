@@ -119,12 +119,12 @@
 
   ;; Fold all citation macros as [C]
   (with-eval-after-load 'tex-fold
-    (dolist (entry '(("cite" "Cite" "citep" "citet" "citealt" "citealp"
-                       "citeauthor" "citeyear" "autocite" "Autocite"
-                       "parencite" "Parencite" "textcite" "Textcite"
-                       "footcite" "footcitetext" "smartcite" "supercite"
-                       "fullcite" "nocite")))
-      (add-to-list 'TeX-fold-macro-spec-list (cons "[C]" entry))))
+    (add-to-list 'TeX-fold-macro-spec-list
+                 '("[C]" ("cite" "Cite" "citep" "citet" "citealt" "citealp"
+                          "citeauthor" "citeyear" "autocite" "Autocite"
+                          "parencite" "Parencite" "textcite" "Textcite"
+                          "footcite" "footcitetext" "smartcite" "supercite"
+                          "fullcite" "nocite"))))
 
   (TeX-source-correlate-mode) ;; show where the errors are
   (advice-add 'TeX-view :around #'my-widen-first) ; fixes bug in TeX-view
