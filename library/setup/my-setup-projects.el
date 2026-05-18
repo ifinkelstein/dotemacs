@@ -153,23 +153,16 @@ Email is opened last because mu4e starts asynchronously."
       (end-of-buffer))))
 
 ;;** Terminal Workspace
-(defun my-vterm-workspace ()
-  "Open vterm in home dir in its own workspace"
-  (interactive)
-  (let ((default-directory "~/"))
-    (require 'multi-vterm)
-    (multi-vterm-next)))
-
 (defun my-open-terminal-in-workspace ()
-  "Open an empty buffer in its own workspace"
+  "Open ghostel terminal in its own workspace."
   (interactive)
   (if (member "Terminal" (tabspaces--list-tabspaces))
       (tab-bar-switch-to-tab "Terminal")
-    (progn
-      (tab-bar-new-tab)
-      (tab-bar-rename-tab "Terminal")
-      (my-vterm-workspace)
-      (delete-other-windows))))
+    (tab-bar-new-tab)
+    (tab-bar-rename-tab "Terminal")
+    (let ((default-directory "~/"))
+      (ghostel))
+    (delete-other-windows)))
 
 ;;** Open Mu4e Email in Workspace
 (defun my-open-email-in-workspace ()

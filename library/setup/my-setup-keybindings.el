@@ -57,6 +57,7 @@
   (add-to-list 'meow-mode-state-list '(mu4e-view-mode . motion))
   (add-to-list 'meow-mode-state-list '(edebug-mode . insert))
   (add-to-list 'meow-mode-state-list '(vterm-mode . insert))
+  (add-to-list 'meow-mode-state-list '(ghostel-mode . insert))
 
   (setq meow-selection-command-fallback
         '((meow-change . meow-change-char)
