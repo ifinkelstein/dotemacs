@@ -412,10 +412,19 @@
     ("m" "Insert Macro" TeX-insert-macro)
     ("M" "Delete Macro" my-LaTeX-delete-macro)
     ("n" "Narrow to Environment" LaTeX-narrow-to-environment)]
+   ["Sections"
+    ("s" "Insert Section" LaTeX-section)
+    ("S" "Mark Section" LaTeX-mark-section)
+    ("<" "Promote" outline-promote)
+    (">" "Demote" outline-demote)
+    ("p" "Move Up" outline-move-subtree-up)
+    ("N" "Move Down" outline-move-subtree-down)
+    ("h" "Mark Subtree" outline-mark-subtree)]
    ["Folding"
     ("f" "Fold buffer" TeX-fold-buffer)
     ("F" "Unfold buffer" TeX-fold-clearout-buffer)
-    ]])
+    ("o" "Cycle heading" outline-cycle)
+    ("O" "Cycle buffer" outline-cycle-buffer)]])
 
 
 ;; Ensure org-heading-mail-send is autoloaded even before org-msg loads,
