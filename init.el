@@ -219,41 +219,50 @@ emacs-version string on the kill ring."
 Loading modules
 ======================================================")
 ;; this order is meaningful, as things may break at some point
-(require 'my-setup-libraries) ;; common emacs libraries
-(require 'my-setup-ui)
-(require 'my-setup-functions) ;; load a bunch of helper functions for many things
-(require 'my-setup-navigation)
-(require 'my-setup-bookmarks)
-(require 'my-setup-buffers)
-(require 'my-setup-search)
-(require 'my-setup-completion)
-(require 'my-setup-keybindings)
-(require 'my-setup-programming)
-(require 'my-setup-org)
+(defmacro my-require (feature)
+  "Require FEATURE with before/after messages and error trapping."
+  `(condition-case err
+       (progn
+         (message ">> Loading %s..." ',feature)
+         (require ',feature)
+         (message ">> Loading %s...done" ',feature))
+     (error (message "!! FAILED loading %s: %s" ',feature err))))
 
-(require 'my-setup-dired)
-(require 'my-setup-notes) ;; org-roam and helpers
-(require 'my-setup-projects)
+(my-require my-setup-server)
+(my-require my-setup-libraries)
+(my-require my-setup-ui)
+(my-require my-setup-functions)
+(my-require my-setup-navigation)
+(my-require my-setup-bookmarks)
+(my-require my-setup-buffers)
+(my-require my-setup-search)
+(my-require my-setup-completion)
+(my-require my-setup-keybindings)
+(my-require my-setup-programming)
+(my-require my-setup-org)
 
-(require 'my-setup-reading)
-(require 'my-setup-writing)
-(require 'my-setup-latex)
-(require 'my-setup-pdf)
-(require 'my-setup-vc)
-(require 'my-setup-shell) ;; various shell and CLI-related functions
-(require 'my-setup-mail)
-(require 'my-setup-calendar)
+(my-require my-setup-dired)
+(my-require my-setup-notes)
+(my-require my-setup-projects)
 
-(require 'my-setup-ai)
-(require 'my-setup-media) 
+(my-require my-setup-reading)
+(my-require my-setup-writing)
+(my-require my-setup-latex)
+(my-require my-setup-pdf)
+(my-require my-setup-vc)
+(my-require my-setup-shell)
+(my-require my-setup-mail)
+(my-require my-setup-calendar)
 
-(require 'my-setup-server)
-(require 'my-setup-slack)
+(my-require my-setup-ai)
+(my-require my-setup-media)
+
+(my-require my-setup-slack)
 
 
 ;;** MacOS settings - defer load until after init.
 (when sys-mac
-  (require 'my-setup-macos))
+  (my-require my-setup-macos))
 
 ;;* Outline Navigation
 ;; Navigate elisp files easily. Outline is a built-in library and we can easily
@@ -315,6 +324,11 @@ Loading modules
 
 ;; turn off print command?
 (put 'ns-print-buffer 'disabled nil)
+
+;;*  Custom
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+(when (file-exists-p custom-file)
+  (load custom-file))
 
 ;;*  User settings
 ;; user-full-name and user-mail-address are set in private.el
