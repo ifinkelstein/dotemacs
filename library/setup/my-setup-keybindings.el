@@ -291,8 +291,9 @@
     ("C" "Claude in Dir" claude-code-start-in-directory)
     ("s" "Send Region" my-claude-code-send-region-with-prompt)
     ("t" "Toggle Window" claude-code-toggle)
-    ("m" "Claude Menu" claude-code-transient)
-    ("i" "IDE Menu" claude-code-ide-menu)]
+    ("m" "Claude Menu" claude-code-transient)]
+   ;; ["Claude IDE"
+   ;;  ("i" "IDE Menu" claude-code-ide-menu)]
    ["Assistants"
     ("O" "Toggle gptel-mode" (lambda ()
                                (interactive)
