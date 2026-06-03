@@ -6,9 +6,7 @@
 
 (use-package server
   :ensure nil
-  :if window-system
-  ;; :hook (after-init . server-mode)
-  :defer 2
+  :defer 1
   :config
   ;; t/nil for instructions
   (setq server-client-instructions nil)
