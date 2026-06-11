@@ -108,6 +108,36 @@
 
   (setq elfeed-show-refresh-function #'my-elfeed-show-refresh)
 
+  (defun my-elfeed-search-header ()
+    "Search-buffer header: unread/total counts, filter, last update."
+    (cond
+     ((zerop (elfeed-db-last-update))
+      (elfeed-search--intro-header))
+     ((> (elfeed-queue-count-total) 0)
+      (let ((total (elfeed-queue-count-total))
+            (in-process (elfeed-queue-count-active)))
+        (format "%d jobs pending, %d active..."
+                (- total in-process) in-process)))
+     (t
+      (pcase-let ((`(,unread ,total ,feeds)
+                   (split-string (elfeed-search--count-unread) "[/:]"))
+                  (update (format-time-string
+                           "%Y-%m-%d %H:%M"
+                           (seconds-to-time (elfeed-db-last-update)))))
+        (concat
+         (propertize " Elfeed" 'face '(:weight bold))
+         "   "
+         (propertize unread 'face 'elfeed-search-unread-count-face)
+         " unread / " total " entries / " feeds " feeds"
+         (when (string-match-p "[^ ]" elfeed-search-filter)
+           (concat "   "
+                   (propertize elfeed-search-filter
+                               'face 'elfeed-search-filter-face)))
+         "   updated "
+         (propertize update 'face 'elfeed-search-last-update-face))))))
+
+  (setq elfeed-search-header-function #'my-elfeed-search-header)
+
   ;; https://xenodium.com/open-emacs-elfeed-links-in-background/
   (defun elfeed-search-browse-background-url ()
     "Open current `elfeed' entry (or region entries) in browser without losing focus."
