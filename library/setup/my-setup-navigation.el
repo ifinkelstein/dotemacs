@@ -407,7 +407,18 @@ The window scope is determined by `avy-all-windows' (ARG negates it)."
           mwheel-scroll
           mouse-set-point
           vterm--self-insert
-          puni-backward-delete-char ))
+          puni-backward-delete-char
+          ultra-scroll
+          eat-self-input
+          ghostel--self-insert
+          ghostel--scroll-intercept-down
+          ghostel--scroll-intercept-up
+          ghostel--send-event
+          pdf-util-image-map-mouse-event-proxy
+          handle-select-window
+          handle-switch-frame
+          mouse-drag-region
+          mouse-set-region ))
   (keyfreq-mode 1)
   (keyfreq-autosave-mode 1))
 
