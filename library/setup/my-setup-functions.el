@@ -1,4 +1,4 @@
-;; my-functions.el  -*- lexical-binding: t -*-
+;; my-setup-functions.el  -*- lexical-binding: t -*-
 
 (message "Setting up my helper functions...")
 
@@ -6,46 +6,15 @@
 
 ;;* Config Helper Functions
 ;;** Goto Functions
-(defun my-goto-private ()
-  "Open `private.el' in `my-user-dir'."
-  (interactive)
-  (find-file (concat my-user-dir "private.el")))
-
-(defun my-goto-early-init.el ()
-  "Open early-init.el."
-  (interactive)
-  (find-file "~/.emacs.d/early-init.el"))
-
 (defun my-goto-init.el ()
   "Open init.el."
   (interactive)
   (find-file user-init-file))
 
-(defun my-goto-custom.el ()
-  "Open custom.el."
-  (interactive)
-  (find-file custom-file))
-
-(defun my-goto-config ()
-  "Open user config."
-  (interactive)
-  (find-file my-config-file))
-
-(defun my-load-config ()
-  "Load config."
-  (interactive)
-  (load-file user-init-file)
-  (load-file my-config-file))
-
 (defun my-goto-emacs-dir ()
   "Go to Emacs dir."
   (interactive)
   (find-file user-emacs-directory))
-
-(defun my-goto-org-files ()
-  "Go to org files dir."
-  (interactive)
-  (find-file org-directory))
 
 (defvar my-files-sources-data
   `(("Init Files"      ?i ,my-emacs-dir)
@@ -93,11 +62,6 @@
   (interactive)
   (load-file (concat user-emacs-directory "init.el")))
 
-(defun my-load-config-file ()
-  "Load the user config file."
-  (interactive)
-  (load-file my-config-file))
-
 ;;* Built-in Functions
 ;; These are useful built-in functions, but you have to enable them
 (put 'erase-buffer 'disabled nil)
@@ -109,24 +73,6 @@
 ;; Not going to use these commands
 (put 'ns-print-buffer 'disabled t)
 (put 'suspend-frame 'disabled t)
-
-;;* Package management
-
-;; https://emacsredux.com/blog/2020/09/12/reinstalling-emacs-packages/
-(defun my-reinstall-package (pkg)
-  "Reinstall the Emacs package PKG.
-
-First, prompts the user to select a package to reinstall from the list
-of installed packages. Then unloads the currently loaded features of the
-selected package, reinstalls the package, and finally requires the package
-to ensure it is loaded into the current Emacs session.
-
-PKG is the package symbol selected by the user."
-
-  (interactive (list (intern (completing-read "Reinstall package: " (mapcar #'car package-alist)))))
-  (unload-feature pkg)
-  (package-reinstall pkg)
-  (require pkg))
 
 ;;* CRUX
 ;; A Collection of Ridiculously Useful eXtensions for Emacs. Crux bundles many
@@ -159,40 +105,6 @@ PKG is the package symbol selected by the user."
   (select-frame-set-input-focus (selected-frame)))
 
 ;;* Window Functions
-;; Toggle Dedicated Window
-(defun my-dired-download-split-screen (&optional dir-name)
-  "Create a vertical dual-window split with dired buffers.
-Left window shows ~/Downloads/, right window shows DIR-NAME or the most
-recently visited directory from `dired-recent-directories' if available."
-  (interactive)
-  (delete-other-windows)
-  (let* ((downloads-dir (expand-file-name "~/Downloads/"))
-         (default-directory downloads-dir)
-         (right-dir (cond
-                     (dir-name (expand-file-name dir-name))
-                     ((and (boundp 'dired-recent-directories)
-                           dired-recent-directories)
-                      (expand-file-name (car dired-recent-directories)))
-                     (t default-directory))))
-    ;; Open Downloads in the left window
-    (dired downloads-dir)
-    ;; Split and open the right directory
-    (split-window-right)
-    (other-window 1)
-    (dired right-dir)
-    ;; Go back to left window
-    (other-window 1)))
-
-(defun my-toggle-window-dedicated ()
-  "Toggle whether the current active window is dedicated or not"
-  (interactive)
-  (message
-   (if (let (window (get-buffer-window (current-buffer)))
-         (set-window-dedicated-p window (not (window-dedicated-p window))))
-       "Window '%s' is dedicated"
-     "Window '%s' is normal")
-   (current-buffer)))
-
 ;; Exchange Windows
 ;; Swap buffers in windows and leave the cursor in the original window. Courtesy of
 ;; Mike Zamansky's video.
@@ -203,42 +115,6 @@ recently visited directory from `dired-recent-directories' if available."
   (interactive)
   (ace-swap-window)
   (aw-flip-window))
-
-;; Rotate Windows
-;; from magnars modified by ffevotte for dedicated windows support
-(defun my-rotate-windows (count)
-  "Rotate your windows.
-  Dedicated windows are left untouched. Giving a negative prefix
-  argument takes the kindows rotate backwards."
-  (interactive "p")
-  (let* ((non-dedicated-windows (cl-remove-if 'window-dedicated-p (window-list)))
-         (num-windows (length non-dedicated-windows))
-         (i 0)
-         (step (+ num-windows count)))
-    (cond ((not (> num-windows 1))
-           (message "You can't rotate a single window!"))
-          (t
-           (dotimes (counter (- num-windows 1))
-             (let* ((next-i (% (+ step i) num-windows))
-
-                    (w1 (elt non-dedicated-windows i))
-                    (w2 (elt non-dedicated-windows next-i))
-
-                    (b1 (window-buffer w1))
-                    (b2 (window-buffer w2))
-
-                    (s1 (window-start w1))
-                    (s2 (window-start w2)))
-               (set-window-buffer w1 b2)
-               (set-window-buffer w2 b1)
-               (set-window-start w1 s2)
-               (set-window-start w2 s1)
-               (setq i next-i)))))))
-
-(defun my-rotate-windows-backward (count)
-  "Rotate your windows backward."
-  (interactive "p")
-  (my-rotate-windows (* -1 count)))
 
 ;; Focus Window Split
 ;; Easy split and move functions
@@ -255,32 +131,6 @@ recently visited directory from `dired-recent-directories' if available."
   (require 'windmove)
   (split-window-below)
   (windmove-down))
-
-(defun my-toggle-window-split ()
-  "Move from a horizontal to a vertical split and vice versa."
-  (interactive)
-  (if (= (count-windows) 2)
-      (let* ((this-win-buffer (window-buffer))
-             (next-win-buffer (window-buffer (next-window)))
-             (this-win-edges (window-edges (selected-window)))
-             (next-win-edges (window-edges (next-window)))
-             (this-win-2nd (not (and (<= (car this-win-edges)
-                                         (car next-win-edges))
-                                     (<= (cadr this-win-edges)
-                                         (cadr next-win-edges)))))
-             (splitter
-              (if (= (car this-win-edges)
-                     (car (window-edges (next-window))))
-                  'split-window-horizontally
-                'split-window-vertically)))
-        (delete-other-windows)
-        (let ((first-win (selected-window)))
-          (funcall splitter)
-          (if this-win-2nd (other-window 1))
-          (set-window-buffer (selected-window) this-win-buffer)
-          (set-window-buffer (next-window) next-win-buffer)
-          (select-window first-win)
-          (if this-win-2nd (other-window 1))))))
 
 (defun my-cycle-window-split-ratio ()
   "Cycle the selected window through 1/2 → 2/3 → 1/3 size.
@@ -309,25 +159,6 @@ Works with exactly two windows in any split direction."
     (error "Minibuffer is not active")))
 
 ;;* Buffer Functions
-(defun my-copy-buffer-filename ()
-  "Copy the full filename of current buffer to kill ring if not virtual."
-  (interactive)
-  (if buffer-file-name
-      (progn
-        (kill-new buffer-file-name)
-        (message "Copied: %s" buffer-file-name))
-    (message "Buffer has no associated file")))
-
-(defun my-toggle-line-spacing ()
-  "Toggle line spacing between no extra space to extra half line height.
-URL `http://xahlee.info/emacs/emacs/emacs_toggle_line_spacing.html'
-Version 2017-06-02"
-  (interactive)
-  (if (< line-spacing 0.2)
-      (setq line-spacing 0.5)
-    (setq line-spacing 0.1))
-  (redraw-frame (selected-frame)))
-
 (defun my-narrow-or-widen-dwim (p)
   "Widen if buffer is narrowed, narrow-dwim otherwise.
   Dwim means: region, org-src-block, org-subtree, markdown
@@ -337,7 +168,6 @@ Version 2017-06-02"
   With prefix P, don't widen, just narrow even if buffer
   is already narrowed."
   (interactive "P")
-  (declare (interactive-only))
   (cond ((and (buffer-narrowed-p) (not p)) (widen))
         ((region-active-p)
          (narrow-to-region (region-beginning)
@@ -377,59 +207,12 @@ Version 2017-06-02"
     (with-current-buffer buffer
       (funcall (default-value 'major-mode)))))
 
-;; Create New Elisp Buffer
-(defun my-create-new-elisp-buffer ()
-  "Create a new buffer in `'emacs-lisp-mode'."
-  (interactive)
-  (let ((buffer (generate-new-buffer "*elisp*")))
-    (set-window-buffer nil buffer)
-    (with-current-buffer buffer
-      (emacs-lisp-mode))))
-
-;; Make Temp Buffer
-(defun my-tmp-buffer()
-  "Make a temporary buffer and switch to it."
-  (interactive)
-  (switch-to-buffer (get-buffer-create (concat "tmp-" (format-time-string "%m.%dT%H.%M.%S"))))
-  (delete-other-windows))
-
-;; Revert all buffers
-(defun my-revert-all-file-buffers ()
-  "Refresh all open file buffers without confirmation.
-Buffers in modified (not yet saved) state in emacs will not be reverted. They
-will be reverted though if they were modified outside emacs.
-Buffers visiting files which do not exist any more or are no longer readable
-will be killed."
-  (interactive)
-  (dolist (buf (buffer-list))
-    (let ((filename (buffer-file-name buf)))
-      ;; Revert only buffers containing files, which are not modified;
-      ;; do not try to revert non-file buffers like *Messages*.
-      (when (and filename
-                 (not (buffer-modified-p buf)))
-        (if (file-readable-p filename)
-            ;; If the file exists and is readable, revert the buffer.
-            (with-current-buffer buf
-              (revert-buffer :ignore-auto :noconfirm :preserve-modes))
-          ;; Otherwise, kill the buffer.
-          (let (kill-buffer-query-functions) ; No query done when killing buffer
-            (kill-buffer buf)
-            (message "Killed non-existing/unreadable file buffer: %s" filename))))))
-  (message "Finished reverting buffers containing unmodified files."))
-
 ;; Clipboard to/from Buffer
 ;; http://stackoverflow.com/a/10216338/4869
 (defun my-copy-whole-buffer-to-clipboard ()
   "Copy entire buffer to clipboard"
   (interactive)
   (clipboard-kill-ring-save (point-min) (point-max)))
-
-(defun my-copy-clipboard-to-whole-buffer ()
-  "Copy clipboard and replace buffer"
-  (interactive)
-  (delete-region (point-min) (point-max))
-  (clipboard-yank)
-  (deactivate-mark))
 
 ;; Useful Buffers
 
@@ -438,11 +221,10 @@ will be killed."
   "Return t if current buffer is a user buffer, else nil.
   Typically, if buffer name starts with *, it's not considered a user buffer.
   This function is used by buffer switching command and close buffer command, so that next buffer shown is a user buffer.
-  You can override this function to get your idea of “user buffer”.
+  You can override this function to get your idea of "user buffer".
   version 2016-06-18
 
 Include: gptel, mu4e, and OrgMsg buffers in the user-buffer list"
-  (interactive)
   (if (string-equal "*" (substring (buffer-name) 0 1))
       nil
     (if (string-equal major-mode "dired-mode")
@@ -452,7 +234,7 @@ Include: gptel, mu4e, and OrgMsg buffers in the user-buffer list"
 
 (defun my-next-user-buffer ()
   "Switch to the next user buffer.
-  “user buffer” is determined by `my-user-buffer-q'.
+  "user buffer" is determined by `my-user-buffer-q'.
   URL `http://ergoemacs.org/emacs/elisp_next_prev_user_buffer.html'
   Version 2016-06-19"
   (interactive)
@@ -466,7 +248,7 @@ Include: gptel, mu4e, and OrgMsg buffers in the user-buffer list"
 
 (defun my-previous-user-buffer ()
   "Switch to the previous user buffer.
-  “user buffer” is determined by `my-user-buffer-q'.
+  "user buffer" is determined by `my-user-buffer-q'.
   URL `http://ergoemacs.org/emacs/elisp_next_prev_user_buffer.html'
   Version 2016-06-19"
   (interactive)
@@ -478,88 +260,7 @@ Include: gptel, mu4e, and OrgMsg buffers in the user-buffer list"
                  (setq i (1+ i)))
         (progn (setq i 100))))))
 
-;; Eval emacs buffer until error
-
-(defun my-eval-buffer-until-error ()
-  "Evaluate emacs buffer until error occured."
-  (interactive)
-  (goto-char (point-min))
-  (while t (eval (read (current-buffer)))))
-
-;; Kill Current Buffer
-;; (kill-this-buffer) is unreliable when not invoked from the menubar. So here's a
-;; wrapper on (kill-buffer) to kill the current buffer. This is sometimes better
-;; than (evil-delete-buffer) since it keeps the window.
-
-(defun my-kill-this-buffer ()
-  (interactive)
-  (kill-buffer))
-
-;; Show Filename of Buffer
-;; http://camdez.com/blog/2013/11/14/emacs-show-buffer-file-name/
-(defun my-show-and-copy-buffer-full-filename ()
-  "Show the full path to the current file in the minibuffer and copy to clipboard."
-  (interactive)
-  (let ((file-name (buffer-file-name)))
-    (if file-name
-        (progn
-          (message file-name)
-          (kill-new file-name))
-      (error "Buffer not visiting a file"))))
-
-(defun my-show-and-copy-buffer-filename ()
-  "Show the abbreviated path to the current file in the minibuffer and copy to clipboard."
-  (interactive)
-  (let ((file-name (abbreviate-file-name buffer-file-name)))
-    (if file-name
-        (progn
-          (message file-name)
-          (kill-new file-name))
-      (error "Buffer not visiting a file"))))
-
-;; Switch previous buffer
-
-(defun switch-to-previous-buffer ()
-  (interactive)
-  (switch-to-buffer (other-buffer (current-buffer) 1)))
-
 ;;* File Functions
-;; Delete Current File
-(defun my-delete-current-buffer-file ()
-  "Removes file connected to current buffer and kills buffer."
-  (interactive)
-  (let ((filename (buffer-file-name))
-        (buffer (current-buffer))
-        (name (buffer-name)))
-    (if (not (and filename (file-exists-p filename)))
-        (ido-kill-buffer)
-      (when (yes-or-no-p "Are you sure you want to delete this file? ")
-        (delete-file filename t)
-        (kill-buffer buffer)
-        (message "File '%s' successfully removed" filename)))))
-
-;; Get string from file
-(defun my-get-string-from-file (filePath)
-  "Read a file and return the contents as a string"
-  (with-temp-buffer
-    (insert-file-contents filePath)
-    (buffer-string)))
-
-;; Duplicate file
-;; Duplicate a file in dired or deer
-(defun my-duplicate-file ()
-  (interactive)
-  (dired-do-copy-regexp "\\(.*\\)\\.\\(.*\\)" "\\1 (copy).\\2"))
-
-;; Move File
-(defun my-move-file ()
-  "Write this file to a new location, and delete the old one."
-  (interactive)
-  (let ((old-location (buffer-file-name)))
-    (call-interactively #'write-file)
-    (when old-location
-      (delete-file old-location))))
-
 ;;** Directory Functions
 ;;;;; Make Parent Directory
 ;;  Create a directory – or a hierarchy of them – while finding a file in a
@@ -588,7 +289,6 @@ Include: gptel, mu4e, and OrgMsg buffers in the user-buffer list"
     (save-excursion
       (kill-region start end)
       (goto-char (funcall dest))
-      ;; (insert palimpsest-prefix)
       (yank)
       (newline))
     (push-mark (point))
@@ -600,33 +300,22 @@ Include: gptel, mu4e, and OrgMsg buffers in the user-buffer list"
   "Move text between START and END to bottom of buffer."
   (interactive "r")
   (if (use-region-p)
-      (palimpsest-move-region-to-dest start end 'point-max)
+      (my-move-region-to-dest start end 'point-max)
     (message "No region selected")))
 
 (defun my-move-region-to-top (start end)
   "Move text between START and END to top of buffer."
   (interactive "r")
   (if (use-region-p)
-      (palimpsest-move-region-to-dest start end 'point-min)
+      (my-move-region-to-dest start end 'point-min)
     (message "No region selected")))
-
-(defun palimpsest-move-region-to-dest (start end dest)
-  "Move text between START and END to buffer's desired position, otherwise known as DEST."
-  (let ((count (count-words-region start end)))
-    (save-excursion
-      (kill-region start end)
-      (goto-char (funcall dest))
-      (yank)
-      (newline))
-    (push-mark (point))
-    (message "Moved %s words" count)))
 
 ;; Fill Paragraph
 (defun my-fill-paragraph ()
   "if in an org buffer use org-fill-paragraph; else use fill-paragraph"
   (interactive)
   (if (derived-mode-p 'org-mode)
-      (call-interactively #'my-org-fill-paragraph)
+      (call-interactively #'org-fill-paragraph)
     (call-interactively #'fill-paragraph)))
 
 (global-set-key [remap fill-paragraph]
@@ -642,186 +331,6 @@ Include: gptel, mu4e, and OrgMsg buffers in the user-buffer list"
         (emacs-lisp-docstring-fill-column t))
     (fill-paragraph nil region)))
 (global-set-key (kbd "M-Q") #'my-unfill-paragraph)
-
-;; Formatted Copy
-(defun my-formatted-copy ()
-  "Copy region or buffer as rich text to the macOS clipboard.
-
-When a region is active, copy only the selected text.  Otherwise
-copy the entire buffer.  Works in `org-mode', `markdown-mode',
-`gfm-mode', and `text-mode'.
-
-The conversion pipeline is:
-  org/markdown → pandoc → HTML → textutil → RTF → osascript → clipboard
-
-Uses `textutil' to produce Cocoa-native RTF (with \\=\\cocoartf tags)
-that Word expects, and `osascript' to set both RTF and plain text
-on the clipboard."
-  (interactive)
-  (unless (executable-find "pandoc")
-    (user-error "pandoc not found; install with `brew install pandoc'"))
-  (unless (derived-mode-p 'org-mode 'markdown-mode 'gfm-mode 'text-mode)
-    (user-error "Not in a supported mode (org, markdown, or text)"))
-  (let* ((beg (if (use-region-p) (region-beginning) (point-min)))
-         (end (if (use-region-p) (region-end) (point-max)))
-         (text (buffer-substring-no-properties beg end))
-         (input-format (cond
-                        ((derived-mode-p 'org-mode) "org")
-                        ((derived-mode-p 'gfm-mode) "gfm")
-                        ((derived-mode-p 'markdown-mode) "markdown")
-                        (t "markdown")))
-         (html-file (make-temp-file "emacs-rich-" nil ".html"))
-         (rtf-file (make-temp-file "emacs-rich-" nil ".rtf"))
-         (txt-file (make-temp-file "emacs-rich-" nil ".txt"))
-         (html-buf (generate-new-buffer " *rich-text-html*"))
-         (txt-buf (generate-new-buffer " *rich-text-txt*")))
-    (unwind-protect
-        (progn
-          ;; Step 1: Convert to HTML via pandoc
-          (with-current-buffer html-buf
-            (insert text)
-            (let ((exit-code (call-process-region
-                              (point-min) (point-max)
-                              "pandoc" t t nil
-                              "-f" input-format
-                              "-t" "html"
-                              "--wrap=none")))
-              (unless (zerop exit-code)
-                (user-error "Pandoc conversion failed: %s"
-                            (string-trim (buffer-string)))))
-            (write-region (point-min) (point-max) html-file nil 'quiet))
-          ;; Step 2: Convert HTML to Cocoa RTF via textutil
-          (let ((exit-code (call-process "textutil" nil nil nil
-                                         "-convert" "rtf"
-                                         "-output" rtf-file
-                                         html-file)))
-            (unless (zerop exit-code)
-              (user-error "textutil conversion failed")))
-          ;; Step 3: Convert to plain text via pandoc
-          (with-current-buffer txt-buf
-            (insert text)
-            (let ((exit-code (call-process-region
-                              (point-min) (point-max)
-                              "pandoc" t t nil
-                              "-f" input-format
-                              "-t" "plain"
-                              "--wrap=none")))
-              (unless (zerop exit-code)
-                (user-error "Pandoc plain text conversion failed")))
-            (write-region (point-min) (point-max) txt-file nil 'quiet))
-          ;; Step 4: Set RTF + plain text on clipboard via osascript
-          (let ((exit-code
-                 (call-process
-                  "osascript" nil nil nil "-e"
-                  (format "set rtfData to read (POSIX file \"%s\") as «class RTF »
-set plainText to read (POSIX file \"%s\") as «class utf8»
-set the clipboard to {«class RTF »:rtfData, string:plainText}"
-                          rtf-file txt-file))))
-            (unless (zerop exit-code)
-              (user-error "Failed to set clipboard via osascript")))
-          (message "Copied as rich text to clipboard (%d chars)" (- end beg)))
-      ;; Cleanup
-      (when (buffer-live-p html-buf) (kill-buffer html-buf))
-      (when (buffer-live-p txt-buf) (kill-buffer txt-buf))
-      (when (file-exists-p html-file) (delete-file html-file))
-      (when (file-exists-p rtf-file) (delete-file rtf-file))
-      (when (file-exists-p txt-file) (delete-file txt-file)))))
-
-;; Clipboard Transforms Using Pandoc
-(defun my-org-to-markdown ()
-  "convert clipboard contents from org to markdown and paste"
-  (interactive)
-  (kill-new (shell-command-to-string "pbpaste | pandoc -f org -t markdown"))
-  (yank))
-
-(defun my-markdown-to-org ()
-  "convert clipboard contents from markdown to org and paste"
-  (interactive)
-  (kill-new (shell-command-to-string "pbpaste | pandoc -f markdown -t org"))
-  (yank))
-
-(defun my-tex-to-org ()
-  "convert clipboard contents from markdown to org and paste"
-  (interactive)
-  (kill-new (shell-command-to-string "pbpaste | pandoc -f latex -t org"))
-  (yank))
-
-(defun my-org-to-tex ()
-  "convert clipboard contents from org to tex and paste"
-  (interactive)
-  (kill-new (shell-command-to-string "pbpaste | pandoc -f org -t latex"))
-  (yank))
-
-(defun my-tex-to-markdown ()
-  "convert clipboard contents from markdown to org and paste"
-  (interactive)
-  (kill-new (shell-command-to-string "pbpaste | pandoc -f latex -t markdown --markdown-headings=atx"))
-  (yank))
-
-(defun my-markdown-to-tex ()
-  "convert clipboard contents from markdown to org and paste"
-  (interactive)
-  (kill-new (shell-command-to-string "pbpaste | pandoc -f markdown -t latex"))
-  (yank))
-
-(defun my-cite-to-org ()
-  "convert clipboard contents from markdown to org with citations and paste"
-  (interactive)
-  (kill-new (shell-command-to-string (concat "pbpaste | pandoc --bibliography=" my-bibliography " -s -t markdown-native_divs-raw_html-citations | pandoc -f markdown -t org")))
-  (yank))
-
-(defun my-cite-to-markdown ()
-  "convert clipboard contents to markdown with citations and paste"
-  (interactive)
-  (kill-new (shell-command-to-string (concat "pbpaste | pandoc --bibliography=" my-bibliography " -s -t markdown-native_divs-raw_html-citations --markdown-headings=atx")))
-  (yank))
-
-(defun my-bibtex-to-yaml-reference ()
-  "convert clipboard bibtex contents to yaml and paste"
-  (interactive)
-  (kill-new (shell-command-to-string "pbpaste | pandoc-citeproc -y -f bibtex | pbcopy"))
-  (yank))
-
-(defun my-md-to-rtf ()
-  "convert md to rtf and send to clipboard"
-  (interactive)
-  (kill-new (shell-command-to-string "pbpaste | pandoc -f markdown -t rtf | pbcopy"))
-  (yank))
-
-(defun my-md-to-html ()
-  "convert md to rtf and send to clipboard"
-  (interactive)
-  (kill-new (shell-command-to-string "pbpaste | pandoc -f markdown -t html | pbcopy"))
-  (yank))
-
-(defun my-md-to-org ()
-  "convert md to org and send to clipboard"
-  (interactive)
-  (kill-new (shell-command-to-string "pbpaste | pandoc -f markdown -t org | pbcopy"))
-  (yank))
-
-(defun my-org-to-rtf ()
-  "convert org to rtf and send to clipboard"
-  (interactive)
-  (kill-new (shell-command-to-string "pbpaste | pandoc -f org -t html | /usr/bin/textutil -stdin -stdout -format html -convert rtf -fontsize 14 -font Helvetica | pbcopy")))
-
-(defun my-org-to-mail-rtf ()
-  "copy buffer, convert clipboard contents from org to rtf, and send to mail message"
-  (interactive)
-  (my-copy-whole-buffer-to-clipboard)
-  ;; (kill-new (shell-command-to-string "pbpaste | pandoc -f org -t rtf"))
-  (kill-new (shell-command-to-string "pbpaste | pandoc -f org -t html | /usr/bin/textutil -stdin -stdout -format html -convert rtf -fontsize 14 | pbcopy"))
-  (kill-buffer)
-  (delete-frame)
-  (do-applescript "if application \"Mail\" is running then
-      tell application \"Mail\"
-      activate
-      delay 0.35
-      tell application \"System Events\"
-      keystroke \"v\" using {command down}
-      end tell
-      end tell
-      end if"))
 
 ;; Smart Yanking
 ;;Courtesy of Marcin Borkowski http://mbork.pl/2018-07-02_Smart_yanking
@@ -947,7 +456,7 @@ set the clipboard to {«class RTF »:rtfData, string:plainText}"
   (interactive)
   (if (eq major-mode 'org-mode)
       (org-toggle-link-display)
-    (if markdown-hide-markup
+    (if (bound-and-true-p markdown-hide-markup)
         (markdown-toggle-markup-hiding 0)
       (markdown-toggle-markup-hiding))))
 
@@ -963,16 +472,6 @@ Tab numbering starts at 1."
 ;; https://juanjoalvarez.net/en/detail/2014/sep/19/vim-emacsevil-chaotic-migration-guide/
 ;; (original code from davvil) https://github.com/davvil/.emacs.d/blob/master/init.el
 
-(defun minibuffer-keyboard-quit ()
-  "Abort recursive edit.
-      In Delete Selection mode, if the mark is active, just deactivate it;
-      then it takes a second \\[keyboard-quit] to abort the minibuffer."
-  (interactive)
-  (if (and delete-selection-mode transient-mark-mode mark-active)
-      (setq deactivate-mark  t)
-    (when (get-buffer "*Completions*") (delete-windows-on "*Completions*"))
-    (abort-recursive-edit)))
-
 ;; Quit Message Function
 (defun my--quit-p (&optional prompt)
   "Return t if this session should be killed. Prompts the user for
@@ -980,7 +479,6 @@ Tab numbering starts at 1."
   (or (yes-or-no-p (format "››› %s" (or prompt "Quit Emacs?")))
       (ignore (message "Aborted"))))
 (setq confirm-kill-emacs nil)
-(add-hook 'kill-emacs-query-functions #'my--quit-p)
 (defvar my-quit-messages
   '(;; from Doom
     "Let's beat it -- This is turning into a bloodbath!"
@@ -1021,217 +519,9 @@ Tab numbering starts at 1."
            (nth (random (length my-quit-messages))
                 my-quit-messages))))
 
-(remove-hook 'kill-emacs-query-functions #'my--quit-p)
 (add-hook 'kill-emacs-query-functions #'my--quit)
 
 ;;* Org functions
-
-;; inspired by http://yummymelon.com/devnull/import-markdown-to-org-with-the-clipboard-in-emacs.html
-(defun my-yank-markdown-as-org ()
-  "Yank Markdown text as Org.
-
-This command will convert Markdown text in the top of the `kill-ring'
-and convert it to Org using the pandoc utility."
-  (interactive)
-  (unless (executable-find "pandoc")
-    (user-error "pandoc is not installed"))
-  (save-excursion
-    (with-temp-buffer
-      (yank)
-      (shell-command-on-region
-       (point-min) (point-max)
-       "pandoc -f markdown -t org --wrap=preserve" t t)
-      (kill-region (point-min) (point-max)))
-    (yank)))
-
-(defun my--strip-markdown-markup (text)
-  "Strip markdown links and emphasis from TEXT."
-  (let ((result text))
-    ;; [text](url) -> text
-    (setq result (replace-regexp-in-string "\\[\\([^]]+\\)](\\([^)]+\\))" "\\1" result))
-    ;; [text][ref] -> text
-    (setq result (replace-regexp-in-string "\\[\\([^]]+\\)]\\[[^]]*\\]" "\\1" result))
-    ;; **bold** or __bold__ -> bold
-    (setq result (replace-regexp-in-string "\\*\\*\\([^*]+\\)\\*\\*" "\\1" result))
-    (setq result (replace-regexp-in-string "__\\([^_]+\\)__" "\\1" result))
-    ;; *italic* or _italic_ -> italic (but not inside words)
-    (setq result (replace-regexp-in-string "\\*\\([^*]+\\)\\*" "\\1" result))
-    (setq result (replace-regexp-in-string "\\b_\\([^_]+\\)_\\b" "\\1" result))
-    ;; `code` -> code
-    (setq result (replace-regexp-in-string "`\\([^`]+\\)`" "\\1" result))
-    result))
-
-(defun my-copy-region-as-plain-text (beg end)
-  "Copy region as plain text, stripping links and markup.
-Works in `org-mode' and `markdown-mode'. Note: not tested, written quickly with claude-code"
-  (interactive "r")
-  (let* ((text (buffer-substring-no-properties beg end))
-         (plain-text
-          (string-trim
-           (cond
-            ((derived-mode-p 'org-mode)
-             (org-export-string-as text 'ascii t '(:with-toc nil)))
-            ((derived-mode-p 'markdown-mode)
-             (my--strip-markdown-markup text))
-            (t text)))))
-    (kill-new plain-text)
-    (message "Copied: %s" plain-text)))
-
-(defun my-org-table-kill-cell-text ()
-  "Copy the content of the current org-mode table cell to the kill ring."
-  (interactive)
-  (when (org-at-table-p)
-    (kill-new
-     (string-trim
-      (substring-no-properties(org-table-get-field))))
-    (message "copied cell: @%d$%d"
-             (org-table-current-line)
-             (org-table-current-column) )))
-
-;; reset all checkboxes in a narrowed org buffer
-;; https://mbork.pl/2025-07-07_Mass_resetting_Org_mode_checkboxes
-(defun my-org-reset-checkbox-state-buffer ()
-  "Reset all checkboxes in the (narrowed portion of) the buffer."
-  (interactive "*")
-  (org-map-entries #'org-reset-checkbox-state-subtree
-                   t nil
-                   'archive 'comment))
-;; build daily agendas using sub-trees
-(defun my-copy-org-subtree-to-daily-agenda (day)
-  "Copy the current org-mode subtree and paste it under the 'Agenda' heading in the org-roam daily agenda file specified by 'day'. Day is computed based on today"
-  ;; TODO: finish this function, test changes
-  (interactive)
-  (when (eq major-mode 'org-mode)
-    (org-copy-subtree)
-    (save-excursion
-      (org-roam-dailies-goto-tomorrow 1)
-      (let ((agenda-heading (org-find-exact-headline-in-buffer "Agenda")))
-        (if agenda-heading
-            (goto-char agenda-heading)
-          (goto-char (point-max))
-          (unless (bolp) (insert "\n"))
-          (org-insert-heading "Agenda" nil t)
-          ;; (insert "* Agenda\n")
-          ;; (forward-line -1)
-          ))
-      (org-end-of-subtree t t)
-      (org-paste-subtree 2) ;; paste as a level 2 heading
-      (save-buffer))))
-
-(defun my-copy-org-subtree-to-tomorrow-agenda ()
-  "Copy the current org-mode subtree and paste it under the 'Agenda' heading in the org-roam tomorrow file specified by date."
-  (interactive)
-  (when (eq major-mode 'org-mode)
-    (org-copy-subtree)
-    (save-excursion
-      (org-roam-dailies-goto-tomorrow 1)
-      (let ((agenda-heading (org-find-exact-headline-in-buffer "Agenda")))
-        (if agenda-heading
-            (goto-char agenda-heading)
-          (goto-char (point-max))
-          (unless (bolp) (insert "\n"))
-          (org-insert-heading "Agenda" nil t)))
-      (org-end-of-subtree t t)
-      ;; (insert "\n" content)
-      ;; (forward-line -1)
-      (org-paste-subtree 2) ;; paste as a level 2 heading
-      (save-buffer))))
-
-(defun my-copy-org-subtree-to-today-agenda ()
-  "Copy the current org-mode subtree and paste it under the 'Agenda' heading in today's org-roam daily file."
-  (interactive)
-  (when (eq major-mode 'org-mode)
-    (org-copy-subtree)
-    (let ((content (car kill-ring)))
-      (org-roam-dailies-goto-today)
-      (let ((agenda-heading (org-find-exact-headline-in-buffer "Agenda")))
-        (if agenda-heading
-            (goto-char agenda-heading)
-          (goto-char (point-max))
-          (unless (bolp) (insert "\n"))
-          (insert "* Agenda\n")
-          (forward-line -1)))
-      (org-end-of-subtree t t)
-      ;; (insert "\n" content)
-      (forward-line -1)
-      (org-paste-subtree 2)
-      (save-buffer))))
-
-;; https://github.com/alphapapa/unpackaged.el
-(define-minor-mode unpackaged/org-table-face-mode
-  "Apply `org-table' face family to all text in Org tables.
-Useful for forcibly applying the face to portions of table data
-that might have a different face, which could affect alignment."
-  :global nil
-  (let ((keywords '((unpackaged/org-table-face-matcher 0 'org-table))))
-    (if unpackaged/org-table-face-mode
-        (font-lock-add-keywords nil keywords 'append)
-      (font-lock-remove-keywords nil keywords))
-    (font-lock-flush)))
-
-(cl-defun unpackaged/org-table-face-matcher
-    (limit &optional (face `(:family ,(face-attribute 'org-table :family))))
-  "Apply FACE to entire Org tables.
-A `font-lock-keywords' function that searches up to LIMIT."
-  (cl-flet* ((find-face (face &optional limit not)
-                        ;; Return next position up to LIMIT that has FACE, or doesn't if NOT.
-                        (cl-loop with prev-pos
-                                 with pos = (point)
-                                 while (not (eobp))
-                                 do (setf pos (next-single-property-change pos 'face nil limit))
-                                 while (and pos (not (equal pos prev-pos)))
-                                 for face-at = (get-text-property pos 'face)
-                                 for face-matches-p = (or (eq face-at face)
-                                                          (when (listp face-at)
-                                                            (member face face-at)))
-                                 when (or (and not (not face-matches-p))
-                                          face-matches-p)
-                                 return pos
-                                 do (setf prev-pos pos)))
-             (apply-face-from (pos face)
-                              (unless (eobp)
-                                (let* ((property-at-start (get-text-property pos 'face))
-                                       (table-face-start (if (or (eq property-at-start 'org-table)
-                                                                 (when (listp property-at-start)
-                                                                   (member 'org-table property-at-start)))
-                                                             (point)
-                                                           (find-face 'org-table limit)))
-                                       table-face-end)
-                                  (when table-face-start
-                                    (goto-char table-face-start)
-                                    (setf table-face-end (line-end-position))
-                                    (add-face-text-property table-face-start table-face-end face)
-                                    (goto-char table-face-end))))))
-    (cl-loop with applied-p
-             for applied = (apply-face-from (point) face)
-             when applied
-             do (setf applied-p t)
-             while applied
-             finally return applied-p)))
-
-(defun unpackaged/org-attach-download (url)
-  "Download file at URL and attach with `org-attach'.
-Interactively, look for URL at point, in X clipboard, and in
-kill-ring, prompting if not found.  With prefix, prompt for URL."
-  (interactive (list (if current-prefix-arg
-                         (read-string "URL: ")
-                       (or (org-element-property :raw-link (org-element-context))
-                           (org-web-tools--get-first-url)
-                           (read-string "URL: ")))))
-  (when (yes-or-no-p (concat "Attach file at URL: " url))
-    (let* ((temp-dir (make-temp-file "org-attach-download-" 'dir))
-           (basename (file-name-nondirectory (directory-file-name url)))
-           (local-path (expand-file-name basename temp-dir))
-           size)
-      (unwind-protect
-          (progn
-            (url-copy-file url local-path 'ok-if-exists 'keep-time)
-            (setq size (file-size-human-readable
-                        (file-attribute-size
-                         (file-attributes local-path))))
-            (org-attach-attach local-path nil 'mv)
-            (message "Attached %s (%s)" url size))
-        (delete-directory temp-dir)))))
 
 (defun unpackaged/org-element-descendant-of (type element)
   "Return non-nil if ELEMENT is a descendant of TYPE.
@@ -1281,8 +571,8 @@ appropriate.  In tables, insert a new row or end the table."
                  (forward-line)
                  (insert "\n")
                  (forward-line -1))
-               ;; FIXME: looking-back is supposed to be called with more arguments.
-               (while (not (looking-back (rx (repeat 3 (seq (optional blank) "\n")))))
+               (while (not (looking-back (rx (repeat 3 (seq (optional blank) "\n")))
+                                         (line-beginning-position)))
                  (insert "\n"))
                (forward-line -1)))))
 
@@ -1333,6 +623,7 @@ appropriate.  In tables, insert a new row or end the table."
 (defun org-goto-interactive ()
   (interactive)
   (org-goto 'outline))
+
 ;;* Programming functions
 ;;** Lisp Helper Functions
 ;; Evaluates the current form by searching backward for its beginning.
@@ -1344,166 +635,6 @@ appropriate.  In tables, insert a new row or end the table."
     (forward-list)
     (call-interactively 'eval-last-sexp)))
 
-(defun my-find-elisp-thing-at-point-other-window ()
-  "Find thing under point and go to it another window."
-  (interactive)
-  (let ((symb (variable-at-point)))
-    (if (and symb
-             (not (equal symb 0))
-             (not (fboundp symb)))
-        (find-variable-other-window symb)
-      (find-function-at-point))))
-;;** Fix Parentheses
-(defun my-fix-lonely-parens ()
-  "Move all closing parenthesis at start of indentation to previous line."
-  (interactive)
-  (save-excursion
-    (goto-char (point-min))
-    (while (re-search-forward "^\\s-*)" nil t)
-      (delete-indentation))))
-
-;; ref: https://xenodium.com/deleting-from-emacs-sequence-vars/
-(defun my-remove-from-list-variable ()
-  "Remove an item from a list using completing-read"
-  (interactive)
-  (let* ((var (intern
-               (completing-read "From variable: "
-                                (let (symbols)
-                                  (mapatoms
-                                   (lambda (sym)
-                                     (when (and (boundp sym)
-                                                (seqp (symbol-value sym)))
-                                       (push sym symbols))))
-                                  symbols) nil t)))
-         (values (mapcar (lambda (item)
-                           (setq item (prin1-to-string item))
-                           (concat (truncate-string-to-width
-                                    (nth 0 (split-string item "\n"))
-                                    (window-body-width))
-                                   (propertize item 'invisible t)))
-                         (symbol-value var)))
-         (index (progn
-                  (when (seq-empty-p values) (error "Already empty"))
-                  (seq-position values (completing-read "Delete: " values nil t)))))
-    (unless index (error "Eeek. Something's up."))
-    (set var (append (seq-take (symbol-value var) index)
-                     (seq-drop (symbol-value var) (1+ index))))
-    (message "Deleted: %s" (truncate-string-to-width
-                            (seq-elt values index)
-                            (- (window-body-width) 9)))))
-
-
-;;* Git functions
-;;** New Git Project
-(defun my-git-new-project ()
-  "Initializes a new git repo and adds it to project.el's known projects."
-  (interactive)
-  (let ((project-dir (expand-file-name
-                      (read-directory-name "New project root:"))))
-    (magit-init project-dir)
-    (setq default-directory project-dir)
-    ;; make sure project.el remembers new project
-    (let ((pr (project--find-in-directory default-directory)))
-      (project-remember-project pr))))
-
-;;** Clone a Git Repo from Clipboard
-;; http://xenodium.com/emacs-clone-git-repo-from-clipboard/
-(defun my-git-clone-clipboard-url ()
-  "Clone git URL in clipboard asynchronously and open in dired when finishe.
-  Git repo is cloned to directory set by `my-user-elisp-dir'."
-  (interactive)
-  (cl-assert (string-match-p "^\\(http\\|https\\|ssh\\)://" (current-kill 0)) nil "No URL in clipboard")
-  (let* ((url (current-kill 0))
-         (download-dir my-user-elisp-dir)
-         (project-dir (concat (file-name-as-directory download-dir)
-                              (file-name-base url)))
-         (default-directory download-dir)
-         (command (format "git clone %s" url))
-         (buffer (generate-new-buffer (format "*%s*" command)))
-         (proc))
-    (when (file-exists-p project-dir)
-      (if (y-or-n-p (format "%s exists. delete?" (file-name-base url)))
-          (delete-directory project-dir t)
-        (user-error "Bailed")))
-    (switch-to-buffer buffer)
-    (setq proc (start-process-shell-command (nth 0 (split-string command)) buffer command))
-    (with-current-buffer buffer
-      (setq default-directory download-dir)
-      (shell-command-save-pos-or-erase)
-      (require 'shell)
-      (shell-mode)
-      (view-mode +1))
-    (set-process-sentinel proc (lambda (process state)
-                                 (let ((output (with-current-buffer (process-buffer process)
-                                                 (buffer-string))))
-                                   (kill-buffer (process-buffer process))
-                                   (if (= (process-exit-status process) 0)
-                                       (progn
-                                         (message "finished: %s" command)
-                                         (dired project-dir))
-                                     (user-error (format "%s\n%s" command output))))))
-    (set-process-filter proc #'comint-output-filter)))
-
-;;* Marking text in org-mode and other buffers
-;; written with LLM, hope it works. yolo
-(defun my-mark-inside-org-block ()
-  "Mark the inside of any org block when the cursor is inside or on the block delimiter."
-  (interactive)
-  (let* ((element (org-element-context))
-         (type (org-element-type element))
-         ;; If we're inside a block element, check the parent
-         (block-element (cond
-                         ;; If current element is already a block, use it
-                         ((memq type '(src-block example-block quote-block center-block
-                                                 special-block export-block verse-block))
-                          element)
-                         ;; Otherwise check if parent is a block
-                         ((memq (org-element-type (org-element-property :parent element))
-                                '(src-block example-block quote-block center-block
-                                            special-block export-block verse-block))
-                          (org-element-property :parent element))
-                         ;; No block found
-                         (t nil))))
-    (when block-element
-      (let* ((block-type (org-element-type block-element))
-             ;; src-block and example-block don't have :contents-begin/:contents-end
-             (contents-begin (if (memq block-type '(src-block example-block))
-                                 (save-excursion
-                                   (goto-char (org-element-property :begin block-element))
-                                   (forward-line 1)
-                                   (point))
-                               (org-element-property :contents-begin block-element)))
-             (contents-end (if (memq block-type '(src-block example-block))
-                               (save-excursion
-                                 (goto-char (org-element-property :end block-element))
-                                 (forward-line (- (org-element-property :post-blank block-element)))
-                                 (forward-line -1)
-                                 (point))
-                             (org-element-property :contents-end block-element))))
-        (when (and contents-begin contents-end)
-          (goto-char contents-begin)
-          (set-mark contents-begin)
-          (goto-char contents-end))))))
-
-
-;; old version doesn't work on quote blocks.
-;; (defun my-mark-inside-org-block ()
-;;   "Mark the inside of any org block when the cursor is inside or on the block delimiter."
-;;   (interactive)
-;;   (when-let* ((element (org-element-context))
-;;               (type (org-element-type element))
-;;               ;; Check if element is a block with contents
-;;               ((memq type '(src-block example-block quote-block center-block
-;;                                       special-block export-block verse-block)))
-;;               (begin (org-element-property :begin element))
-;;               (end (org-element-property :end element)))
-;;     (goto-char begin)
-;;     (forward-line 1)
-;;     (set-mark (point))
-;;     (goto-char end)
-;;     (forward-line -2)))
-
-
 ;;* Download helpers
 ;; I use this function to download MP3s for kids from youtube
 (defun my-youtube-dl-urls-in-region (start end)
@@ -1511,84 +642,27 @@ appropriate.  In tables, insert a new row or end the table."
   (interactive "r")
   (let ((lines (split-string (buffer-substring-no-properties start end) "\n")))
     (mapc (lambda (line)
-            (string-match
-             (rx (or "http" "https")
-                 "://"
-                 (+ (not (any " " "]" "," "\n"))))
-             line)
-            ;; "\\(http\\|https\\)://[^ ]+" line)
-            (let ((url (match-string 0 line)))
-              (when url
-                (let* ((song-name-dirty (string-trim (shell-command-to-string
-                                                      (concat "yt-dlp --get-title '"
-                                                              url
-                                                              "'"))))
-                       ;; sanitize song name be removing characters
-                       (song-name (replace-regexp-in-string
-                                   (rx (any "!@#$%^&*()[]{}:;,<.>/?\\|'\"`~"))
-                                   ""
-                                   song-name-dirty)))
-                  (when song-name
-                    (shell-command (concat "yt-dlp --extract-audio --audio-format mp3 -o '~/Downloads/"
-                                           song-name
-                                           ".mp3' "
-                                           "'" url "'"))))
-                )))
+            (when (string-match
+                   (rx (or "http" "https")
+                       "://"
+                       (+ (not (any " " "]" "," "\n"))))
+                   line)
+              (let ((url (match-string 0 line)))
+                (when url
+                  (let* ((song-name-dirty (string-trim (shell-command-to-string
+                                                        (concat "yt-dlp --get-title "
+                                                                (shell-quote-argument url)))))
+                         ;; sanitize song name by removing characters
+                         (song-name (replace-regexp-in-string
+                                     (rx (any "!@#$%^&*()[]{}:;,<.>/?\\|'\"`~"))
+                                     ""
+                                     song-name-dirty)))
+                    (when song-name
+                      (shell-command (concat "yt-dlp --extract-audio --audio-format mp3 -o "
+                                             (shell-quote-argument (concat "~/Downloads/" song-name ".mp3"))
+                                             " "
+                                             (shell-quote-argument url)))))))))
           lines)))
-
-;;* JSON parsers and integration
-(defun my-compose-email-from-json (&optional str)
-  "Create a new mu4e email from JSON in optional str argument, selected region, or {} pair around cursor.
-JSON can have 'To', 'Subject', 'Body', 'Cc', and 'Bcc' fields.
-
-Check to see if org-msg is enabled, and if so, use appropriate commands to jump to message body."
-  (interactive)
-  (let* ((json-string (or str ;; JSON string passed to function?
-                          ;; check if a region is selected
-                          (if (region-active-p)
-                              (buffer-substring-no-properties (region-beginning) (region-end))
-                            (save-excursion
-                              (when (search-backward "{" nil t)
-                                (let* ((start (point))
-                                       (end (search-forward "}" nil t)))
-                                  (buffer-substring-no-properties start end)))))))
-         (json-obj (condition-case nil
-                       (json-read-from-string json-string)
-                     (error nil)))
-         (to (when json-obj (cdr (assoc 'To json-obj))))
-         (subject (when json-obj (cdr (assoc 'Subject json-obj))))
-         (body (when json-obj (cdr (assoc 'Body json-obj))))
-         (cc (when json-obj (cdr (assoc 'Cc json-obj))))
-         (bcc (when json-obj (cdr (assoc 'Bcc json-obj)))))
-    
-    ;; Debug output
-    (message "JSON string: %s" json-string)
-    (message "Parsed JSON: %s" json-obj)
-    ;; (message "To: %s" to)
-    
-    ;; Create new message and fill fields
-    (with-current-buffer (mu4e-compose-new)
-      (when (and to (not (string-empty-p to)))
-        (message-goto-to)
-        (insert to))
-      
-      (when (and cc (not (string-empty-p cc)))
-        (message-goto-cc)
-        (insert cc))
-
-      (when (and bcc (not (string-empty-p bcc)))
-        (message-goto-bcc)
-        (insert bcc))
-      
-      (when (and subject (not (string-empty-p subject)))
-        (message-goto-subject)
-        (insert subject))
-      
-      (when (and body (not (string-empty-p body)))
-        (if org-msg-mode
-            (org-msg-goto-body)
-          (message-goto-body))
-        (insert body)))))
 
 ;;* provide my-setup-functions
 (provide 'my-setup-functions)

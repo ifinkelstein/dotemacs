@@ -12,7 +12,6 @@
 ;; In Emacs 27+, package initialization occurs before `user-init-file' is
 ;; loaded, but after `early-init-file'.
 (setq package-enable-at-startup nil
-      package-quickstart nil
       load-prefer-newer t)
 
 (unless (or (daemonp) noninteractive)
@@ -52,8 +51,6 @@
         frame-title-format "\n"
         ;; Disable start-up screen
         inhibit-startup-screen t
-        inhibit-startup-message t
-        inhibit-splash-screen t
         ;; No message in initial scratch buffer
         initial-scratch-message nil)
 
@@ -72,8 +69,6 @@
 (setopt initial-major-mode 'fundamental-mode)
 
 ;; Echo buffer -- don't display any message
-;; https://emacs.stackexchange.com/a/437/11934
-(defun display-startup-echo-area-message ()
-  (message ""))
+(setq inhibit-startup-echo-area-message user-login-name)
 
 ;;; early-init.el ends here

@@ -8,7 +8,6 @@
 (use-package org
   :ensure nil
   :commands (org-mode org-capture org-attach-attach org-attach)
-  :mode (("\\.org$" . org-mode))
   :hook ((org-mode . variable-pitch-mode)
          ;; DISABLED: testing if org-table-face-mode causes hangs in org files with tables
          ;; (org-mode . unpackaged/org-table-face-mode)
@@ -38,6 +37,10 @@
         ("s-v" . org-yank))
 
   :init
+  ;; Core org paths. Set before any org use so capture/agenda/refile resolve.
+  (setq org-directory "~/Work/org/")
+  (setq org-default-notes-file (concat org-directory "inbox.org"))
+  (setq org-agenda-files (list org-directory (concat org-directory "cal")))
   ;; Org-Emphasis-Regex settings. Set regex boundaries for emphasis.
   ;; Load this before org-mode is loaded.
   ;; See https://emacs.stackexchange.com/q/54673/11934
@@ -51,7 +54,7 @@
   :custom
   ;; Aesthetics & UI
   (org-auto-align-tags nil) ;; don't auto-align tags
-  (org-catch-invisible-edits 'smart) ;; prevent editing invisible area
+  (org-fold-catch-invisible-edits 'smart) ;; prevent editing invisible area
   (org-cycle-separator-lines 0) ;; no empty lines in collapsed view
   (org-ellipsis "…") ;; nicer elipses "↷" "↴" "▼"
   (org-fontify-quote-and-verse-blocks t) ;; make quotes stand out
@@ -181,16 +184,14 @@
   ;; removed org-todo bc it looked not great
   (dolist (face '(org-block org-table org-list-dt org-tag org-quote
                             org-code org-link  org-formula
-                            org-verbatim org-checkbox org-meta-line org-meta-line
+                            org-verbatim org-checkbox org-meta-line
                             org-cite org-date org-hide))
     (set-face-attribute face nil :inherit 'fixed-pitch))
 
   ;; add a few more template expansions
   ;; These are invoked with C-c C-,
-  (setq new-structure-template-alist
-        '(("el" . "src emacs-lisp")
-          ("b" . "src bash")))
-  (dolist (ele new-structure-template-alist)
+  (dolist (ele '(("el" . "src emacs-lisp")
+                 ("b" . "src bash")))
     (add-to-list 'org-structure-template-alist ele))
 
   (add-hook 'org-mode-hook (lambda ()  ;; don't pair < symbols
@@ -220,7 +221,6 @@
   (org-agenda-start-with-log-mode t)
 
   ;; Agenda styling
-  (org-auto-align-tags t) ;; Align tags
   (org-agenda-tags-column 'auto) ;; Put tags to the right
   (org-agenda-breadcrumbs-separator "  ")
   (org-agenda-block-separator " ") ;; No default block seperator
@@ -231,9 +231,6 @@
   (org-agenda-current-time-string
    "–––––––––––––– Now")
   (org-agenda-compact-blocks t) ;; fit more information in the agend view
-
-  ;; Display properties
-  (org-agenda-tags-column org-tags-column)
 
   ;; hide inherited tags, but this makes it impossible to sort by these tags
   ;; so I need to change this locally in some agenda views
@@ -246,7 +243,6 @@
   ;; note that the formatting is nicer that just using '%b'
   (org-agenda-prefix-format
    '((agenda . " %-18c%?-10t ")
-     (timeline . "  % s")
      (todo . " %?-8c:%b %?s")
      (tags . " ")
      (search . " %i %-12:c")))

@@ -1,4 +1,4 @@
-;;; my-completion.el  -*- lexical-binding: t -*-
+;;; my-setup-completion.el  -*- lexical-binding: t -*-
 
 ;; All packages related to core narrowing and completion functions
 
@@ -25,18 +25,18 @@
   ;; Don't resize buffer
   (setq vertico-resize nil)
 
-  ;; try the `completion-category-sort-function' first
-  (advice-add #'vertico--sort-function :before-until #'completion-category-sort-function)
+  ;; try the `my-completion-category-sort-function' first
+  (advice-add #'vertico--sort-function :before-until #'my-completion-category-sort-function)
 
-  (defun completion-category-sort-function ()
+  (defun my-completion-category-sort-function ()
     (alist-get (vertico--metadata-get 'category)
-               completion-category-sort-function-overrides))
+               my-completion-category-sort-function-overrides))
 
-  (defvar completion-category-sort-function-overrides
-    '((file . directories-before-files))
+  (defvar my-completion-category-sort-function-overrides
+    '((file . my-directories-before-files))
     "Completion category-specific sorting function overrides.")
 
-  (defun directories-before-files (files)
+  (defun my-directories-before-files (files)
     ;; Still sort by history position, length and alphabetically
     (setq files (vertico-sort-history-length-alpha files))
     ;; But then move directories first
@@ -76,20 +76,6 @@
   ;; Tidy shadowed file names
   :hook (rfn-eshadow-update-overlay . vertico-directory-tidy))
 
-(use-package vertico-multiform
-  :ensure nil
-  :after vertico
-  :config
-  ;; Enable vertico-multiform
-  (vertico-multiform-mode)
-
-  ;; Configure the display per command.
-  ;; Use a buffer with indices for imenu
-  ;; and a flat (Ido-like) menu for M-x.
-  (setq vertico-multiform-commands
-        '((consult-imenu buffer indexed)))
-  (setq vertico-multiform-commands nil))
-
 ;;avy-like quick keys navigation
 (use-package vertico-quick
   :ensure nil
@@ -104,15 +90,6 @@
 ;; A few more useful configurations...
 ;; Add prompt indicator to `completing-read-multiple'.
 ;; We display [CRM<separator>], e.g., [CRM,] if the separator is a comma.
-(defun crm-indicator (args)
-  (cons (format "[CRM%s] %s"
-                (replace-regexp-in-string
-                 "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" ""
-                 crm-separator)
-                (car args))
-        (cdr args)))
-(advice-add #'completing-read-multiple :filter-args #'crm-indicator)
-
 (defun crm-indicator (args)
   (cons (concat "[CRM] " (car args)) (cdr args)))
 (advice-add #'completing-read-multiple :filter-args #'crm-indicator)
@@ -138,25 +115,19 @@
 ;; You may prefer to use `initials' instead of `partial-completion'.
 (use-package orderless
   :init
-  (setq completion-styles '(orderless)
+  (setq completion-styles '(orderless basic)
         completion-category-defaults nil
-        completion-category-overrides '((file (styles . (partial-completion))))))
+        completion-category-overrides '((file (styles basic partial-completion)))))
 
 ;;* Embark
 ;; Actions on narrowed candidates
 (use-package embark
-  :demand
-  :after minibuffer
-  :commands (embark-act embark-keymap-help)
   :hook ((embark-collect-mode . hl-line-mode))
   :bind (("M-," . embark-act)
          ("M-." . embark-dwim)
          ("C-h B" . embark-bindings)
          :map minibuffer-local-completion-map
-         ("C-;"   . embark-act-noexit)
          ("C-S-o" . embark-act)
-         ("C-J"   . embark-switch-to-live-occur)
-         ("M-q"   . embark-occur-toggle-view)
          ;; https://www.reddit.com/r/emacs/comments/19ec8v5/weekly_tips_tricks_c_thread/
          ;; see if this works, not clear that its doing anything
          :map minibuffer-local-map
@@ -167,7 +138,7 @@
          :map completion-list-mode-map
          (";" . embark-act)
          :map embark-file-map
-         ("x" . consult-file-externally)
+         ("x" . embark-open-externally)
          ("O" . xah-open-in-external-app)
          ;; When using the Embark package, you can bind `marginalia-cycle' as an Embark action
          :map embark-general-map
@@ -180,9 +151,6 @@
                        embark-minimal-indicator
                        embark-highlight-indicator
                        embark-isearch-highlight-indicator))
-  ;; Use keymap -- completing-read on C-h
-  (embark-prompter 'embark-keymap-prompter)
-  
   :init
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)
@@ -210,51 +178,7 @@
 Borrowed from: https://github.com/oantolin/embark/wiki/Additional-Actions"
     (interactive "sSearch Term: ")
     (browse-url
-     (format "http://google.com/search?q=%s" term)))
-
-  (defun ijf-system-open (file)
-    "Open dired in this directory"
-    (dired (file-name-directory file)))
-
-
-  ;; Which-key integration
-  (defun embark-which-key-indicator ()
-    "An embark indicator that displays keymaps using which-key.
-The which-key help message will show the type and value of the
-current target followed by an ellipsis if there are further
-targets."
-    (lambda (&optional keymap targets prefix)
-      (if (null keymap)
-          (which-key--hide-popup-ignore-command)
-        (which-key--show-keymap
-         (if (eq (plist-get (car targets) :type) 'embark-become)
-             "Become"
-           (format "Act on %s '%s'%s"
-                   (plist-get (car targets) :type)
-                   (embark--truncate-target (plist-get (car targets) :target))
-                   (if (cdr targets) "…" "")))
-         (if prefix
-             (pcase (lookup-key keymap prefix 'accept-default)
-               ((and (pred keymapp) km) km)
-               (_ (key-binding prefix 'accept-default)))
-           keymap)
-         nil nil t (lambda (binding)
-                     (not (string-suffix-p "-argument" (cdr binding))))))))
-
-  (setq embark-indicators
-        '(embark-which-key-indicator
-          embark-highlight-indicator
-          embark-isearch-highlight-indicator))
-
-  (defun embark-hide-which-key-indicator (fn &rest args)
-    "Hide the which-key indicator immediately when using the completing-read prompter."
-    (which-key--hide-popup-ignore-command)
-    (let ((embark-indicators
-           (remq #'embark-which-key-indicator embark-indicators)))
-      (apply fn args)))
-
-  (advice-add #'embark-completing-read-prompter
-              :around #'embark-hide-which-key-indicator))
+     (format "http://google.com/search?q=%s" term))))
 
 (use-package embark-consult
   :after (embark consult)
@@ -291,15 +215,14 @@ targets."
              consult-flymake)
   :bind (:map project-prefix-map
          ("b" . consult-project-buffer)
-         ("m" .  consult-bookmark))
+         ("m" .  consult-bookmark)
+         :map global-map
+         ("C-h i" . consult-info))
 
   ;; Enable automatic preview at point in the *Completions* buffer. This is
   ;; relevant when you use the default completion UI. You may want to also
   ;; enable `consult-preview-at-point-mode` in Embark Collect buffers.
   :hook (completion-list-mode . consult-preview-at-point-mode)
-  :init
-  ;; Replace `multi-occur' with `consult-multi-occur', which is a drop-in replacement.
-  (fset 'multi-occur #'consult-multi-occur)
   :config
   ;; Narrowing lets you restrict results to certain groups of candidates
   (setq consult-narrow-key "<")
@@ -350,8 +273,7 @@ targets."
     "Search through completion info pages."
     (interactive)
     (consult-info "vertico" "consult" "marginalia" "orderless" "embark"
-                  "corfu" "cape" "tempel"))
-  (bind-key "C-h i" #'consult-info))
+                  "corfu" "cape" "tempel")))
 
 ;; Search at point with consult
 (defun consult-line-symbol-at-point ()
@@ -359,7 +281,7 @@ targets."
   (consult-line (thing-at-point 'symbol)))
 
 ;;** Consult Dir
-;; Consult-dir allows you to easily select and switch between “active” directories.
+;; Consult-dir allows you to easily select and switch between "active" directories.
 (use-package consult-dir
   :commands (consult-dir
              consult-dir-jump-file)
@@ -375,11 +297,9 @@ targets."
   (:map corfu-map
    ("C-j"      . corfu-next)
    ("C-k"      . corfu-previous)
-   ("C-g"      . corfu-quit)
    ("M-l"      . corfu-show-location)
    ("M-SPC" . corfu-insert-separator)
    ("<escape>" . corfu-quit)
-   ("<return>" . corfu-insert)
    ("TAB" . corfu-insert)
    ([tab] . corfu-insert))
   :custom
@@ -399,13 +319,14 @@ targets."
   (corfu-quit-no-match 'separator)
   (corfu-quit-at-boundary 'separator)
   (corfu-preview-current t)  ;; Preview current candidate?
-  (corfu-preselect-first t)    ;; Preselect first candidate?
-  (corfu-history-mode 1) ;; Use history for completion
   (corfu-popupinfo-delay '(0.4 0.2)) ;; delay for info popup; (initial subsequent)
   :init
   (global-corfu-mode)
 
   :config
+  ;; Enable corfu history
+  (corfu-history-mode 1)
+
   ;; Enable Corfu completion for commands like M-: (eval-expression) or M-!
   ;; (shell-command)
   (defun corfu-enable-in-minibuffer ()
@@ -414,9 +335,7 @@ targets."
       ;; (setq-local corfu-auto nil) Enable/disable auto completion
       (corfu-mode 1)))
   (add-hook 'minibuffer-setup-hook #'corfu-enable-in-minibuffer)
-  (add-hook 'eshell-mode-hook (lambda () (setq-local corfu-quit-no-match t
-                                                corfu-quit-at-boundary t
-                                                corfu-auto nil)))
+
   ;; Avoid press RET twice in shell
   ;; https://github.com/minad/corfu#completing-in-the-eshell-or-shell
   (defun corfu-send-shell (&rest _)
@@ -430,10 +349,13 @@ targets."
   (advice-add #'corfu-insert :after #'corfu-send-shell)
 
   ;; Completion in eshell
-  (add-hook 'eshell-mode-hook
-            (lambda ()
-              (setq-local corfu-auto nil)
-              (corfu-mode)))
+  (defun my-corfu-eshell-setup ()
+    "Configure corfu for eshell."
+    (setq-local corfu-quit-no-match t
+                corfu-quit-at-boundary t
+                corfu-auto nil)
+    (corfu-mode))
+  (add-hook 'eshell-mode-hook #'my-corfu-eshell-setup)
 
   ;; Display popup info
   (require 'corfu-popupinfo)
@@ -442,9 +364,7 @@ targets."
 
 ;; Use dabbrev with Corfu!
 (use-package dabbrev
-  ;; Swap M-/ and C-M-/
-  :bind (("M-/" . dabbrev-completion)
-         ("C-M-/" . dabbrev-expand)))
+  :bind (("C-M-/" . dabbrev-expand)))
 
 ;;**  Corfu Extensions (Cape)
 ;; Add extensions
@@ -455,13 +375,11 @@ targets."
          ("C-c p d" . cape-dabbrev)        ;; or dabbrev-completion
          ("C-c p f" . cape-file)
          ("C-c p k" . cape-keyword)
-         ("C-c p s" . cape-symbol)
+         ("C-c p s" . cape-elisp-symbol)
          ("C-c p a" . cape-abbrev)
-         ("C-c p i" . cape-ispell)
          ("C-c p l" . cape-line)
          ("C-c p w" . cape-dict)
          ("C-c p \\" . cape-tex)
-         ;; ("C-c p _" . cape-tex)
          ("C-c p ^" . cape-tex)
          ("C-c p &" . cape-sgml)
          ("C-c p r" . cape-rfc1345))
@@ -474,18 +392,7 @@ targets."
   (add-to-list 'completion-at-point-functions #'cape-dabbrev+dict)
   (add-to-list 'completion-at-point-functions #'cape-file)
   (add-to-list 'completion-at-point-functions #'cape-tex)
-  (add-to-list 'completion-at-point-functions #'cape-keyword)
-  ;; (add-to-list 'completion-at-point-functions #'cape-symbol)
-  ;; (add-to-list 'completion-at-point-functions #'cape-ispell)
-  ;; (add-to-list 'completion-at-point-functions #'cape-dict)
-  ;; (add-to-list 'completion-at-point-functions #'cape-line)
-  ;; (add-to-list 'completion-at-point-functions #'cape-dabbrev)
-  ;; (add-to-list 'completion-at-point-functions #'cape-abbrev)
-  :config
-  ;; NOTE: cape-wrap-silent and cape-wrap-purify were removed in recent
-  ;; cape versions. They were workarounds for pcomplete issues on Emacs ≤28
-  ;; and are no longer needed on Emacs 29+.
-  )
+  (add-to-list 'completion-at-point-functions #'cape-keyword))
 
 ;;** Kind Icon (For Corfu)
 (use-package kind-icon
@@ -529,9 +436,5 @@ targets."
     (push '(yasnippet backquote-change) warning-suppress-types))
   (yas-global-mode 1))
 
-;; the official snippet collection https://github.com/AndreaCrotti/yasnippet-snippets
-(use-package yasnippet-snippets
-  :after (yasnippet))
-
 (provide 'my-setup-completion)
-;;; my-completion.el ends here
+;;; my-setup-completion.el ends here
