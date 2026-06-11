@@ -15,7 +15,6 @@
   :hook ((LaTeX-mode . variable-pitch-mode)
          (LaTeX-mode . LaTeX-preview-setup)
          (LaTeX-mode . outline-minor-mode) ;; clobbers TAB expansion of yas-snippets
-         (LaTeX-mode . electric-pair-mode)
          (LaTeX-mode . olivetti-mode)
          (LaTeX-mode . hl-todo-mode)
          (LaTeX-mode . turn-on-reftex)
