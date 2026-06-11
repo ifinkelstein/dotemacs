@@ -67,6 +67,47 @@
     (elfeed-db-save)
     (quit-window))
 
+  ;; Show entry metadata in the header line (replaces the look of the
+  ;; retired elfeed-goodies, without the powerline dependency); the
+  ;; body then contains only the article content.
+  (defun my-elfeed-show--header-line ()
+    "Build a header line for `elfeed-show-entry': title, feed, tags, date."
+    (let* ((entry elfeed-show-entry)
+           (title (or (elfeed-entry-title entry) ""))
+           (feed (elfeed-entry-feed entry))
+           (feed-title (or (and feed (elfeed-feed-title feed)) ""))
+           (date (format-time-string "%Y-%m-%d %H:%M"
+                                     (elfeed-entry-date entry)))
+           (tags (mapconcat #'symbol-name (elfeed-entry-tags entry) ", ")))
+      (concat
+       (propertize (concat " " title) 'face '(:weight bold))
+       "   "
+       (propertize feed-title 'face 'elfeed-search-feed-face)
+       (unless (string-empty-p tags)
+         (concat "  (" (propertize tags 'face 'elfeed-search-tag-face) ")"))
+       "   "
+       (propertize date 'face 'elfeed-search-date-face))))
+
+  (defun my-elfeed-show-refresh ()
+    "Render the current entry with metadata in the header line only."
+    (interactive)
+    (let* ((inhibit-read-only t)
+           (entry elfeed-show-entry)
+           (content (elfeed-deref (elfeed-entry-content entry)))
+           (type (elfeed-entry-content-type entry))
+           (feed (elfeed-entry-feed entry))
+           (base (and feed (elfeed-compute-base (elfeed-feed-url feed)))))
+      (setq header-line-format (my-elfeed-show--header-line))
+      (erase-buffer)
+      (if content
+          (if (eq type 'html)
+              (elfeed-insert-html content base)
+            (insert content))
+        (insert (propertize "(empty)\n" 'face 'italic)))
+      (goto-char (point-min))))
+
+  (setq elfeed-show-refresh-function #'my-elfeed-show-refresh)
+
   ;; https://xenodium.com/open-emacs-elfeed-links-in-background/
   (defun elfeed-search-browse-background-url ()
     "Open current `elfeed' entry (or region entries) in browser without losing focus."
