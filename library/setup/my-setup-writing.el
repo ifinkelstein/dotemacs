@@ -83,6 +83,7 @@
 ;;** LTeX+ (LanguageTool via LSP, fully offline)
 (use-package eglot-ltex-plus
   :vc (:url "https://github.com/emacs-languagetool/eglot-ltex-plus")
+  :defer t ; lambda hooks can't autoload, so without this the block loads eagerly
   :hook ((org-mode markdown-mode LaTeX-mode)
          . (lambda ()
              (require 'eglot-ltex-plus)
