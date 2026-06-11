@@ -99,7 +99,6 @@
 (defun my-delete-frame-or-quit ()
   "Delete the selected frame & kill terminal buffers. If the last frame, kill Emacs."
   (interactive)
-  (kill-matching-buffers "*vterm" nil t)
   (when (condition-case nil (delete-frame)
           (error (save-buffers-kill-emacs))))
   (select-frame-set-input-focus (selected-frame)))

@@ -238,10 +238,9 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
                     :foreground "black" :background "goldenrod" :box '(:line-width 1 :color
                                                                                    "black"))
 ;; minimal and cute
-;; TODO: revert to upstream once https://github.com/Lambda-Emacs/lambda-line/pull/25 is merged
-;; :vc (:url "https://github.com/Lambda-Emacs/lambda-line" :branch "main")
+;; Official repo moved to Codeberg (2026-05); PR #25 fix is merged upstream
 (use-package lambda-line
-  :vc (:url "https://github.com/ifinkelstein/lambda-line" :rev "fix/quoted-face-refs")
+  :vc (:url "https://codeberg.org/Lambda-Emacs/lambda-line" :branch "main")
   :custom
   (lambda-line-abbrev t)
   (lambda-line-position 'top)
