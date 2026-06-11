@@ -186,7 +186,6 @@
           '((python-mode     . python-ts-mode)
             (sh-mode         . bash-ts-mode)
             (js-json-mode    . json-ts-mode)
-            (yaml-mode       . yaml-ts-mode)
             (dockerfile-mode . dockerfile-ts-mode)
             (conf-toml-mode  . toml-ts-mode))))
 
