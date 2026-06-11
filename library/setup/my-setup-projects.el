@@ -20,47 +20,22 @@
   :ensure nil
   :commands (project-find-file
              project-switch-to-buffer
-             project-switch-project
-             project-switch-project-open-file)
+             project-switch-project)
   :custom
   (project-list-file (concat my-cache-dir "projects"))
   (project-switch-commands '((project-find-file "Find file")
                              (project-find-regexp "Find regexp")
                              (project-find-dir "Find directory")
                              (project-vc-dir "VC-Dir")
-                             (project-magit-dir "Magit status")))
+                             (magit-project-status "Magit status")))
   (project-vc-extra-root-markers '(".dir-locals.el" ".project.el" "package.json" "requirements.txt" "autogen.sh"))
 
   :config
   ;; Use Ripgrep if installed
-  (when (shell-command-to-string "command rg --version")
-    (setq xref-search-program 'ripgrep))
-  (setq my-project-dir "~/Work/")
+  (when (executable-find "rg")
+    (setopt xref-search-program 'ripgrep))
   ;; remove deleted projects from list
   (project-forget-zombie-projects))
-
-(defun my--project-name ()
-  "Return name of project without path"
-  (file-name-nondirectory (directory-file-name (if (vc-root-dir) (vc-root-dir) "-"))))
-
-;; magit function for project
-(defun project-magit-dir ()
-  "Run magit in the current project's root"
-  (interactive)
-  (magit-status))
-
-;;** Open project & file
-(with-eval-after-load 'project
-  (defun project-switch-project-open-file (dir)
-    "Switch to another project by running an Emacs command.
-Open file using project-find-file
-
-When called in a program, it will use the project corresponding
-to directory DIR."
-    (interactive (list (project-prompt-project-dir)))
-    (let ((default-directory dir)
-          (project-current-inhibit-prompt t))
-      (call-interactively 'project-find-file))))
 
 ;;* Isolate buffers to a tab with tabspaces
 (use-package tabspaces
@@ -72,41 +47,31 @@ to directory DIR."
   (tabspaces-use-filtered-buffers-as-default t)
   (tabspaces-default-tab "Home")
   :config
-  (defun my--consult-tabspaces ()
-    "Deactivate isolated buffers when not using tabspaces."
-    (require 'consult)
-    (cond (tabspaces-mode
-           ;; hide full buffer list (still available with "b")
-           (consult-customize consult-source-buffer :hidden t :default nil)
-           (add-to-list 'consult-buffer-sources 'consult--source-workspace))
-          (t
-           (consult-customize consult-source-buffer :hidden nil :default t)
-           (setq consult-buffer-sources (remove #'consult--source-workspace consult-buffer-sources)))))
-  (add-hook 'tabspaces-mode-hook #'my--consult-tabspaces))
+  (with-eval-after-load 'consult
+    ;; Set the consult-workspace buffer list source.
+    (defvar consult--source-workspace
+      (list :name     "Workspace Buffers"
+            :narrow   ?w
+            :history  'buffer-name-history
+            :category 'buffer
+            :state    #'consult--buffer-state
+            :default  t
+            :items    (lambda () (consult--buffer-query
+                             :predicate #'tabspaces--local-buffer-p
+                             :sort 'visibility
+                             :as #'buffer-name)))
+      "Set workspace buffer list for consult-buffer.")
 
-;;;;; Consult Isolated Workspace Buffers
-;; Filter Buffers for Consult-Buffer
-(defun my-buff-filter (buffer)
-  (let ((blst (cl-remove (buffer-name) (frame-parameter nil 'buffer-list))))
-    (memq buffer blst)))
-
-(with-eval-after-load 'consult
-  ;; hide full buffer list (still available with "b" prefix)
-  (consult-customize consult-source-buffer :hidden t :default nil)
-  ;; set consult-workspace buffer list
-  (defvar consult--source-workspace
-    (list :name     "Workspace Buffers"
-          :narrow   ?w
-          :history  'buffer-name-history
-          :category 'buffer
-          :state    #'consult--buffer-state
-          :default  t
-          :items    (lambda () (consult--buffer-query
-                           :predicate #'tabspaces--local-buffer-p
-                           :sort 'visibility
-                           :as #'buffer-name)))
-
-    "Set workspace buffer list for consult-buffer."))
+    (defun my--consult-tabspaces ()
+      "Deactivate isolated buffers when not using tabspaces."
+      (cond (tabspaces-mode
+             ;; hide full buffer list (still available with "b")
+             (consult-customize consult-source-buffer :hidden t :default nil)
+             (add-to-list 'consult-buffer-sources 'consult--source-workspace))
+            (t
+             (consult-customize consult-source-buffer :hidden nil :default t)
+             (setq consult-buffer-sources (remove #'consult--source-workspace consult-buffer-sources)))))
+    (add-hook 'tabspaces-mode-hook #'my--consult-tabspaces)))
 
 ;;* Workspaces
 ;; not all tabs are activities
@@ -150,7 +115,7 @@ Email is opened last because mu4e starts asynchronously."
       (tab-bar-new-tab)
       (tab-bar-rename-tab "Notes")
       (org-roam-dailies-goto-today)
-      (end-of-buffer))))
+      (goto-char (point-max)))))
 
 ;;** Terminal Workspace
 (defun my-open-terminal-in-workspace ()
