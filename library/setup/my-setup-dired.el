@@ -1,4 +1,11 @@
-;; my-dired.el -*- lexical-binding: t -*-
+;; my-setup-dired.el -*- lexical-binding: t -*-
+
+;;* Async file operations
+;; Run dired copy/rename/etc. asynchronously. Re-homed here from a deleted module.
+(use-package async
+  :defer 1
+  :config
+  (dired-async-mode 1))
 
 
 ;;* Dired Settings
@@ -8,8 +15,6 @@
   :bind (:map dired-mode-map
               ("M-<up>"   . my-dired-drag-item-up)
               ("M-<down>" . my-dired-drag-item-down)
-              ("M-<" . end-of-buffer)           ;; beginning and end of buffer need to be reversed in dired
-              ("M->" . beginning-of-buffer)     ;; beginning and end of buffer need to be reversed in dired
               ("l" . dired-find-alternate-file)
               ("h" . my-dired-updirectory)
               ("E" . gnus-dired-attach)
@@ -41,19 +46,23 @@
   (delete-by-moving-to-trash t)
   ;; drag files from dired into other programs (!!!)
   (dired-mouse-drag-files t)
+  ;; Cycle from bottom to top of buffer and vice versa (Emacs 30 built-in)
+  (dired-movement-style 'cycle)
   :config
   ;; Cycle between dired windows like an orthodox file manager (tere-style)
   ;; ref: https://mbork.pl/2026-04-13_Binding_TAB_in_Dired_to_something_useful
   (defun dired-cycle-dired-windows ()
     "Switch to the next Dired window in the selected frame."
     (interactive)
-    (select-window
-     (cadr (seq-filter
-            (lambda (window)
-              (eq (buffer-local-value
-                   'major-mode (window-buffer window))
-                  'dired-mode))
-            (window-list)))))
+    (let ((dired-windows (seq-filter
+                          (lambda (window)
+                            (eq (buffer-local-value
+                                 'major-mode (window-buffer window))
+                                'dired-mode))
+                          (window-list))))
+      (if (cdr dired-windows)
+          (select-window (cadr dired-windows))
+        (user-error "No other Dired window to cycle to"))))
 
   ;; Function to move up a directory like in ranger
   (defun my-dired-updirectory ()
@@ -62,45 +71,22 @@
 
   (when sys-mac
     ;; Suppress the warning: `ls does not support --dired'.
-    (setq dired-use-ls-dired nil)
-    (when (executable-find "gls")
-      ;; Use GNU ls as `gls' from `coreutils' if available.
-      (setq insert-directory-program "gls")))
-
-  (when (or (and sys-mac (executable-find "gls"))
-            (and (not sys-mac) (executable-find "ls")))
-    ;; Using `insert-directory-program'
-    (setq ls-lisp-use-insert-directory-program t)
-    ;; list directories first 
-    (setq dired-listing-switches "-laFGh1v --group-directories-first")))
+    (setq dired-use-ls-dired nil))
+  ;; Use GNU ls as `gls' from `coreutils' when available (needed on macOS for
+  ;; --group-directories-first); fall back to the system ls otherwise.
+  (if (executable-find "gls")
+      (setq insert-directory-program "gls"
+            dired-listing-switches "-laFGh1v --group-directories-first")
+    (setq dired-listing-switches "-laFGh1v")))
 
 
 ;;** Dired Helper Functions
-
-;; https://xenodium.com/interactive-ordering-of-dired-items
-(defun my-dired-from-marked-items ()
-  "Create a new dired buffer containing only the marked files.
-
-Also allow dragging items up and down via M-<up> and M-x<down>."
-  (interactive)
-  (let ((marked-files (dired-get-marked-files))
-        (buffer-name (generate-new-buffer-name
-                      (format "*%s (selection)*"
-                              (file-name-nondirectory
-                               (directory-file-name default-directory))))))
-    (unless marked-files
-      (error "No dired marked files"))
-    (dired (cons buffer-name
-                 (mapcar (lambda (path)
-                           (file-relative-name path default-directory))
-                         marked-files)))))
-
 
 ;; interactive way of reordering dired items. ref:
 ;; https://xenodium.com/interactive-ordering-of-dired-items
 
 (defun my-dired-drag-item-up ()
-  "Drag dired item down in buffer."
+  "Drag dired item up in buffer."
   (interactive)
   (unless (dired-get-filename nil t)
     (error "Not a dired draggable item"))
@@ -141,16 +127,6 @@ Also allow dragging items up and down via M-<up> and M-x<down>."
 
 
 
-;; https://emacs.dyerdwelling.family/emacs/20240918092253-emacs--adding-disk-usage-reporting-to-emacs-dired-mode/
-;; report disk usage for a directory under cursor
-(defun my-dired-du ()
-  "Run 'du -hc' on the directory under the cursor in Dired."
-  (interactive)
-  (let ((current-dir (dired-get-file-for-visit)))
-    (if (file-directory-p current-dir)
-        (dired-do-async-shell-command "du -hc" nil (list current-dir))
-      (message "The current point is not a directory."))))
-
 (defun add-todays-date-remove-old (str)
   "Remove any date in the format YYYYMMDD from the end of STR, then add today's date.
    If the date that was removed was today's date, add a lowercase letter as well."
@@ -168,37 +144,29 @@ Also allow dragging items up and down via M-<up> and M-x<down>."
       (replace-regexp-in-string old-date-regex today str))
      (t (concat str "." today)))))
 
-(defun my-dired-rename-marked-files-add-date ()
-  "Add a date to marked files in dired buffer.
-Check to make sure in dired major mode."
-  (interactive)
+(defun my-dired--operate-marked-files-add-date (operation)
+  "Apply OPERATION to each marked file, adding today's date to its name.
+OPERATION is a function of two args (OLD-NAME NEW-NAME), e.g.
+`rename-file' or `copy-file'. Only runs in Dired/Dirvish buffers."
   (if (or (eq major-mode 'dired-mode) (eq major-mode 'dirvish-mode))
-      (progn
-        (let* ((files (dired-get-marked-files)))
-          (dolist (file files)
-            (let* ((file-dir (file-name-directory file))
-                   (file-name (file-name-nondirectory file))
-                   (name (file-name-sans-extension file-name))
-                   (ext (file-name-extension file-name))
-                   (new-name (concat file-dir (add-todays-date-remove-old name) "." ext)))
-              (rename-file file new-name))))))
-  (message "Not in Dired mode."))
+      (dolist (file (dired-get-marked-files))
+        (let* ((file-dir (file-name-directory file))
+               (file-name (file-name-nondirectory file))
+               (name (file-name-sans-extension file-name))
+               (ext (file-name-extension file-name))
+               (new-name (concat file-dir (add-todays-date-remove-old name) "." ext)))
+          (funcall operation file new-name)))
+    (message "Not in Dired mode.")))
+
+(defun my-dired-rename-marked-files-add-date ()
+  "Rename marked file(s) in dired buffer, adding today's date."
+  (interactive)
+  (my-dired--operate-marked-files-add-date #'rename-file))
 
 (defun my-dired-copy-marked-files-add-date ()
-  "Copy marked file(s) and add today's date in dired buffer.
-Check to make sure in dired major mode."
+  "Copy marked file(s) in dired buffer, adding today's date."
   (interactive)
-  (if (or (eq major-mode 'dired-mode) (eq major-mode 'dirvish-mode))
-      (progn
-        (let* ((files (dired-get-marked-files)))
-          (dolist (file files)
-            (let* ((file-dir (file-name-directory file))
-                   (file-name (file-name-nondirectory file))
-                   (name (file-name-sans-extension file-name))
-                   (ext (file-name-extension file-name))
-                   (new-name (concat file-dir (add-todays-date-remove-old name) "." ext)))
-              (copy-file file new-name)))))
-    (message "Not in Dired mode.")))
+  (my-dired--operate-marked-files-add-date #'copy-file))
 
 (defun xah-open-in-external-app (&optional @fname)
   "Open the current file or dired/dirvish-marked files in external app.
@@ -243,18 +211,13 @@ Version 2022-09-14"
 ;;** Dired-Recent to keep track of recently visited folders
 (use-package dired-recent
   :after dired
-  ;; squash the annoying keybinding
-  :bind (("C-x C-d" . my-dired-recent-insert)
-         :map dired-recent-mode-map
-         ("C-x C-d" . my-dired-recent-insert))
   :config
   (defun my-dired-recent-insert ()
     "insert a string with the selected directory from the dired-recent-directories"
     (interactive)
     (unless dired-recent-directories
       (dired-recent-load-list))
-    (let* ((selectrum-should-sort nil)
-           (label (completing-read "Dired recent: " dired-recent-directories))
+    (let* ((label (completing-read "Dired recent: " dired-recent-directories))
            (res (or (get-text-property
                      0 'dired-recent-restore-file-list
                      ;; Get from original string stored in list, completing-read
@@ -271,39 +234,21 @@ Version 2022-09-14"
   :bind (:map dired-mode-map
               ("/" . dired-narrow)))
 
-;;** Dired Sort
-;; not using--erase if never need
-(use-package dired-quick-sort
-  :disabled t
-  :bind (:map dired-mode-map
-              ("s" . hydra-dired-quick-sort/body)))
-
 ;;** Dired Colors
 (use-package diredfl
-:hook (dired-mode . diredfl-global-mode))
+  :hook (dired-mode . diredfl-mode))
 
 ;;** Dired preview
 ;; I disabled this bc it was getting annoying
 ;; still useful to keep around so I can enable on a per-buffer basis
 (use-package dired-preview
-:config
-(setq dired-preview-delay 1) ;; in sec
-(setq dired-preview-max-size (expt 2 20))
-(setq dired-preview-ignored-extensions-regexp
-      (concat "\\."
-              "\\(gz\\|"
-              "zst\\|"
-              "tar\\|"
-              "xz\\|"
-              "rar\\|"
-              "zip\\|"
-              "iso\\|"
-              "epub"
-              "\\)"))
-;; Enable `dired-preview-mode' in a given Dired buffer or do it
-;; globally:
-;; (dired-preview-global-mode 1)
-)
+  :commands (dired-preview-mode dired-preview-global-mode)
+  :custom
+  (dired-preview-delay 1) ;; in sec
+  (dired-preview-max-size (expt 2 20))
+  (dired-preview-ignored-extensions-regexp
+   (concat "\\."
+           (regexp-opt '("gz" "zst" "tar" "xz" "rar" "zip" "iso" "epub")))))
 
 ;;** Dired Ranger
 ;; https://github.com/Fuco1/dired-hacks#dired-ranger
@@ -315,54 +260,6 @@ Version 2022-09-14"
               ("s-c"  . dired-ranger-copy)
               ("s-m"  . dired-ranger-move)
               ("s-v"  . dired-ranger-paste)))
-
-;;** Cycle Dired Buffer
-;;https://www.reddit.com/r/emacs/comments/qnthhw/comment/hjiv2uc/?utm_source=share&utm_medium=web2x&context=3
-;; Allow for cycling from bottom to top of dired buffer and vice versa
-(add-hook 'dired-mode-hook
-          (defun my-dired-wrap ()
-            "Cycle from bottom to top of buffer"
-            (make-local-variable 'post-command-hook)
-            (add-hook 'post-command-hook
-                      (defun my-dired-wrap-1 ()
-                        ""
-                        (if (= 1 (save-excursion
-                                   (forward-line)))
-                            (goto-line 3))
-                        (if (= -1 (save-excursion
-                                    (forward-line -1)))
-                            (goto-line (count-lines
-                                        (point-min)
-                                        (point-max))))))))
-
-
-;;** Dired helper functions
-;; ref: https://mbork.pl/2025-09-29_Improving_dired-show-file-type
-(defun my-get-media-file-metadata (file)
-  "Get FILE's duration and resolution, assuming it’s a media file."
-  (let (process-file-side-effects)
-    (with-temp-buffer
-      (process-file "ffprobe" nil t nil
-                    "-loglevel" "error"
-                    "-select_streams" "v:0"
-                    "-show_entries" "format=duration:stream=width,height"
-                    "-output_format" "csv=p=0"
-                    "-sexagesimal"
-                    file)
-      (goto-char (point-min))
-      (when (looking-at-p "[0-9]+,[0-9]+")
-        (insert "resolution: ")
-        (search-forward "," nil t)
-        (delete-char -1)
-        (insert "x")
-        (search-forward "\n")
-        (delete-char -1)
-        (insert ", "))
-      (insert "duration: ")
-      (buffer-substring-no-properties
-       (point-min)
-       (1- (point-max))))))
-
 
 ;;* Other file management packages
 ;; Open, view, browse, restore or permanently delete trashed files
@@ -377,4 +274,4 @@ Version 2022-09-14"
   (setq trashed-date-format "%Y-%m-%d %H:%M:%S"))
 
 (provide 'my-setup-dired)
-;;; my-dired.el ends here
+;;; my-setup-dired.el ends here
