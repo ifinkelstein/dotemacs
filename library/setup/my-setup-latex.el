@@ -1,33 +1,26 @@
 ;; my-setup-latex.el  -*- lexical-binding: t -*-
 
-;; TODO: clean this up later -- just need it working now
 (message "Setting up LaTeX settings...")
 ;;* Latex Packages
 ;; Basic settings
 ;; inspiration: https://jwiegley.github.io/use-package/keywords/#defer-demand
 (use-package latex
   :ensure auctex
-  ;; :demand ;; load everything immediately. otherwise LaTeX mode doesn't get recognized. maybe?
   :mode ("\\.tex\\'" . LaTeX-mode)
-  :commands (latex-mode LaTeX-mode plain-tex-mode
-                        LaTeX-environment TeX-insert-macro
+  :commands (LaTeX-environment TeX-insert-macro
                         LaTeX-narrow-to-environment
                         TeX-fold-dwim
                         TeX-fold-buffer)
-  
-  :hook ((latex-mode . LaTeX-mode) ;; absurd that this needs to be added
-         (LaTeX-mode . variable-pitch-mode)
+
+  :hook ((LaTeX-mode . variable-pitch-mode)
          (LaTeX-mode . LaTeX-preview-setup)
-         (LaTeX-mode . flyspell-mode)
          (LaTeX-mode . outline-minor-mode) ;; clobbers TAB expansion of yas-snippets
          (LaTeX-mode . electric-pair-mode)
          (LaTeX-mode . olivetti-mode)
          (LaTeX-mode . hl-todo-mode)
          (LaTeX-mode . turn-on-reftex)
-         (LaTeX-mode . (lambda ()
-                         (TeX-fold-mode 1))) ;; enable hiding various things
+         (LaTeX-mode . TeX-fold-mode) ;; enable hiding various things
          (LaTeX-mode . electric-indent-local-mode)) ;; trying to see if I like this mode
-  :mode ("\\.tex\\'" . latex-mode)
   ;; introduce dummy variables to silence compile and other warnings
   ;; https://github.com/karthink/.emacs.d/blob/master/lisp/setup-latex.el
   :defines (TeX-auto-save
@@ -50,8 +43,7 @@
               ("s-h" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "highlight"))))
               ("s-$" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "inline math"))))
               ("s-d" . my-TeX-delete-current-macro)
-              ("M-i" . my-tab-to-tab-stop)
-              ("M-I" . my-tab-to-tab-stop-back)
+              ("M-i" . tab-to-tab-stop)
               ("C-)" . puni-slurp-forward)
               ("C-(" . puni-slurp-backward)
               ("M-," . embark-act)
@@ -88,20 +80,8 @@
   ;; outline-minor-mode settings
   (outline-minor-mode-cycle t)
 
-  ;; add font locking to the headers
-  (font-lock-add-keywords
-   'latex-mode
-   '(("^%\\(chapter\\|\\(sub\\|subsub\\)?section\\|paragraph\\)"
-      0 'font-lock-keyword-face t)
-     ("^%chapter{\\(.*\\)}"       1 'font-latex-sectioning-1-face t)
-     ("^%section{\\(.*\\)}"       1 'font-latex-sectioning-2-face t)
-     ("^%subsection{\\(.*\\)}"    1 'font-latex-sectioning-3-face t)
-     ("^%subsubsection{\\(.*\\)}" 1 'font-latex-sectioning-4-face t)
-     ("^%paragraph{\\(.*\\)}"     1 'font-latex-sectioning-5-face t)))
-
   ;; click on a PDF to see the TeX source
   (TeX-source-correlate-mode t)
-  ;; (setq-default TeX-source-correlate-start-server t)
 
   (TeX-newline-function 'reindent-then-newline-and-indent)
 
@@ -111,11 +91,18 @@
 
   (TeX-auto-save t) ;; save style info w/ buffer (?)
   (TeX-save-query nil)
-  (TeX-PDF-mode t)
   (TeX-master nil)
   :config
-  ;; add additional useful macro commands
-  (TeX-add-symbols '("texttt" t)) ;; typewriter mode macro with single input
+  ;; add font locking to the section-comment headers
+  (font-lock-add-keywords
+   'LaTeX-mode
+   '(("^%\\(chapter\\|\\(sub\\|subsub\\)?section\\|paragraph\\)"
+      0 'font-lock-keyword-face t)
+     ("^%chapter{\\(.*\\)}"       1 'font-latex-sectioning-1-face t)
+     ("^%section{\\(.*\\)}"       1 'font-latex-sectioning-2-face t)
+     ("^%subsection{\\(.*\\)}"    1 'font-latex-sectioning-3-face t)
+     ("^%subsubsection{\\(.*\\)}" 1 'font-latex-sectioning-4-face t)
+     ("^%paragraph{\\(.*\\)}"     1 'font-latex-sectioning-5-face t)))
 
   ;; Fold all citation macros as [C]
   (with-eval-after-load 'tex-fold
@@ -126,7 +113,6 @@
                           "footcite" "footcitetext" "smartcite" "supercite"
                           "fullcite" "nocite"))))
 
-  (TeX-source-correlate-mode) ;; show where the errors are
   (advice-add 'TeX-view :around #'my-widen-first) ; fixes bug in TeX-view
   (put 'LaTeX-narrow-to-environment 'disabled nil) ;; disable warning when using this function
   (add-to-list 'TeX-file-extensions "tex\\.~[0-9a-f]+~") ;; for backup files too
@@ -156,7 +142,7 @@ starting from the innermost."
          end t)
         (replace-match "\\1")
         ;; Delete the closing brace.
-        (delete-backward-char 1))))
+        (delete-char -1))))
 
   ;; citation for the two functions below:https://www.reddit.com/r/emacs/comments/5f99nv/help_with_auctex_how_to_delete_an_environment/
   (defun my-LaTeX-delete-macro ()
@@ -212,8 +198,7 @@ return `nil'."
 ;;** latex-change-env
 (use-package latex-change-env
   :after latex
-  ;; :bind (:map LaTeX-mode-map ("C-c r" . latex-change-env))
-  )
+  :bind (:map LaTeX-mode-map ("C-c r" . latex-change-env)))
 
 
 ;;** consult-reftex
@@ -236,12 +221,10 @@ return `nil'."
 ;;** bibtex
 (use-package bibtex
   :after auctex
-  :defer t
-  :mode ("\\.bib" . bibtex-mode)
-  :init
-  (progn
-    (setq bibtex-align-at-equal-sign t)
-    (add-hook 'bibtex-mode-hook (lambda () (set-fill-column 120)))))
+  :custom
+  (bibtex-align-at-equal-sign t)
+  :config
+  (add-hook 'bibtex-mode-hook (lambda () (set-fill-column 120))))
 
 (with-eval-after-load 'font-latex
   (set-face-attribute 'font-latex-sedate-face nil :inherit 'fixed-pitch)
@@ -265,11 +248,12 @@ return `nil'."
 
 ;;* Prettify latex
 ;; https://github.com/karthink/.emacs.d/blob/master/lisp/pretty-latex.el
-(add-hook 'prettify-symbols-mode-hook
-          (defun prettify-symbols-latex-symbols ()
-            "List of pretty symbols for latex-mode"
-            (interactive)
-            (setq-local prettify-symbols-alist '(("$" . 183)
+;; Set the LaTeX prettify table buffer-locally from LaTeX-mode-hook only.
+;; Hanging it on the GLOBAL prettify-symbols-mode-hook corrupted every other
+;; buffer (e.g. $->·, --->– in code), so we scope it to LaTeX-mode.
+(defun prettify-symbols-latex-symbols ()
+  "Enable prettify-symbols-mode with a LaTeX-specific symbol table."
+  (setq-local prettify-symbols-alist '(("$" . 183)
                                                  ("\\alpha" . 945)
                                                  ("\\beta" . 946)
                                                  ("\\gamma" . 947)
@@ -719,22 +703,15 @@ return `nil'."
                                                  ("\\textlquill" . 8261)
                                                  ("\\textrquill" . 8262)
                                                  ("\\textcircledP" . 8471)
-                                                 ("\\textreferencemark" . 8251)))))
+                                                 ("\\textreferencemark" . 8251)))
+  (prettify-symbols-mode 1))
+
+(add-hook 'LaTeX-mode-hook #'prettify-symbols-latex-symbols)
 
 
 ;;* Helpful functions
-;;** bibtool is a CLI for cleaning up bib files
-;; https://www.reddit.com/r/emacs/comments/1hlwpr0/weekly_tips_tricks_c_thread_20241225_week_52/
-(defun my-bibtool-current-file ()
-  "Run bibtool on the current buffer's file."
-  (interactive)
-  (let ((file (buffer-file-name)))
-    (if file
-        (let ((default-directory (file-name-directory file))
-              (base-file (file-name-nondirectory file)))
-          (shell-command (concat "bibtool " base-file " -o " base-file)))
-      (message "Not visiting a bibtex file!"))))
 ;;** control how reftex toc shows up
+(autoload 'imenu-list-display-buffer "imenu-list")
 (add-to-list 'display-buffer-alist
              '("^\\*toc\\*" imenu-list-display-buffer))
 
@@ -759,23 +736,11 @@ Adapted by the er/mark-LaTeX-inside-environment function"
     (skip-syntax-backward " ")
     (exchange-point-and-mark)))
 
-;; ref:
-;; https://github.com/malb/emacs.d/blob/master/malb.org#latex-2
-;; TODO: test this function in my workflow
-(defun my-latex-bib-jump ()
-  "If point is on a citation, jump to the bibtex file, otherwise open refex menu."
-  (interactive)
-  (xref-push-marker-stack)
-  (let ((current (point)))
-    (ignore-errors (org-ref-latex-jump-to-bibtex))
-    (if (eq current (point))
-        (reftex-goto-label))))
 ;;* Embark: LaTeX macro argument targets
 ;; Extensible embark integration for LaTeX macros like \input{}, \include{},
 ;; \includegraphics{}, etc. Uses AUCTeX primitives for robust parsing.
 
-(eval-when-compile
-  (require 'cl-lib))
+(require 'cl-lib)
 
 ;; Forward declarations for AUCTeX functions
 (declare-function TeX-current-macro "tex")

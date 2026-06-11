@@ -6,7 +6,6 @@
 ;;* mu4e
 (use-package mu4e
   :ensure nil
-  :after (org org-contacts)
   :load-path "/opt/homebrew/share/emacs/site-lisp/mu/mu4e"
   :commands (mu4e mu4e-compose-new mu4e-update-mail-and-index)
   ;; Change keybindings to look more like elfeed
@@ -33,12 +32,10 @@
               ("M-o" . my-transient-email)
               :map mu4e-main-mode-map
               ("u" . mu4e-update-index )
-              ("M-o" . my-transient-email))
+              ("M-o" . my-transient-email)
+              :map mu4e-compose-minor-mode-map
+              ("R" . my-mu4e-compose-reply-ask-wide))
 
-  ;; use Dired to attach files via C-c <RET> C-a
-  ;; https://www.djcbsoftware.nl/code/mu/mu4e/Dired.html
-  :hook ((dired-mode . turn-on-gnus-dired-mode))
-  
   :config
   ;; Fix a problem with some escape characters
   ;; https://github.com/djcb/mu/issues/2662
@@ -74,8 +71,6 @@
   ;; (mu4e-toggle-logging) ;;turn on for error logging buffer
 
   ;;** Syncing
-  ;; Maildir
-  (setq mu4e-maildir "~/Mail")
   ;; Sync imap servers w/mbsync (via isync installed w/homebrew):
   ;; tee so both mu4e and the log file see stdout+stderr;
   ;; pipefail preserves mbsync's exit code through the pipe
@@ -228,7 +223,7 @@ Emacs, so we recover before the next heartbeat tick."
         (when (> gap my-mu4e--sleep-threshold)
           (my-mu4e-sleep-wake-recover)))))
 
-  (when (fboundp 'after-focus-change-function)
+  (when (boundp 'after-focus-change-function)
     (add-function :after after-focus-change-function
                   #'my-mu4e--on-focus-change))
 
@@ -237,9 +232,9 @@ Emacs, so we recover before the next heartbeat tick."
   (defun my-mu4e--network-available-p ()
     "Return non-nil if the network appears to be up.
 Uses a single ICMP ping to Cloudflare DNS (1.1.1.1) with a 2
-second timeout.  Returns nil if the ping fails (no network) or
-if `ping' is not found."
-    (zerop (call-process "ping" nil nil nil "-c1" "-W2" "1.1.1.1")))
+second timeout (macOS -W is in milliseconds → 2000).  Returns nil
+if the ping fails (no network) or if `ping' is not found."
+    (zerop (call-process "ping" nil nil nil "-c1" "-W2000" "1.1.1.1")))
 
   (defun my-mu4e--wait-for-network ()
     "Block until network is available, up to `my-mu4e--network-wait-seconds'.
@@ -407,108 +402,40 @@ still run.  The whole thing is idempotent."
     (plist-put (cdr (assq 'tag      mu4e-marks)) :char "×")
     (setq mu4e-headers-show-target nil)
 
-    (defun mu4e-mark-at-point-advice (mark target)
-      (interactive)
-      (let* ((msg (mu4e-message-at-point))
-             (docid (mu4e-message-field msg :docid))
-             (overlay (make-overlay (- (line-end-position) 12)
-                                    (- (line-end-position) 0))))
+    (defun mu4e-mark-at-point-advice (mark _target)
+      "Show an SVG tag overlay at the end of the marked header line."
+      (let ((overlay (make-overlay (- (line-end-position) 12)
+                                   (line-end-position)))
+            (tag (alist-get mark '((refile  . "ARCHIVE")
+                                   (trash   . "TRASH")
+                                   (untrash . "UNTRASH")
+                                   (delete  . "DELETE")
+                                   (read    . "READ")
+                                   (unread  . "UNREAD")
+                                   (flag    . "FLAG")
+                                   (unflag  . "UNFLAG")
+                                   (move    . "MOVE")
+                                   (tag     . "TAG")))))
         (save-excursion
-          ;; (remove-overlays (line-beginning-position) (line-end-position))
-          (delete-overlay (make-overlay (line-beginning-position) (line-end-position)))
           (if (eql mark 'unmark)
               (delete-overlay overlay)
-            (cond ((eql mark 'refile)
-                   (overlay-put overlay 'display (svg-tag-make "ARCHIVE" nil 3 0)))
-                  ((eql mark 'trash)
-                   (overlay-put overlay 'display (svg-tag-make "TRASH" nil 5 0)))
-                  ((eql mark 'untrash)
-                   (overlay-put overlay 'display (svg-tag-make "UNTRASH" nil 3 0)))
-                  ((eql mark 'delete)
-                   (overlay-put overlay 'display (svg-tag-make "DELETE" nil 4 0)))
-                  ((eql mark 'read)
-                   (overlay-put overlay 'display (svg-tag-make "READ" nil 4 0)))
-                  ((eql mark 'unread)
-                   (overlay-put overlay 'display (svg-tag-make "UNREAD" nil 4 0)))
-                  ((eql mark 'flag)
-                   (overlay-put overlay 'display (svg-tag-make "FLAG" nil 6 0)))
-                  ((eql mark 'unflag)
-                   (overlay-put overlay 'display (svg-tag-make "UNFLAG" nil 4 0)))
-                  ((eql mark 'move)
-                   (overlay-put overlay 'display (svg-tag-make "MOVE" nil 6 0)))
-                  ((eql mark 'tag)
-                   (overlay-put overlay 'display (svg-tag-make "TAG" nil 7 0))))))))
+            (when tag
+              (overlay-put overlay 'display (svg-tag-make tag nil 3 0)))))))
 
     (advice-add 'mu4e-mark-at-point :after #'mu4e-mark-at-point-advice)) ;;with-eval-after-load
 
   ;;** Attachments
-  ;; Set default attachment dir (create if missing)
-  (setq mu4e-attachment-dir (concat (getenv "HOME") "/Downloads/_Mail"))
-  (unless (file-directory-p mu4e-attachment-dir)
-    (make-directory mu4e-attachment-dir t))
-  ;; TODO: Fix the function below so all attachements work
-  ;; (bind-key "e" #'mu4e-views-mu4e-save-all-atachments mu4e-headers-mode-map)
-  
-  (defun my-mu4e-view-save-all-attachments (&optional ask-dir)
-    "Save all files from the current view buffer.
-
-Adapted from mu4e-view-save-attachments
-
-This applies to all MIME-parts that are \"attachment-like\" (have a filename),
-regardless of their disposition.
-
-With ASK-DIR is non-nil, user can specify the target-directory; otherwise
-one is determined using `mu4e-attachment-dir'."
-    (interactive "P")
-    (let* ((parts (mu4e-view-mime-parts))
-           (candidates  (seq-map
-                         (lambda (fpart)
-                           (cons ;; (filename . annotation)
-                            (plist-get fpart :filename)
-                            fpart))
-                         (seq-filter
-                          (lambda (part) (plist-get part :attachment-like))
-                          parts)))
-           (candidates (or candidates
-                           (mu4e-warn "No attachments for this message")))
-
-           (custom-dir (when ask-dir (read-directory-name
-                                      "Save to directory: "
-                                      mu4e-attachment-dir))))
-      ;; we have determined what files to save, and where.
-
-      ;; candidates is an alist of plists, I think?
-      (seq-do (lambda (parts)
-                ;; (debug)
-                (let* ((part (cdr parts))
-                       (path (mu4e--uniquify-file-name
-                              (mu4e-join-paths
-                               (or custom-dir (plist-get part :target-dir))
-                               (plist-get part :filename)))))
-                  (mm-save-part-to-file (plist-get part :handle) path)))
-              candidates)) )
-
-  ;; "export all" removed — mu4e's built-in `mu4e-view-save-attachments'
-  ;; (bound to `e' in view mode) saves all when none are selected.
-
-
+  ;; Set default attachment dir (create if missing).  mu4e's built-in
+  ;; `mu4e-view-save-attachments' (bound to `e' in view mode) saves all
+  ;; attachments when none are selected.
+  (setq mu4e-attachment-dir (expand-file-name "~/Downloads/_Mail"))
+  (make-directory mu4e-attachment-dir t)
 
   ;;** searching
   (defun my-mu4e-search-for-sender (&optional msg)
-    "Find mails sent from SENDER."
-    (interactive)
-    (mu4e-search (concat "from:" (nth 1 (flatten-list (mu4e-message-field msg :from))))))
-
-  (defun my-mu4e-search-toggle-unread (&optional msg)
-    "Toggle the flag:unread flag for the last query.
-If the string 'flag:unread is in the last query, remove it.
-Otherwise, add this string to the last query.
-Execute search with that query."
-    (interactive)
-    ;; last query to be checked is stored in mu4e--reach-last-query variable
-    ;; use (mu4e-seach ...) to execute the search after testing the search string
-    
-    )
+    "Find mails sent from the sender of MSG."
+    (mu4e-search (concat "from:"
+                         (plist-get (car (mu4e-message-field msg :from)) :email))))
 
   (defun my-mu4e-capture-mail-todo (msg)
     "Capture email MSG as a TODO with an org-link to the message."
@@ -518,17 +445,22 @@ Execute search with that query."
 
   ;;* mu4e actions (headers & view)
   ;; Shortcut key is the first character of the action name.
-  ;;   A → AI chat (via mu4e-goodies-chat)
   ;;   a → add contact          g → gcal add
   ;;   o → org link             r → retag message
   ;;   R → Remove all tags      t → todo from email
   ;;   v → view in browser      y → yank path
   ;;   z → search for sender
+  (defun my-mu4e-action-gcal-add (msg)
+    "Add a calendar event from MSG via `gcal-add'.
+`gcal-add' is context-aware: it pulls the message at point in mu4e
+buffers, so MSG is only used to ensure a message is present."
+    (require 'gcal-add)
+    (gcal-add))
   (dolist (action '(("add contact"       . mu4e-action-add-org-contact)
-                    ("gcal add"           . my-mu4e-action-add-to-calendar)
+                    ("gcal add"           . my-mu4e-action-gcal-add)
                     ("org link"           . org-store-link)
                     ("retag message"      . mu4e-action-retag-message)
-                    ("Remove all tags"    . my-mu4e-remove-all-tags-message)
+                    ("Remove all tags"    . my-mu4e-remove-all-tags)
                     ("todo from email"   . my-mu4e-capture-mail-todo)
                     ("view in browser"   . mu4e-action-view-in-browser)
                     ("yank path"         . my-mu4e-copy-message-path)
@@ -541,77 +473,16 @@ Execute search with that query."
                        mu4e-view-actions))
 
   ;;* Viewing
-  (defun mu4e-get-account (msg)
-    (let* ((maildir (mu4e-message-field msg :maildir))
-           (maildir (substring maildir 1)))
-      (nth 0 (split-string maildir "/"))))
-
-  (defun mu4e-get-maildir (msg)
-    (let* ((maildir (mu4e-message-field msg :maildir))
-           (maildir (substring maildir 1)))
-      (nth 0 (reverse (split-string maildir "/")))))
-
-  (defun mu4e-get-mailbox (msg)
-    (format "%s|%s" (mu4e-get-account msg) (mu4e-get-maildir msg)))
-
-  ;; Relative dates
-  (defun mu4e-headers-is-today (date)
-    (= (- (time-to-days (current-time)) (time-to-days date)) 0))
-
-  (defun mu4e-headers-is-yesterday (date)
-    (= (- (time-to-days (current-time)) (time-to-days date)) 1))
-
-  (defun mu4e-headers-relative-date (msg)
-    (let* ((thread  (mu4e-message-field msg :thread))
-           (level (plist-get thread :level))
-           (empty-parent (and thread (plist-get thread :empty-parent)))
-           (child   (and thread (> (plist-get thread :level) 0)))
-           (unread  (memq 'unread  (mu4e-message-field msg :flags)))
-           (date (mu4e-msg-field msg :date))
-           (diff (- (time-to-days (current-time)) (time-to-days date)))
-           (face 'bespoke-salient))
-      (setq face 'bespoke-faded)
-      (cond ((mu4e-headers-is-today date)
-             (mu4e-headers-button (format-time-string "     %H:%M" date)
-                                  face
-                                  (format-time-string "Mails from today")
-                                  (format-time-string "date:%Y%m%d" date)))
-            ((mu4e-headers-is-yesterday date)
-             (mu4e-headers-button " Yesterday"
-                                  face
-                                  (format-time-string "Mails from yesterday")
-                                  (format-time-string "date:%Y%m%d" date)))
-            (t  (mu4e-headers-date-button date face)))))
-
-  ;; Style & determine what flags to show
-  (defun mu4e-headers-attach (msg)
-    (cond ((memq 'flagged  (mu4e-message-field msg :flags))
-           (propertize "!" 'face 'lambda-strong))
-          ((memq 'attach  (mu4e-message-field msg :flags))
-           (propertize "" 'face 'lambda-faded))
-          (t " ")))
+  (defun my-mu4e-get-mailbox (msg)
+    "Return \"account|maildir\" for MSG, for the :mailbox-short header."
+    (let ((parts (split-string (mu4e-message-field msg :maildir) "/" t)))
+      (format "%s|%s" (car parts) (car (last parts)))))
 
   ;;** Headers
-  ;; Set headers
-  (add-to-list 'mu4e-header-info-custom
-               '(:empty . (:name "Empty"
-                                 :shortname ""
-                                 :function (lambda (msg) "  "))))
-
-  (add-to-list 'mu4e-header-info-custom
-               '(:relative-date . (:name "Relative date"
-                                         :shortname ""
-                                         :function mu4e-headers-relative-date)))
-
   (add-to-list 'mu4e-header-info-custom
                '(:mailbox-short . (:name "Mailbox"
                                          :shortname ""
-                                         :function mu4e-get-mailbox)))
-
-  (add-to-list 'mu4e-header-info-custom
-               '(:attach . (:name "Attachment"
-                                  :shortname ""
-                                  :function mu4e-headers-attach)))
+                                         :function my-mu4e-get-mailbox)))
 
   (setq mu4e-headers-date-format "%D";; "%Y-%m-%d %H:%M:%S"
         mu4e-headers-fields '(
@@ -639,56 +510,8 @@ Execute search with that query."
   ;; based on mu4e-action-retag-message
   (defun my-mu4e-remove-all-tags (msg)
     "Remove all tags from MSG."
-    (interactive)
-    (let* ((path (mu4e-message-field msg :path))
-           (header  mu4e-action-tags-header)
-           (sep     (cond ((string= header "Keywords") ", ")
-                          ((string= header "X-Label") " ")
-                          ((string= header "X-Keywords") ", ")
-                          (t ", ")))
-           )
-      (if (not (mu4e--contains-line-matching (concat header ":.*") path))
-          ;; Add tags header just before the content
-          (mu4e--replace-first-line-matching
-           "^$" (concat header ": \n") path)
-
-        ;; replaces keywords, restricted to the header
-        (mu4e--replace-first-line-matching
-         (concat header ":.*")
-         (concat header ": ")
-         path))
-
-      (mu4e-message (concat "All tags removed."))
-      (mu4e--refresh-message path)))
-
-  ;; tag or untag one or many emails in header view. Can use '*' to act on multiple
-  (add-to-list 'mu4e-marks
-               '(tag
-                 :char       "g"
-                 :prompt     "gtag"
-                 :ask-target nil
-                 :action     (lambda (docid msg target)
-                               (mu4e-action-retag-message msg target))))
-
-  (add-to-list 'mu4e-marks
-               '(tag
-                 :char       "G"
-                 :prompt     "Guntag"
-                 :action     (lambda (docid msg target)
-                               (my-mu4e-remove-all-tags msg))))
-
-  ;; this function will remove all tags from a msg by erasing the mu4e-actions-tags-header-line
-  ;; based on mu4e-action-retag-message
-  (defun my-mu4e-remove-all-tags-message (msg)
-    "Remove all tags from MSG."
-    (interactive)
-    (let* ((path (mu4e-message-field msg :path))
-           (header  mu4e-action-tags-header)
-           (sep     (cond ((string= header "Keywords") ", ")
-                          ((string= header "X-Label") " ")
-                          ((string= header "X-Keywords") ", ")
-                          (t ", ")))
-           )
+    (let ((path   (mu4e-message-field msg :path))
+          (header mu4e-action-tags-header))
       (if (not (mu4e--contains-line-matching (concat header ":.*") path))
           ;; Add tags header just before the content
           (mu4e--replace-first-line-matching
@@ -701,38 +524,28 @@ Execute search with that query."
       (mu4e-message (concat "All tags removed."))
       (mu4e--refresh-message path)))
 
+  ;; tag or untag one or many emails in header view. Can use '*' to act on multiple.
+  ;; Use setf/alist-get (not add-to-list) so config reloads don't stack duplicate
+  ;; entries.  The two marks must use distinct keys (tag/untag) -- assq lookup in
+  ;; mark execution returns the first match, so a shared key shadows the other.
+  (setf (alist-get 'tag mu4e-marks)
+        '(:char       "g"
+          :prompt     "gtag"
+          :ask-target nil
+          :action     (lambda (docid msg target)
+                        (mu4e-action-retag-message msg target))))
 
+  (setf (alist-get 'untag mu4e-marks)
+        '(:char       "G"
+          :prompt     "Guntag"
+          :action     (lambda (docid msg target)
+                        (my-mu4e-remove-all-tags msg))))
 
   (defun my-mu4e-copy-message-path (msg)
     "Copy the file path of MSG to the kill ring."
     (let ((path (mu4e-message-field msg :path)))
       (kill-new path)
       (message "Copied: %s" path)))
-
-
-
-
-
-
-  (defun my-mu4e-last-month ()
-    "Return the last year-month as a string for mu searches.
-
-Note: this function is actually not necessary because I learned how to use mu find better"
-    (interactive)
-    (let* ((cur-time (decode-time))
-           (cur-year (nth 5 cur-time))
-           (cur-month (nth 4 cur-time))
-           ;; (cur-month 1) ; testing if dates roll over elegantly
-           (last-month (if (= cur-month 1) 12 (- cur-month 1)))
-           (last-year (if (= cur-month 1) (- cur-year 1) cur-year)))
-      (format "%d-%02d" last-year last-month)))
-
-  ;; See https://github.com/panjie/mu4e-goodies
-  ;; view the mails sent by the sender of current mail
-  (defun mu4e-msgv-action-sender-related-mails (msg)
-    "Search all mails sent by current message's sender."
-    (mu4e-headers-search
-     (concat "from:" (cdar (mu4e-message-field msg :from)))))
 
   ;; create org link to message
   (require 'mu4e-org)
@@ -744,28 +557,6 @@ Note: this function is actually not necessary because I learned how to use mu fi
   (setq mu4e-org-contacts-file my-org-contacts-file)
 
 ;;;; Composing Email
-  (add-hook 'mu4e-compose-mode-hook
-            (defun my-mu4e-compose-settings ()
-              "My initial settings for message comoposition"
-              (my-mu4e-add-cc-bcc)
-              (my-swap-email-from-field)
-              ;; Check spelling
-              (flyspell-mode 1)
-              (olivetti-mode 1)
-              (olivetti-set-width 0.8)
-              (auto-fill-mode -1)
-              (hl-line-mode -1)))
-
-  ;; Use mu4e system-wide
-  (setq mail-user-agent 'mu4e-user-agent)
-
-  (set-variable 'read-mail-command 'mu4e)
-  ;; List of your email adresses:
-  (setq mu4e-user-mail-address-list my-email-addresses)
-
-  ;; Compose in new buffer (can make 'window for new window)
-  (setq mu4e-compose-switch nil)
-
   ;; Give compose the full frame.  We use `mu4e-compose-switch' = nil
   ;; (current window), so compose already replaces whatever buffer was
   ;; in that window.  If mu4e split to show headers + view before
@@ -774,10 +565,26 @@ Note: this function is actually not necessary because I learned how to use mu fi
   ;; IMPORTANT: mu4e saves the window configuration BEFORE
   ;; `mu4e-compose-mode-hook' runs, so modifying windows here is safe —
   ;; the restore after send/kill will recreate the original layout.
-  (defun my-mu4e-hide-headers-on-compose ()
-    "Give compose the full frame by deleting other windows."
-    (delete-other-windows))
-  (add-hook 'mu4e-compose-mode-hook #'my-mu4e-hide-headers-on-compose)
+  (add-hook 'mu4e-compose-mode-hook
+            (defun my-mu4e-compose-settings ()
+              "My initial settings for message composition."
+              (my-mu4e-add-cc-bcc)
+              (my-swap-email-from-field)
+              (delete-other-windows)
+              ;; Check spelling
+              (jinx-mode 1)
+              (olivetti-mode 1)
+              (olivetti-set-width 0.8)
+              (auto-fill-mode -1)
+              (hl-line-mode -1)))
+
+  ;; Use mu4e system-wide
+  (setq mail-user-agent 'mu4e-user-agent)
+
+  (setopt read-mail-command 'mu4e)
+
+  ;; Compose in new buffer (can make 'window for new window)
+  (setq mu4e-compose-switch nil)
 
   ;; Inline forwarding of multipart/alternative messages (e.g. from
   ;; Outlook) leaves the body empty between the forward markers —
@@ -799,9 +606,6 @@ Note: this function is actually not necessary because I learned how to use mu fi
   ;; TODO: remove mime part buttons. Appears impossible for now
   ;; https://github.com/djcb/mu/issues/2639
 
-  ;; Only ask if a context hasn't been previously picked
-  (setq mu4e-compose-context-policy 'ask-if-none)
-
   ;; Possible fix for outlook client reading problems in inline messages
   ;; https://www.djcbsoftware.nl/code/mu/mu4e/Writing-messages.html#How-can-I-avoid-Outlook-display-issues_003f
   (setq  message-citation-line-format "On %Y-%m-%d at %R %Z, %f wrote...")
@@ -820,7 +624,7 @@ Checks `my-mu4e-suppressed-addresses' (private.el) and generic patterns."
      ;; Generic patterns
      ((string-match-p "no-reply" addr) nil)
      ((string-match-p "noreply" addr) nil)
-     ((string-match-p "@finkelteinlab" addr) nil)
+     ((string-match-p "@finkelsteinlab" addr) nil)
      ((string-match-p "@fortelabs" addr) nil)
      ((string-match-p "via Canvas" addr) nil)
      (t addr)))
@@ -844,45 +648,17 @@ Uses `my-email-primary-name' and `my-email-primary-address' from private.el."
       (insert "From: " (message-make-from my-email-primary-name
                                            my-email-primary-address) "\n")))
 
-  ;; a few helper functions to navigate & copy message fields quickly
-  (defun my-kill-email-address-at-point ()
-    "If there is one, copy the e-mail address at point to the kill-ring.
-Strips surrounding angle brackets if present."
-    (interactive)
-    (when-let* ((addr (thing-at-point 'email))
-                (clean (string-trim addr "<" ">")))
-      (kill-new clean)
-      (message "Copied: %s" clean)))
-
-  ;; (defun my-msg-goto-to-field ()
-  ;;   "Move point to the beginning of the To field."
-  ;;   (interactive)
-  ;;   (goto-char (point-min))
-  ;;   (search-forward "To: " nil t)
-  ;;   (goto-char (match-end 0)))
-
-  ;; (defun my-msg-goto-cc-field ()
-  ;;   "Move point to the beginning of the To field."
-  ;;   (interactive)
-  ;;   (goto-char (point-min))
-  ;;   (search-forward "Cc: " nil t)
-  ;;   (goto-char (match-end 0)))
-
 ;;;; Sending Mail
   ;; Configure the function to use for sending mail
   ;; use msmtp to manage sending mail from different e-mail accounts
   ;; reference: https://tushartyagi.com/blog/configure-mu4e-and-msmtp
   (setq sendmail-program (executable-find "msmtp")
-        send-mail-function 'smtpmail-send-it
         message-sendmail-f-is-evil t
         ;; NB: use backquote + expand-file-name because Emacs calls
         ;; msmtp via call-process-region (no shell), so ~ is NOT expanded.
         message-sendmail-extra-arguments `("--read-envelope-from"
                                            "-C" ,(expand-file-name ".msmtprc" "~/.config/"))
         message-send-mail-function 'message-send-mail-with-sendmail)
-
-  ;; I am not sure what the line below is supposed to do.
-  (setq smtpmail-queue-dir (concat mu4e-maildir "/queued-mail/"))
 
 
   ;;** Contexts
@@ -916,16 +692,8 @@ Strips surrounding angle brackets if present."
   ;; Helpful discussion at
   ;; https://github.com/daviwil/emacs-from-scratch/blob/master/show-notes/Emacs-Mail-05.org
 
-  ;; copy fields to kill ring
-  (defun my-copy-email-field-to-kill-ring (FIELD)
-    "Copy FIELD from the open org-msg buffer to the kill-ring"
-    (interactive "P")
-    (kill-new
-     (message-fetch-field FIELD)))
-
-  
   ;;disable threading in search results
-  (setq mu4e-headers-show-threads nil)
+  (setq mu4e-search-threads nil)
 
   ;; Note that :hide-unread is implied when the query is not a string; this for the common case where the query function involves some user input, which would be disruptive in this case.
   ;; Personal bookmarks from `my-mu4e-personal-bookmarks' (private.el)
@@ -1006,73 +774,11 @@ Tested with mu4e 1.12.2"
          (and (> (+ tos ccs) 1)
               (yes-or-no-p "Reply to all?"))))))
 
-  (define-key mu4e-compose-minor-mode-map (kbd "R")
-              #'my-mu4e-compose-reply-ask-wide)
-
   (defun my-mu4e--extract-body (path)
-    "Extract plain text body from email at PATH.
-Prefer HTML part (rendered to text via shr), fall back to text/plain.
-Strip non-text characters for clean LLM input."
-    (require 'mm-decode)
-    (require 'shr)
+    "Extract plain-text body from the email at PATH via `mu view'."
     (with-temp-buffer
-      (insert-file-contents-literally path)
-      (let* ((handles (mm-dissect-buffer t))
-             (text (my-mu4e--extract-from-handles handles)))
-        (when handles (mm-destroy-parts handles))
-        (when text
-          ;; Decode any remaining entities, collapse whitespace
-          (with-temp-buffer
-            (insert text)
-            ;; Strip non-text chars: keep newline, tab, printable ASCII + unicode letters
-            (goto-char (point-min))
-            (while (re-search-forward "[^\n\t[:print:]]" nil t)
-              (replace-match "" nil t))
-            ;; Collapse runs of blank lines
-            (goto-char (point-min))
-            (while (re-search-forward "\n\\{3,\\}" nil t)
-              (replace-match "\n\n"))
-            (string-trim (buffer-string)))))))
-
-  (defun my-mu4e--extract-from-handles (handles)
-    "Walk MIME HANDLES and return body text.
-Prefer text/html (rendered via shr), fall back to text/plain."
-    (cond
-     ;; Leaf node: a handle is (buffer . rest)
-     ((and (listp handles) (bufferp (car handles)))
-      (let ((type (mm-handle-media-type handles)))
-        (cond
-         ((string= type "text/html")
-          (let ((content (mm-get-part handles)))
-            (when (and content (not (string-empty-p content)))
-              (with-temp-buffer
-                (insert content)
-                (let ((dom (libxml-parse-html-region (point-min) (point-max))))
-                  (erase-buffer)
-                  (shr-insert-document dom)
-                  (buffer-substring-no-properties (point-min) (point-max)))))))
-         ((string= type "text/plain")
-          (mm-get-part handles)))))
-     ;; Multipart: walk children, prefer HTML
-     ((listp handles)
-      (let ((parts (if (stringp (car handles)) (cdr handles) handles))
-            html-text plain-text)
-        (dolist (part parts)
-          (when (listp part)
-            (if (and (listp part) (bufferp (car part)))
-                (let ((type (mm-handle-media-type part)))
-                  (cond
-                   ((string= type "text/html")
-                    (unless html-text
-                      (setq html-text (my-mu4e--extract-from-handles part))))
-                   ((string= type "text/plain")
-                    (unless plain-text
-                      (setq plain-text (my-mu4e--extract-from-handles part))))))
-              ;; Nested multipart
-              (let ((result (my-mu4e--extract-from-handles part)))
-                (when result
-                  (unless html-text (setq html-text result)))))))
-        (or html-text plain-text)))))
+      (when (zerop (call-process mu4e-mu-binary nil t nil "view" path))
+        (string-trim (buffer-string)))))
 
   (defun my-mu4e-copy-message-to-kill-ring ()
     "Copy the current mu4e message (headers + body) to the kill ring.
@@ -1127,47 +833,18 @@ select one email at a time.
       (message "Copied %s to the clipboard" email)
       (kill-new email)))
 
-  ;; Use completing-read
-  (setq mu4e-completing-read-function 'completing-read)
-
   ;; Store link to message if in header view, not to header query
   (setq mu4e-org-link-query-in-headers-mode nil)
 
-  ;; Quickly store links for search queries
-  (defun cpm/store-link-to-mu4e-query ()
-    (interactive)
-    (let ((org-mu4e-link-query-in-headers-mode t))
-      (call-interactively 'org-store-link)))
-
   ;; Go to unread. Only show unread mail from main inbox.
-  (defvar my-mu4e-unread-query "flag:unread AND NOT flag:trashed AND (maildir:/UT/Inbox OR maildir:/Lab/Inbox OR maildir:/gmail-test/Inbox)")
-
-  (defun my-go-to-unread-mail ()
-    (interactive)
-    (if (member "Email" (tabspaces--list-tabspaces))
-        (progn
-          (tab-bar-switch-to-tab "Email")
-          (mu4e-headers-search my-mu4e-unread-query))
-      (progn
-        (tabspaces-create-workspace)
-        (tab-bar-rename-tab "Email")
-        (find-file (concat org-directory "inbox.org"))
-        (mu4e)
-        (mu4e-headers-search my-mu4e-unread-query))))
-  ;; search email inbox
-  (defun my-search-all-mail ()
-    (interactive)
-    (if (member "Email" (tabspaces--list-tabspaces))
-        (progn
-          (tab-bar-switch-to-tab "Email")
-          (mu4e-headers-search))
-      (progn
-        (tabspaces-create-workspace)
-        (tab-bar-rename-tab "Email")
-        (mu4e)
-        (mu4e-headers-search))))
+  (defvar my-mu4e-unread-query "flag:unread AND NOT flag:trashed AND (maildir:/UT/Inbox OR maildir:/Lab/Inbox)")
   ) ;; use-package mu4e
 ;;** End Mu4e
+
+;; Use Dired to attach files via C-c <RET> C-a (gnus-dired feature).
+;; Top-level add-hook so first dired doesn't pull in the whole mail stack.
+;; https://www.djcbsoftware.nl/code/mu/mu4e/Dired.html
+(add-hook 'dired-mode-hook #'turn-on-gnus-dired-mode)
 
 ;;* mu4e-goodies (AI chat + spam check)
 (use-package mu4e-goodies
@@ -1179,15 +856,12 @@ select one email at a time.
 ;;* mu4e-query for building searches
 (use-package mu4e-query
   :vc (:url "https://github.com/mickeynp/mu4e-query")
-  :commands (mu4e-make-query)
-  ;; :config
-  )
+  :commands (mu4e-make-query))
 ;;* Using Org & HTML (Org-Msg)
 (use-package org-msg
   :after (mu4e)
   :ensure t
   :vc (:url "https://github.com/jeremy-compostella/org-msg" :branch "main")
-  ;; :disabled t
   ;; avoid pesky org ASCII Export buffer
   ;; https://github.com/jeremy-compostella/org-msg/issues/169
   :preface
@@ -1202,15 +876,16 @@ select one email at a time.
   :bind (:map org-msg-edit-mode-map
               ("s-<return>" . org-msg-goto-body)
               ("M-o" . my-transient-email-compose))
-  :init
-  ;; org-msg-edit-mode-map shares org-mode-map's ESC prefix keymap by
-  ;; reference — give it its own so :bind M-o doesn't collide.
-  (with-eval-after-load 'org
-    (let ((esc-map (make-sparse-keymap)))
-      (set-keymap-parent esc-map (lookup-key org-mode-map [?\e]))
-      (define-key org-msg-edit-mode-map [?\e] esc-map)))
   :hook ((mu4e-compose-pre . my-org-msg-maybe-enable))
   :config
+  ;; org-msg-edit-mode-map shares org-mode-map's ESC prefix keymap by
+  ;; reference — give it its own so :bind M-o doesn't collide.  This must
+  ;; run in :config (not :init): org-msg-edit-mode-map is void until the
+  ;; package loads, so an :init with-eval-after-load 'org errors at startup.
+  (let ((esc-map (make-sparse-keymap)))
+    (set-keymap-parent esc-map (lookup-key org-mode-map [?\e]))
+    (define-key org-msg-edit-mode-map [?\e] esc-map))
+
   ;; rapid navigation between composition fields
   (transient-define-prefix my-transient-email-compose ()
     [ ;; ("a" "attach" mml-attach-file)
@@ -1250,10 +925,6 @@ select one email at a time.
           (transient-append-suffix 'my-transient-email-compose prev-key
             `(,key ,label (lambda () (interactive) (insert ,email))))
           (setq prev-key key)))))
-  ;; (define-key message-mode-map (kbd "M-o") 'my-transient-email-compose)
-  ;; M-o binding moved to :bind above; ESC prefix fix in :init
-
-
 
   ;;make org-msg work with mu4e 1.12
   (defun my--ensure-text-not-read-only (orig &rest args)
@@ -1290,19 +961,10 @@ select one email at a time.
 				                       (reply-to-text	. (text html)))
         ;; nil to avoid "Args out of range" errors when replying to
         ;; emails with unusual HTML citation formatting
-        org-msg-convert-citation nil
-        ;;         org-msg-signature "
-        ;;  Regards,
-        ;; #+begin_signature
-        ;; Ilya
-        ;;  #+end_signature"
-        ;; 	    org-msg-greeting-fmt "\nHi%s,\n\n"
-        )
+        org-msg-convert-citation nil)
   ;; org-msg checks for attachments via a regex search for keywords.
-  ;; this elisp regex expression always evaluates as a null hit on all strings
-  ;; ref: https://stackoverflow.com/questions/1723182/a-regex-that-will-never-be-matched-by-anything
-  ;; note: i need to use emacs-specific regex here.
-  (setq org-msg-attached-file-reference "\`\b\'")
+  ;; `regexp-unmatchable' never matches, disabling that nag.
+  (setq org-msg-attached-file-reference regexp-unmatchable)
 
   (defun cpm/org-msg-hooks ()
     "Hooks for org-msg"
@@ -1310,9 +972,7 @@ select one email at a time.
     (hl-line-mode -1)  ;; disable highlight line when composing emails
     (diff-hl-mode -1) ;; disable diff gutter
     ;; Shrink org-meta-line (#+begin_src, #+PROPERTIES, etc.) in compose buffers only
-    (face-remap-add-relative 'org-meta-line :height 0.5 :foreground "gray60")
-    ;; FIXME: Try remove auto-save hook *locally* to avoid multiple saved drafts
-    (remove-hook 'auto-save-hook #'cpm/full-auto-save t))
+    (face-remap-add-relative 'org-meta-line :height 0.5 :foreground "gray60"))
   (add-hook 'org-msg-edit-mode-hook #'cpm/org-msg-hooks)
 
   ;; After compose setup, `mu4e--jump-to-a-reasonable-place' calls
@@ -1367,9 +1027,6 @@ Pass ARGS through to ORIG-FUN, then redraw icons."
   (advice-add 'org-msg-attach-attach :around #'my-mu4e-reset-attachment-icons)
   (advice-add 'org-msg-dired-attach :around #'my-mu4e-reset-attachment-icons)
   (advice-add 'org-msg-attach-delete :around #'my-mu4e-reset-attachment-icons)
-  ;; (define-key org-msg-edit-mode-map (kbd "C-c f") 'my-hydra-jump-to-email-fields/body)
-  ;; (define-key org-msg-edit-mode-map (kbd "C-c w") 'my-hydra-copy-email-fields-to-kill-RING/BODY)
-
   ) ;; org-msg
 
 ;;* Org Heading to Email (org-heading-mail)
@@ -1408,48 +1065,6 @@ Dispatches based on heading fields: Channel -> Slack, To/In-Reply-To -> email."
        (email-p (org-heading-mail-send))
        (t (user-error "Heading has no Channel (Slack) or To/In-Reply-To (email) field"))))))
 
-(defun my-mu4e-attach-png-from-clipboard ()
-  "Save a PNG image from the clipboard to a temp file and attach it. MacOS or linux only, for now."
-  (interactive)
-  (unless (or (derived-mode-p 'mu4e-compose-mode)
-              (derived-mode-p 'org-msg-edit-mode))
-    (error "Not in a mu4e-compose-mode or org-msg-edit-mode buffer"))
-
-  (let* ((paste-tool
-          (cond
-           ((executable-find "pngpaste") '("pngpaste"))
-           ((executable-find "xclip")    '("xclip" "-selection" "clipboard" "-t" "image/png" "-o"))
-           (t (error "Please install 'pngpaste' (macOS) or 'xclip' (Linux)"))))
-         (tmp-file (make-temp-file "org-msg-clipboard-" nil ".png")))
-
-    ;; Run the clipboard tool. The invocation depends on the tool used.
-    (let ((command (car paste-tool))
-          (args (cdr paste-tool)))
-      (cond ((string= command "pngpaste")
-             ;; pngpaste takes the output file as a command-line argument.
-             ;; (message "Running: %s %s" command tmp-file)
-             (call-process command nil nil nil tmp-file))
-            ((string= command "xclip")
-             ;; xclip writes to standard output, which we redirect to the file.
-             ;; (message "Running: %s %s > %s" command (mapconcat #'identity args " ") tmp-file)
-             (apply #'call-process command nil tmp-file nil args))
-            (t (error "Unsupported paste tool: %s" command))))
-    
-    (if (> (file-attribute-size (file-attributes tmp-file)) 0)
-        (progn
-          ;; `mml-attach-file` is the standard Emacs function for this.
-          (mml-attach-file tmp-file)
-          ;; (message "Attached image from clipboard: %s" (file-name-nondirectory tmp-file)))
-          (delete-file tmp-file)
-          (error "Command '%S' produced no output or failed. Make sure that an image is in the clipboard." paste-tool)))))
-
-(defun my-mu4e-queries-help ()
-  "Look up search syntax"
-  (interactive)
-  (split-window-vertically)
-  (woman "mu-query")
-  (search-forward "FIELDS"))
-
 ;; TODO: test my-org-msg-llm-draft
 (defun my-mail-llm-expand ()
   "Find @tn directive in org-msg buffer and use LLM to draft email.
@@ -1480,7 +1095,7 @@ Example usage in an org-msg reply buffer:
             (concat
              "You are drafting an email response. Follow these instructions:\n"
              instructions
-             "\n\nSign off with:\nKind regards,\nIlya"
+             "\n\nSign off with:\nKind regards,\n" my-email-primary-name
              "\n\nHere is the email context (headers and any quoted reply):\n"
              email-content)
           :system "You are a helpful executive assistant drafting emails. Use short, concise, professional, positive tone. Use simple sentences only. Avoid hyphenated or compound sentences. Output only the email body text, no headers or metadata. Use org-mode formatting if needed."
@@ -1526,56 +1141,6 @@ buffer as raw bytes."
 
 (add-hook 'message-send-hook #'my-mail-sanitize-to-utf8)
 
-(defun my-daily-email-progress ()
-  "Plot my daily, weekly, and monthly email progress.
-A shell script queries mu every five minutes via the xbar app."
-  (interactive "P")
-  (let (file "~/Work/01-09 meta/01 productivity/email-inbox-count-log.csv")
-    ))
-
-;;; Email Addressing
-;; Return first name of email recipients
-;; inspired by
-;;http://blog.binchen.org/posts/how-to-use-yasnippets-to-produce-email-templates-in-emacs.html
-;; http://pragmaticemacs.com/emacs/email-templates-in-mu4e-with-yasnippet/
-(defun my-mu4e-get-names-of-recipients ()
-  "Return comma separated string of names for an email"
-  (interactive)
-  (let ((email-name "") str email-string email-list email-name2 tmpname)
-    (save-excursion
-      (goto-char (point-min))
-      ;; first line in email could be some hidden line containing NO to field
-      (setq str (buffer-substring-no-properties (point-min) (point-max))))
-    ;; take name from TO field - match series of names
-    (when (string-match "^To: \"?\\(.+\\)" str)
-      (setq email-string (match-string 1 str)))
-    ;;split to list by comma
-    (setq email-list (split-string email-string " *, *"))
-    ;;loop over emails
-    (dolist (tmpstr email-list)
-      ;;get first word of email string
-      (setq tmpname (car (split-string tmpstr " ")))
-      ;;remove whitespace or ""
-      (setq tmpname (replace-regexp-in-string "[ \"]" "" tmpname))
-      ;;join to string
-      (setq email-name
-            (concat email-name ", " tmpname)))
-    ;;remove initial comma
-    (setq email-name (replace-regexp-in-string "^, " "" email-name))
-
-    ;;see if we want to use the name in the FROM field
-    ;;get name in FROM field if available, but only if there is only
-    ;;one name in TO field
-    (if (< (length email-list) 2)
-        (when (string-match "^\\([^ ,\n]+\\).+writes:$" str)
-          (progn (setq email-name2 (match-string 1 str))
-                 ;;prefer name in FROM field if TO field has "@"
-                 (when (string-match "@" email-name)
-                   (setq email-name email-name2))
-                 )))
-    email-name))
-
-
 ;;* Colors for header view
 (use-package mu4e-column-faces
   :after mu4e
@@ -1586,28 +1151,34 @@ A shell script queries mu every five minutes via the xbar app."
   :config
   (mu4e-column-faces-mode))
 
-;;* mu4e-helpers and lifestyle improvements
-(use-package mu4e-contrib
-  :after mu4e
-  :ensure nil
-  :load-path "/opt/homebrew/share/emacs/site-lisp/mu/mu4e")
-
 (use-package mail-triage
-  :after (mu4e gptel)
   :ensure nil
   :load-path "~/projects/elisp/mail-triage"
+  ;; :after chaining never fired in the daemon, so the package (and its
+  ;; mu4e action registration) never loaded.  Defer on the autoloaded
+  ;; entry points instead, and drive setup/config from a mu4e after-load
+  ;; hook so `mail-triage-setup' registers its mu4e actions once mu4e is up.
+  ;; `M-x mail-triage' remains reachable via the autoload.
+  :commands (mail-triage mail-triage-setup)
   :bind (:map mail-triage-mode-map
          ("M-o" . mail-triage-menu))
-  :config
-  (setq mail-triage-llm-backend "Gemini"
-        mail-triage-llm-model 'gemini-3-flash-preview
-        mail-triage-user-description my-email-user-description)
-  (mail-triage-setup)
-  (add-hook 'mail-triage-mode-hook
-            (lambda ()
-              (face-remap-set-base 'magit-section-heading
-                                   :inherit 'default
-                                   :foreground "#727d97"))))
+  :init
+  (with-eval-after-load 'mu4e
+    (require 'mail-triage)
+    (setq mail-triage-llm-backend "Gemini"
+          mail-triage-llm-model 'gemini-3-flash-preview
+          mail-triage-user-description my-email-user-description)
+    (mail-triage-setup)
+    (add-hook 'mail-triage-mode-hook
+              (lambda ()
+                (face-remap-set-base 'magit-section-heading
+                                     :inherit 'default
+                                     :foreground "#727d97")))))
+
+;;* gcal-add (calendar events from mu4e messages, context-aware)
+(use-package gcal-add
+  :load-path "~/projects/elisp/gcal-add"
+  :commands (gcal-add))
 
 ;;* provide my-setup-mail
 (provide 'my-setup-mail)

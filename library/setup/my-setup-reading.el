@@ -9,9 +9,7 @@
               (">" . end-of-buffer)
               ("a" . elfeed-show-all)
               ("B" . elfeed-search-browse-background-url)
-              ("d" . elfeed-show-daily)
-              ("e" . elfeed-show-emacs)
-              ("p" . elfeed-play-in-external-player)
+              ("p" . my-elfeed-play-mpv)
               ("q" . elfeed-save-db-and-bury)
               ("R" . elfeed-mark-all-as-read)
               ("U" . elfeed-update)
@@ -22,12 +20,12 @@
   (elfeed-enclosure-default-dir (expand-file-name "~/Downloads"))
 
   :config
-  ;; Make sure the database is created
-  (when (not (file-exists-p (concat elfeed-db-directory "/data")))
-    (elfeed-update))
   ;; save the elfeed DB when emacs is idle for two minutes
-  (run-with-idle-timer 120 1
-                       'elfeed-db-save)
+  (defvar my-elfeed-db-save-timer nil
+    "Idle timer that periodically saves the elfeed database.")
+  (unless my-elfeed-db-save-timer
+    (setq my-elfeed-db-save-timer
+          (run-with-idle-timer 120 t #'elfeed-db-save)))
 
   ;; Useful functions for elfeed
   (defun elfeed-show-all ()
@@ -38,15 +36,20 @@
   (defun elfeed-mark-all-as-read ()
     "Mark all feeds in buffer as read."
     (interactive)
-    (mark-whole-buffer)
-    (elfeed-search-untag-all-unread))
+    (let ((elfeed-search-remain-on-entry t))
+      (save-excursion
+        (goto-char (point-min))
+        (set-mark (point))
+        (goto-char (point-max))
+        (elfeed-search-untag-all-unread)))
+    (deactivate-mark))
 
-  (defun elfeed-play-in-external-player ()
-    "Play with mpv."
+  (defun my-elfeed-play-mpv ()
+    "Play the link of the selected elfeed entry in mpv."
     (interactive)
-    (elfeed-search-yank)
-    (interactive)
-    (play-with-mpv (substring-no-properties (car kill-ring))))
+    (when-let* ((entry (car (elfeed-search-selected)))
+                (url (elfeed-entry-link entry)))
+      (start-process "mpv" nil "mpv" url)))
 
   ;; Functions to support syncing .elfeed between machines makes sure elfeed
   ;; reads index from disk before launching
@@ -101,7 +104,7 @@
         ;; Running
         ("https://www.reddit.com/r/advancedrunning.rss" run reddit)
         ;; Science
-        ("https://blogs.sciencemag.org/pipeline/feed" science)
+        ("https://www.science.org/blogs/pipeline/feed" science)
         ;; Writing
         ("https://www.helensword.com/helen-sword-blog?format=rss" writing)
         ("https://kill-the-newsletter.com/feeds/mcc8ko4l1zrjw998.xml" writing)
@@ -115,30 +118,12 @@
         ("https://writepublishthrive.blogspot.com/feeds/posts/default" academic)
         ))
 
-;;** Elfeed Goodies
-;; vertical split screen browsing and other enhancements
-(use-package elfeed-goodies
-  :after (elfeed)
-  :custom-face
-  ;;elfeed faces
-  ;; (powerline-active1 ((t (:background unspecified :inherit lambda-aqua))))
-  ;; (powerline-active2 ((t (:background unspecified :inherit lambda-aqua))))
-  ;; ( ((t (:foreground unspecified :background unspecified :inherit lambda-green))))
-  :config
-  (setq elfeed-goodies/entry-pane-position 'bottom) ;; split with content on the bottom like mu4e
-  (setq elfeed-goodies/entry-pane-size 0.5)
-  (elfeed-goodies/setup)
-
-  ;; Fix upstream defface bug: ':inherit 'face' inside defface is data, not
-  ;; code, so the reader produces (quote face) — a two-face inherit list.
-  ;; Use face-spec-set to overwrite both the live attribute AND the stored
-  ;; defface-spec, so theme recalculation cannot re-apply the buggy spec.
-  (face-spec-set 'elfeed-goodies-show-header-tag
-                 '((t :inherit elfeed-search-tag-face)))
-  (face-spec-set 'elfeed-goodies-show-header-title
-                 '((t :inherit elfeed-search-title-face)))
-  (face-spec-set 'elfeed-goodies-show-header-feed
-                 '((t :inherit elfeed-search-feed-face))))
+;;** Elfeed entry window placement
+;; Show the elfeed entry buffer in a bottom window (~60% height), like mu4e.
+(add-to-list 'display-buffer-alist
+             '("\\*elfeed-entry\\*"
+               (display-buffer-reuse-window display-buffer-at-bottom)
+               (window-height . 0.6)))
 
 ;;* end my-setup-reading
 (provide 'my-setup-reading)
