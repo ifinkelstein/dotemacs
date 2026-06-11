@@ -138,15 +138,18 @@ Works with exactly two windows in any split direction."
   (unless (= (count-windows) 2)
     (user-error "Need exactly 2 windows"))
   (let* ((horiz (window-combined-p nil t))
-         (total (if horiz (frame-width) (frame-height)))
-         (current (if horiz (window-width) (window-height)))
+         ;; Total-size units throughout: `window-resize' deltas are in
+         ;; total lines/columns, and `window-width' (body) would
+         ;; undercount by fringe/divider columns.
+         (size (lambda (w) (if horiz (window-total-width w) (window-total-height w))))
+         (total (funcall size (frame-root-window)))
+         (current (funcall size (selected-window)))
          (ratio (/ (float current) total))
          (target (cond
                   ((< ratio 0.4)  0.5)    ; ~1/3 → 1/2
                   ((< ratio 0.58) 0.667)  ; ~1/2 → 2/3
                   (t              0.333))) ; ~2/3 → 1/3
-         (target-size (round (* target total)))
-         (delta (- target-size current)))
+         (delta (- (round (* target total)) current)))
     (window-resize nil delta horiz)))
 
 ;; Jump to Minibuffer Window
