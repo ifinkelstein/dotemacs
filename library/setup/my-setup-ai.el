@@ -4,7 +4,7 @@
 
 ;;* GPTel
 (use-package gptel
-  :commands (gptel my-gptel-process-message gptel-request)
+  :commands (gptel gptel-request)
   :config
   (setq gptel-default-mode 'org-mode)
   (setq gptel-expert-commands t) ;; turn on additional 'expert' commands
@@ -28,7 +28,7 @@
          'eval '(and (fboundp 'gptel-mode) (gptel-mode 1))))))
 
   (add-hook 'gptel-save-state-hook #'my/gptel-mode-auto)
-  
+
   ;; gptel helper functions
 
   (defun my-gptel-replace-context ()
@@ -46,7 +46,7 @@
                                   "Format your response using org-mode syntax (use ** for headings, *bold*, /italic/, =code=, etc.)."
                                 "Format your response using markdown syntax (use ## for headings, **bold**, *italic*, `code`, etc.).")))
       (message (concat "Sending query using " (symbol-name gptel-model)))
-      
+
       (gptel-request
           (concat "\nRespond to the query in a concise way. No conversation. Just the facts. The question may also have a switch for verbosity. Switches: -v1 to -v5 controls verbosity of response (-v1 is a sentence; - v2 a few sentences; -v3 paragraph;  -v4 several para; -v5 as long as necessary) \n "
                   syntax-instruction "\n"
@@ -60,14 +60,13 @@
               (message "gptel-quick failed with message: %s" (plist-get info :status))
             (insert response)
             (kill-new response)))))) ;; my-gptel-quick-fact
-  
+
   (defun my-gptel-reply-to-message (prompt)
-    "Prompt the user for input and sends it along with the current buffer's contents to GPT-4 for a reply.
-PROMPT is the input provided by the user. The model 'gpt-4-1106-preview' is used for generating a professional and concise response, which is then saved to a new file in '~/Downloads'."
+    "Prompt the user for input and send it along with the current buffer's contents to the configured LLM for a reply.
+PROMPT is the input provided by the user. The response is saved to a new file in ~/Downloads."
     (interactive "sPrompt (v1-v5; e1-e5): ")
 
-    ;; (setq gptel-model 'gemini-exp-1121)
-    (message (concat "Sending query using " gptel-model))
+    (message "Sending query using %s" gptel-model)
     (gptel-request
         (concat "\nRespond using the guidance below as a busy professor. I will specify a few command line-style instructions at the start of my guidance, separated by a ';'. The level of verbosity, {v}, is on a five point scale with 'v1' being very short but polite and 'v5' being very verbose, very polite but not obsequeous. I will use 'v1' to 'v5' notation for verbosity at the start of the guidance below. The use of emojis, {e}, is on a five point scale with e1 means ZERO emojis and e5 means many emojis. Use emojis from the following set: {🦄, 🌈, ☺️, 🙏, ✨, 🌞, 🎉} to highlight positive emotions. This message IS VERY IMPORTANT TO ME so reply AS BEST AS YOU CAN and I will be GRATEFUL AND HAPPY. If you do not do a great job and follow the verbosity tag, I WILL LOSE MY JOB AND MAY DIE. If I do not specify anything, assume 'v1' and 'e1'. I do not include a subject line."
                 "\n: Guidance: "
@@ -95,9 +94,10 @@ START and END, rather than by the position of point and mark."
 		             (list (point-min) (point-max) current-prefix-arg)
 		           (list (region-beginning) (region-end) nil)))
 
-    (let ((gptel-model "Claude:claude-3-haiku-20240307") ;; earlier model: gpt-4-0125-preview
+    (let ((gptel-model 'claude-haiku-4-5-20251001)
+          (gptel-backend (gptel-get-backend "Claude"))
           (dictation (buffer-substring-no-properties start end)))
-      (message (concat "Sending query using " gptel-model))
+      (message "Sending query using %s" gptel-model)
       (gptel-request
           (concat
            "You are an expert editor specializing in refining voice-dictated text. Your task is to:
@@ -140,27 +140,6 @@ START and END, rather than by the position of point and mark."
                   (message "Rewrote. Original saved to kill-ring."))))))))) ;; my-gptel-rewrite-dictation
   ) ;; gptel use-package
 
-;;** GPTel helper functions
-(defun my-remove-triple-ticks (str)
-  "Remove all lines that begin with ``` in str, preserving other whitespace."
-  (with-temp-buffer
-    (insert str)
-    (goto-char (point-min))
-    (while (re-search-forward "^```.*" nil t)
-      (replace-match ""))
-    (buffer-string)))
-
-;; TODO: this is temp until gptel acquires claude 3.7 support natively
-(require 'gptel-anthropic)
-(unless (alist-get 'claude-3-7-sonnet-20250219 gptel--anthropic-models)
-  (add-to-list 'gptel--anthropic-models
-               '(claude-3-7-sonnet-20250219
-                 :description "Highest level of intelligence and capability" :capabilities
-                 (media tool-use cache)
-                 :mime-types
-                 ("image/jpeg" "image/png" "image/gif" "image/webp" "application/pdf")
-                 :context-window 200 :input-cost 3 :output-cost 15 :cutoff-date "2024-11")))
-
 ;;** GPTEl extending packages
 ;; ingest gptel prompts from a file
 (use-package gptel-prompts
@@ -178,6 +157,7 @@ START and END, rather than by the position of point and mark."
 
 ;;** MCP (model context protocol) and integration with gptel
 (use-package mcp
+  :commands (mcp-hub)
   :after (gptel)
   :config
   (require 'mcp-hub)
@@ -186,19 +166,7 @@ START and END, rather than by the position of point and mark."
 
   (setq mcp-hub-servers
         '(("fetch" . (:command "uvx" :args ("mcp-server-fetch" "--ignore-robots-txt"))) ;; fetch from web
-          ))
-
-  ;; turned off mcp bc I don't use it that much  
-  ;; (mcp-hub-start-all-server)
-  
-  ;; Set up any custom model configurations if needed
-  ;; (mcp-add-model :name "my-custom-model" 
-  ;;                :url "https://api.example.com"
-  ;;                :token (my-get-api-key))
-  
-  ;; Configure default model if needed
-  ;; (setq mcp-default-model "gpt-4")
-  )
+          )))
 
 ;;* whisper local audio to text in Emacs
 
@@ -210,7 +178,6 @@ START and END, rather than by the position of point and mark."
   :commands (whisper-run whisper-file rk/select-default-audio-device)
   :bind ("s-R" . whisper-run)
   :custom
-  ;; need to not insert text for my custom whisper function
   (whisper-insert-text-at-point t)
   (whisper-install-directory my-var-dir)
   (whisper-model "large-v3-turbo")
@@ -221,14 +188,13 @@ START and END, rather than by the position of point and mark."
   (whisper--ffmpeg-input-format "avfoundation")
   ;; move cursor to the end of the inserted text
   (whisper-return-cursor-to-start nil)
-  ;; :hook (whisper-after-transcription-hook . my-whisper-process-text)
   :config
   (setq rk/default-audio-device 0)
   (setq whisper--ffmpeg-input-device ":0"))
 
 (defcustom rk/default-audio-device nil
-  "The default audio device to use for whisper.el and outher audio processes."
-  :type 'string)
+  "The default audio device to use for whisper.el and other audio processes."
+  :type 'natnum)
 
 (defun rk/find-device-matching (string type)
   "Get the devices from `rk/get-ffmpeg-device' and look for a device
@@ -244,19 +210,6 @@ matching `STRING'. `TYPE' can be :video or :audio."
     (cl-loop for device in device-list
              when (string-match-p string (cdr device))
              return (car device))))
-
-(defun rk/find-device-string-matching-number (number type)
-  "Get the device string from `rk/get-ffmpeg-device' with device
-matching `NUMBER'. `TYPE' can be :video or :audio. Return nil if
-'NUMBER' isn't a valid device."
-  (let* ((devices (rk/get-ffmpeg-device))
-         (device-list (if (eq type :video)
-                          (car devices)
-                        (cadr devices))))
-    ;; (print device-list)
-    ;; (print (nth number device-list))
-    (when (<= number (length device-list))
-      (alist-get number device-list))))
 
 (defun rk/select-default-audio-device (&optional device-name)
   "Interactively select an audio device to use for whisper.el and other audio processes.
@@ -306,11 +259,16 @@ Each list contains a list of cons cells, where the car is the device number and 
 
 
 ;;* claude-code
+;; Deferred via :commands; the keymap prefix binding is set in :init so the
+;; global key works immediately without loading claude-code at startup.
 ;; install required dependencies:
 (use-package inheritenv)
-(use-package eat
-  :commands (eat eat-project eat-other-window))
 (use-package claude-code
+  :commands (claude-code claude-code-toggle claude-code-transient
+             claude-code-send-command claude-code-start-in-directory)
+  :init
+  ;; Make the keymap prefix available immediately (before claude-code loads).
+  (autoload 'claude-code-command-map "claude-code" nil t 'keymap)
   :config
   (setq claude-code-terminal-backend 'ghostel)
 
@@ -409,7 +367,7 @@ Each list contains a list of cons cells, where the car is the device number and 
     (setq claude-code-program-switches nil)
     (setq my-claude-code-current-profile "personal")
     (message "Claude Code: Switched to personal account."))
-  
+
   (defun my-claude-code-toggle-account ()
     "Toggle between personal and work Claude Code accounts."
     (interactive)
@@ -430,18 +388,9 @@ Each list contains a list of cons cells, where the car is the device number and 
 
   (claude-code-mode))
 
-(use-package claude-code-ide
-  :vc (:url "https://github.com/manzaltu/claude-code-ide.el" :rev :newest)
-  :config
-  (setq claude-code-ide-window-side 'bottom)
-  (setq claude-code-ide-window-height 10)
-  ;; Optionally enable Emacs MCP tools
-  (claude-code-ide-emacs-tools-setup))
-
-
 ;;* pi-coding-agent
-(use-package md-ts-mode :ensure t)
-(use-package markdown-table-wrap :ensure t)
+(use-package md-ts-mode :ensure t :defer t)
+(use-package markdown-table-wrap :ensure t :defer t)
 
 (use-package pi-coding-agent
   ;; Using local repo with image paste support (yank-media)

@@ -4,11 +4,6 @@
 ;;* emms (emacs multimedia system)
 ;; http://blog.binchen.org/posts/how-to-use-emms-effectively/
 ;; https://www.gnu.org/software/emms/manual/
-(defvar my-emms-playlist-filter-keyword "mozart|bach"
-  "Keyword to filter tracks in emms playlist.
-Space in the keyword matches any characters.
- \"|\" means OR operator in regexp.")
-
 (use-package emms
   :bind
   (:map global-map
@@ -100,30 +95,6 @@ and sends a message of the current volume status."
     ("M" "current info" emms-show)
     ("e" "emms" emms)]
    ])
-
-;;* listen.el
-;; broken by newer transient
-(use-package listen
-  :vc (:url "https://github.com/alphapapa/listen.el")
-  :custom
-  (listen-directory "~/Media/Music"))
-
-;;* ready-player for dired integration
-(use-package ready-player
-  :disabled t
-  :config
-  (ready-player-mode +1))
-
-;;* arr.el (*arr application interface)
-(use-package arr
-  :load-path "~/projects/elisp/arr/lisp"
-  :commands (arr-prowlarr-search arr-prowlarr-menu
-             arr-radarr-list arr-radarr-menu
-             arr-sonarr-list arr-sonarr-menu)
-  :custom
-  (arr-prowlarr-url "http://10.0.1.10:9696")
-  (arr-radarr-url "http://10.0.1.10:7878")
-  (arr-sonarr-url "http://10.0.1.10:8989"))
 
 ;;* Provide my-setup-media.el
 (provide 'my-setup-media)
