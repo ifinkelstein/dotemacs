@@ -25,16 +25,6 @@
   ;; Reduce cursor lag by a tiny bit by not auto-adjusting `window-vscroll'
   ;; for tall lines.
   (setq auto-window-vscroll nil)
-  ;; For centered cursor scrolling
-  ;; see https://two-wrongs.com/centered-cursor-mode-in-vanilla-emacs
-  ;; Smooth Vertical Scroll
-  (setq scroll-step 1)
-  (setq scroll-margin 3)
-  (setq scroll-conservatively 101)
-  (setq scroll-up-aggressively 0.01)
-  (setq scroll-down-aggressively 0.01)
-  (setq auto-window-vscroll nil)
-  (setq fast-but-imprecise-scrolling nil)
   ;; Horizontal Scroll
   (setq hscroll-step 1)
   (setq hscroll-margin 1))
@@ -57,16 +47,11 @@
    ;; fast. Perfect for trackpads.
    mouse-wheel-scroll-amount '(1 ((shift) . 2))))
 
-;; Don't use pixel-scroll by default -- it causes janky behavior on MacOS
-(use-package pixel-scroll
-  :ensure nil
-  :disabled)
-
 ;; ultra-smooth scrolling across images and with fast mouse wheels
 (use-package ultra-scroll
   :init
   (setq scroll-conservatively 101 ; important!
-        scroll-margin 0) 
+        scroll-margin 0)
   :config
   (ultra-scroll-mode 1))
 
@@ -89,12 +74,6 @@
 ;; Prevent ffap from pinging hostnames (avoids multi-second hangs
 ;; when point is on something that looks like a hostname)
 (setq ffap-machine-p-known 'reject)
-
-
-;; Switch to Buffer Preserve Window
-
-;; switch-to-buffer tries to preserve window-point
-(setq switch-to-buffer-preserve-window-point t)
 
 ;; * Unique buffers
 (use-package uniquify
@@ -123,19 +102,12 @@
   (auto-revert-verbose nil)
   (auto-revert-interval .5)
   (revert-without-query '(".*")) ;; disable revert query
-  (global-auto-revert-non-file-buffers t)
-  :config
-  (global-auto-revert-mode))
-
-
-;; ** Revert All Buffers
-(use-package revert-buffer-all
-  :commands (revert-buffer-all))
+  (global-auto-revert-non-file-buffers t))
 
 ;; * Popper (Pop-up Buffers)
 (use-package popper
   :hook (after-init . popper-mode)
-  :bind (("M-`"   . popper-toggle-latest)
+  :bind (("M-`"   . popper-toggle)
          ("C-`"   . popper-cycle)
          ("C-M-`" . popper-toggle-type))
   :custom
@@ -177,16 +149,12 @@
   :config
   ;; No query on kill
   (remove-hook 'kill-buffer-query-functions #'xwidget-kill-buffer-query-function)
-  ;; NOTE: Fix load progress error
-  (defun xwidget-webkit-estimated-load-progress (session)
-    1.0))
-
-(use-package xwwp-follow-link
-  :ensure nil
-  :custom
-  (xwwp-follow-link-completion-system 'default)
-  :bind (:map xwidget-webkit-mode-map
-         ("v" . xwwp-follow-link)))
+  ;; NOTE: Workaround for load progress error in xwidget-webkit.
+  ;; xwidget-webkit-estimated-load-progress returns an unexpected value
+  ;; in some Emacs builds; override it to always return 1.0 so callers
+  ;; don't error out.
+  (advice-add 'xwidget-webkit-estimated-load-progress :override
+              (lambda (_session) 1.0)))
 
 ;; * Fringe
 (use-package fringe
@@ -202,10 +170,9 @@
   :config
   ;; reduce heading sizes
   (setq bufler-initial-face-depth 2)
-  ;; size columnts to frame width
-  ;; this assumes that the window size doesn't change
-  (setq bufler-column-Name-max-width (round (* 0.5 (frame-width))))
-  (setq bufler-column-Path-max-width (round (* 0.3 (frame-width))))
+  ;; fixed sensible column widths (avoids computing from daemon dummy frame)
+  (setq bufler-column-Name-max-width 40)
+  (setq bufler-column-Path-max-width 30)
   (setf bufler-groups
         (bufler-defgroups
           (group
@@ -255,8 +222,6 @@
             ;; Subgroup collecting all other Magit buffers, grouped by directory.
             (mode-match "*Magit* (non-status)" (rx bos (or "magit" "forge") "-"))
             (auto-directory))
-           ;; Subgroup for Helm buffers.
-           (mode-match "*Helm*" (rx bos "helm-"))
            ;; Remaining special buffers are grouped automatically by mode.
            (auto-mode))
           ;; All buffers under "~/.emacs.d" (or wherever it is).
@@ -276,9 +241,6 @@
            (group-not "*special*" (auto-file))
            (auto-mode))
           (group
-           ;; Subgroup collecting buffers in a projectile project.
-           (auto-projectile))
-          (group
            ;; Subgroup collecting buffers in a version-control project,
            ;; grouping them by directory.
            (auto-project))
@@ -286,17 +248,18 @@
           (auto-directory)
           (auto-mode)))
 
-  ;; Fix upstream defface bug: ':inherit 'face' inside defface is data, not
-  ;; code, so the reader produces (quote face) — a two-face inherit list.
-  ;; Use face-spec-set to overwrite both the live attribute AND the stored
-  ;; defface-spec, so theme recalculation cannot re-apply the buggy spec.
-  (with-eval-after-load 'pretty-hydra
-    (face-spec-set 'pretty-hydra-toggle-on-face
-                   '((t :inherit font-lock-keyword-face)))
-    (face-spec-set 'pretty-hydra-toggle-off-face
-                   '((t :inherit font-lock-comment-face))))
-
   (bufler-mode t))
+
+;; Fix upstream defface bug: ':inherit 'face' inside defface is data, not
+;; code, so the reader produces (quote face) — a two-face inherit list.
+;; Use face-spec-set to overwrite both the live attribute AND the stored
+;; defface-spec, so theme recalculation cannot re-apply the buggy spec.
+(with-eval-after-load 'pretty-hydra
+  (face-spec-set 'pretty-hydra-toggle-on-face
+                 '((t :inherit font-lock-keyword-face)))
+  (face-spec-set 'pretty-hydra-toggle-off-face
+                 '((t :inherit font-lock-comment-face))))
+
 ;; ** Provide
 (provide 'my-setup-buffers)
 ;; my-setup-buffers.el ends here

@@ -21,6 +21,8 @@
 (use-package saveplace
   :ensure nil
   :hook (emacs-startup . save-place-mode)
+  :custom
+  (save-place-autosave-interval 300)   ; Emacs 31: persist even on daemon crash
   :config
   (setq save-place-file (concat my-cache-dir "saved-places"))
   (setq save-place-forget-unreadable-files nil)
@@ -38,6 +40,7 @@
   (recentf-save-file (concat my-cache-dir "recentf"))
   (recentf-max-saved-items 500)
   (recentf-max-menu-items 10)
+  (recentf-autosave-interval 300)      ; Emacs 31: persist even on daemon crash
   :config
   (recentf-mode 1))
 
@@ -64,35 +67,14 @@
     (when (org-invisible-p)
       (org-fold-show-context 'default))))
 
-;;;; Goto Address
-;; This package allows you to click or hit a key sequence while on a
-;; URL or e-mail address, and either load the URL into a browser of
-;; your choice using the browse-url package, or if it's an e-mail
-;; address, to send an e-mail to that address.
-;; Note; turned this off in favor of link-hint package
-;; (use-package goto-addr
-;;   :ensure nil
-;;   :hook ((compilation-mode . goto-address-mode)
-;;          (prog-mode . goto-address-prog-mode)
-;;          (eshell-mode . goto-address-mode)
-;;          (text-mode . goto-address-mode)
-;;          (shell-mode . goto-address-mode))
-;;   :bind (:map goto-address-highlight-keymap
-;;          ("<RET>"  . goto-address-at-point)
-;;          ("M-<RET>" . newline))
-;;   :commands (goto-address-prog-mode
-;;              goto-address-mode))
-
 
 ;; Jump in Buffer
 (defun my-jump-in-buffer ()
   "Jump between headlines in buffer using consult"
   (interactive)
-  (cond
-   ((eq major-mode 'org-mode)
-    (call-interactively 'consult-org-heading))
-   (t
-    (call-interactively 'consult-outline))))
+  (call-interactively (if (derived-mode-p 'org-mode)
+                          #'consult-org-heading
+                        #'consult-outline)))
 
 
 ;;;; mwim -- move where i mean
@@ -125,41 +107,18 @@
      (avy-goto-char-timer . avy-order-closest)
      (avy-goto-line . avy-order-closest)))
   (avy-dispatch-alist '((?w . avy-action-mark)
-                        ;; (?i . avy-action-ispell)
                         (?z . avy-action-zap-to-char)
-                        ;; (?  . avy-action-embark)
-                        ;; (?= . avy-action-define)
-                        ;; (67108896 . avy-action-mark-to-char)
-                        ;; (67108925 . avy-action-tuxi)
-                        ;; (?W . avy-action-tuxi)
-                        ;; (?h . avy-action-helpful)
                         (?x . avy-action-exchange)
-
-                        ;; (11 . avy-action-kill-line)
-                        ;; (25 . avy-action-yank-line)
-
                         (?k . avy-action-kill-word-jump)
                         (?K . avy-action-kill-sentence-jump)
                         (?F . avy-action-mark-to-char)
-
-                        ;; (?w . avy-action-easy-copy)
-                        ;; (?c . avy-action-kill-stay)
-                        ;; (?y . avy-action-yank)
-                        ;; (?t . avy-action-teleport)
-                        ;; (?T . avy-action-teleport-whole-line)
-
                         (?W . avy-action-copy-whole-line)
-                        ;; (?M . avy-action-kill-whole-line)
                         (?Y . avy-action-yank-end-of-line)))
 
 
   :config
   ;; lots of useful actions
   ;; see: https://github.com/xl666/avy-conf/blob/main/avy.org
-  ;; Base function actions
-  ;; For generic actions
-  ;; Like actions that only execute a command at point and stay
-  ;; This is useful for more complex actions
 
   ;; run this after loading embark
   (with-eval-after-load 'embark
@@ -177,39 +136,19 @@
     ;; candidate you select
     (setf (alist-get ?' avy-dispatch-alist) 'my-avy-action-embark))
 
-  (defun avy-generic-command-action (action-f)
-    "Excecutes action-f at point and stays"
-    (save-excursion
-      (goto-char pt)
-      (funcall action-f))
-    (select-window
-     (cdr (ring-ref avy-ring 0)))
-    t)
-
-  (defun avy-generic-command-action-no-stay (action-f)
-    "Excecutes action-f at point and returns to original position"
-    (goto-char pt)
-    (funcall action-f)
-    t)
-
-  ;; Actions from Avy can do anything
   (defun avy-action-mark-to-char (pt)
     (activate-mark)
     (goto-char (+ 1 pt)))
 
-  ;; (defun avy-action-helpful (pt)
-  ;;   (avy-generic-command-action #'helpful-at-point))
-  ;; (setf (alist-get ?H avy-dispatch-alist) 'avy-action-helpful)
-
-  (defun avy-action-flyspell (pt)
+  ;; Jump and correct spelling with jinx (replaces flyspell action)
+  (defun avy-action-jinx (pt)
     (save-excursion
       (goto-char pt)
-      (when (require 'flyspell nil t)
-        (flyspell-auto-correct-word)))
+      (jinx-correct))
     (select-window
      (cdr (ring-ref avy-ring 0)))
     t)
-  (setf (alist-get ?. avy-dispatch-alist) 'avy-action-flyspell)
+  (setf (alist-get ?. avy-dispatch-alist) 'avy-action-jinx)
 
   ;; Useful actions here
   ;; https://github.com/karthink/.emacs.d/blob/master/lisp/setup-avy.el
@@ -241,15 +180,6 @@
       (ring-ref avy-ring 0)))
     t)
 
-  (defun avy-action-kill-whole-line (pt)
-    (save-excursion
-      (goto-char pt)
-      (kill-whole-line))
-    (select-window
-     (cdr
-      (ring-ref avy-ring 0)))
-    t)
-
   (defun avy-action-kill-word-jump (pt)
     (goto-char pt)
     (kill-word 1)
@@ -261,19 +191,10 @@
     (my-kill-sentence-dwim)
     t)
 
-  (defun avy-action-yank-whole-line (pt)
-    (avy-action-copy-whole-line pt)
-    (save-excursion (yank))
-    t)
-
   (defun avy-action-yank-end-of-line (pt)
     (avy-action-copy-end-of-line pt)
     (save-excursion (yank))
     t)
-
-  (defun avy-action-teleport-whole-line (pt)
-    (avy-action-kill-whole-line pt)
-    (save-excursion (yank)) t)
 
   ;; additional useful avy actions
   ;; https://github.com/abo-abo/avy/issues/312
@@ -288,14 +209,6 @@ The window scope is determined by `avy-all-windows' (ARG negates it)."
         (avy-process
          (avy--regex-candidates (regexp-quote (thing-at-point 'symbol t)))))))
 
-  ;; additional useful avy actions
-  ;; https://github.com/abo-abo/avy/issues/312
-  (defun avy-goto-string (string)
-    "Jump to a visible occurace of string."
-    (interactive (list (read-from-minibuffer "String: " nil nil nil nil (thing-at-point 'symbol t)))
-                 (avy-with avy-goto-string
-                   (avy-process
-                    (avy--regex-candidates (regexp-quote string))))))
   ) ;;use-package avy
 
 ;;* Browse-url
@@ -326,38 +239,17 @@ The window scope is determined by `avy-all-windows' (ARG negates it)."
   :config
   (setopt avy-zap-jump-function 'avy-goto-char-timer))
 
-;; patch avy-zap to use avsingle char
-;; (el-patch-feature avy-zap)
-;; (with-eval-after-load 'avy-zap
-;;   (el-patch-defun avy-zap--internal (&optional zap-up-to-char-p)
-;;     "Patched to use avy-goto-char-timer. If ZAP-UP-TO-CHAR-P, perform `zap-up-to-char'."
-;;     (let ((start (point))
-;;           avy-all-windows)
-;;       (avy-zap--flet-if
-;;           avy-zap-forward-only
-;;           (window-start (&optional window) (point))
-;;         (if (member avy-zap-function avy-zap--function-list)
-;; 	        (when (call-interactively 'avy-goto-char-timer)
-;; 	          (and (avy-zap--xor (<= start (point)) zap-up-to-char-p)
-;; 		           (forward-char))
-;; 	          (funcall avy-zap-function start (point)))
-;;           (error "Invalid `avy-zap-function' value `%s' is not in the valid list: %s"
-;; 	             avy-zap-function avy-zap--function-list))))))
-
 ;;* CTRLF
 ;; improves on Isearch
 (use-package ctrlf
   :bind ("s-f" . ctrlf-forward-default)
-  ;; :bind (:map ctrlf-mode-map ("C-j" . avy-isearch))
-  :config
-  (ctrlf-mode +1))
+  :hook (after-init . ctrlf-mode))
 
 ;;* easy-kill
 ;; Easy kill and mark commands
 (use-package easy-kill
-  :config
-  (global-set-key [remap kill-ring-save] 'easy-kill)
-  (global-set-key [remap mark-sexp] 'easy-mark))
+  :bind (([remap kill-ring-save] . easy-kill)
+         ([remap mark-sexp] . easy-mark)))
 
 
 ;;** easy-kill-extras
@@ -368,8 +260,8 @@ The window scope is determined by `avy-all-windows' (ARG negates it)."
   (define-key easy-kill-base-map (kbd "o") 'easy-kill-er-expand)
   (define-key easy-kill-base-map (kbd "i") 'easy-kill-er-unexpand)
 
-  ;; Add the following tuples to `easy-kill-alist', preferrably by
-  ;; using `customize-variable'.
+  ;; Add the following tuples to `easy-kill-alist', using customize-variable
+  ;; or add-to-list as shown here.
   (add-to-list 'easy-kill-alist '(?^ backward-line-edge ""))
   (add-to-list 'easy-kill-alist '(?$ forward-line-edge ""))
   (add-to-list 'easy-kill-alist '(?b buffer ""))

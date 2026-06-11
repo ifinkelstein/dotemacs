@@ -45,6 +45,8 @@
 
 ;; Bookmark
 (declare-function bookmark-get-bookmark "bookmark")
+(declare-function bookmark-get-filename "bookmark")
+(declare-function bookmark-jump "bookmark")
 (defvar bookmark-save-flag)
 (defvar bookmark-use-annotations)
 (defvar bookmark-fringe-mark)
@@ -76,8 +78,8 @@
 (use-package bookmark
   :ensure nil
   :defer 2
-  :config
-  (setq bookmark-default-file (concat my-cache-dir "bookmarks")))
+  :custom
+  (bookmark-default-file (concat my-cache-dir "bookmarks")))
 
 (use-package casual
   :after bookmark
@@ -85,14 +87,13 @@
               ("M-o" . casual-bookmarks-tmenu)))
 
 (use-package dogears
+  :hook (emacs-startup . dogears-mode)
   :bind (("M-g d" . dogears-go)
          ("M-g M-b" . dogears-back)
          ("M-g M-f" . dogears-forward)
          ("M-g M-d" . dogears-list)
          ("M-g M-r" . dogears-remember)
-         ("M-g M-D" . dogears-sidebar))
-  :config
-  (dogears-mode 1))
+         ("M-g M-D" . dogears-sidebar)))
 
 (use-package javelin
   :bind (("M-g j" . javelin-add-file)

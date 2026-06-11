@@ -14,7 +14,7 @@
   :config
 
   (defun dwim-shell-split-cue-to-flac ()
-    "Convert all selectede cue files to FLAC. 
+    "Convert all selected cue files to FLAC.
 
 This function uses xld to convert marked cue files to FLAC
 
@@ -26,7 +26,7 @@ called interactively. Original files are preserved.
      "Convert cue to FLAC"
      "xld -f flac --profile 'ilya' -c '<<fne>>.cue' '<<fne>>.flac'"
      :utils "xld"))
-  
+
   (defun dwim-shell-command-convert-movie-mp4 ()
     "Convert and compress video files to MP4 format using H.265 codec.
 
@@ -86,7 +86,7 @@ Example output: 'movie.avi' becomes 'movie_compressed.mp4'"
      "video to h.265 compressed format"
      "ffmpeg -i '<<f>>' -c:v libx265 -crf 28 -c:a aac -b:a 128k '<<fne>>.mp4'"
      :utils "ffmpeg"))
-  
+
   (defun dwim-shell-commands-docx-to-org ()
     "Convert docx(s)) to org."
     (interactive)
@@ -133,13 +133,14 @@ Spool to default printer using lp with double-sided printing on."
     (interactive)
     (dwim-shell-command-on-marked-files
      "Convert to PDF via soffice and print file(s) to default printer."
-     "if [[ '<<e>>' == 'org' || '<<e>>' == 'md' ]]; then
-    pandoc '<<f>>' -o '<<fne>>.pdf'
-  elif [[ '<<e>>' == 'pdf' ]]; then
-  else
-    soffice --headless --convert-to pdf '<<f>>'
-  fi
-    lp -o sides=two-sided-long-edge '<<fne>>.pdf'
+     "if [[ '<<e>>' == 'pdf' ]]; then
+  :
+elif [[ '<<e>>' == 'org' || '<<e>>' == 'md' ]]; then
+  pandoc '<<f>>' -o '<<fne>>.pdf'
+else
+  soffice --headless --convert-to pdf '<<f>>'
+fi
+lp -o sides=two-sided-long-edge '<<fne>>.pdf'
 "
      :utils '("lp" "soffice" "pandoc")))
 
@@ -162,91 +163,65 @@ If this doesn't work, then the file can be reduced further in Adobe Acrobat."
      "  gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/printer -dNOPAUSE -dQUIET -dBATCH -sOutputFile=\"<<fne>>.reduced.pdf\" \"<<f>>\""
      :utils "gs"))
 
-  (defun dwim-shell-commands-convert-to-doc ()
-    "Convert file(s) to docx using custom template.
+  ;; Helper: convert to DOCX using a given reference template.
+  ;; TEMPLATE is an expanded path string; LABEL is used in messages.
+  (defun my--dwim-shell-commands-convert-to-docx (template label)
+    "Convert file(s) to docx using TEMPLATE (full path).
+LABEL appears in completion messages.
 In dired buffers, convert marked files.
 In org-mode, markdown-mode, or text-mode derivatives, convert current buffer.
 For virtual buffers, output is saved to ~/Downloads with date-time.docx."
+    (cond
+     ;; Dired mode: use original behavior
+     ((derived-mode-p 'dired-mode)
+      (dwim-shell-command-on-marked-files
+       (format "Convert to DOCX (%s)" label)
+       (format "pandoc --reference-doc '%s' -i '<<f>>' -o '<<fne>>.docx'" template)
+       :utils "pandoc"))
+     ;; Text-based modes (org, markdown, text, etc.)
+     ((derived-mode-p 'text-mode 'org-mode 'markdown-mode)
+      (let* ((input-format (cond
+                            ((derived-mode-p 'org-mode) "org")
+                            ((derived-mode-p 'markdown-mode) "markdown")
+                            (t "markdown")))
+             (has-file (and buffer-file-name (file-exists-p buffer-file-name)))
+             (input-file (if has-file
+                             buffer-file-name
+                           (let ((temp (make-temp-file "pandoc-input-" nil
+                                                       (concat "." input-format))))
+                             (write-region (point-min) (point-max) temp)
+                             temp)))
+             (output-file (if has-file
+                              (concat (file-name-sans-extension buffer-file-name) ".docx")
+                            (expand-file-name
+                             (format-time-string "%Y-%m-%d-%H%M%S.docx")
+                             "~/Downloads")))
+             (command (format "pandoc --reference-doc '%s' -f %s -i '%s' -o '%s'"
+                              template input-format input-file output-file)))
+        (message "Converting to DOCX (%s)..." label)
+        (if (zerop (call-process-shell-command command))
+            (progn
+              (unless has-file (delete-file input-file))
+              (message "Created: %s" output-file))
+          (error "Pandoc conversion failed"))))
+     (t
+      (user-error "Not in a supported mode (dired, org, markdown, or text)"))))
+
+  (defun dwim-shell-commands-convert-to-doc ()
+    "Convert file(s) to docx using the NIH reference template.
+TODO: swap in a generic template when one is available."
     (interactive)
-    (let ((template (expand-file-name "~/Work/80 other writing/80 letter-templates/generic-word-template.docx")))
-      (cond
-       ;; Dired mode: use original behavior
-       ((derived-mode-p 'dired-mode)
-        (dwim-shell-command-on-marked-files
-         "Convert to DOCX"
-         (format "pandoc --reference-doc '%s' -i '<<f>>' -o '<<fne>>.docx'" template)
-         :utils "pandoc"))
-       ;; Text-based modes (org, markdown, text, etc.)
-       ((derived-mode-p 'text-mode 'org-mode 'markdown-mode)
-        (let* ((input-format (cond
-                              ((derived-mode-p 'org-mode) "org")
-                              ((derived-mode-p 'markdown-mode) "markdown")
-                              (t "markdown")))
-               (has-file (and buffer-file-name (file-exists-p buffer-file-name)))
-               (input-file (if has-file
-                               buffer-file-name
-                             (let ((temp (make-temp-file "pandoc-input-" nil
-                                                         (concat "." input-format))))
-                               (write-region (point-min) (point-max) temp)
-                               temp)))
-               (output-file (if has-file
-                                (concat (file-name-sans-extension buffer-file-name) ".docx")
-                              (expand-file-name
-                               (format-time-string "%Y-%m-%d-%H%M%S.docx")
-                               "~/Downloads")))
-               (command (format "pandoc --reference-doc '%s' -f %s -i '%s' -o '%s'"
-                                template input-format input-file output-file)))
-          (message "Converting to DOCX...")
-          (if (zerop (call-process-shell-command command))
-              (progn
-                (unless has-file (delete-file input-file))
-                (message "Created: %s" output-file))
-            (error "Pandoc conversion failed"))))
-       (t
-        (user-error "Not in a supported mode (dired, org, markdown, or text)")))))
+    (my--dwim-shell-commands-convert-to-docx
+     (expand-file-name "~/Work/80 other writing/80 letter-templates/nih-reference.docx")
+     "NIH template"))
 
   (defun dwim-shell-commands-convert-to-nih-docx ()
-    "Convert file(s) to docx using NIH template.
-In dired buffers, convert marked files.
-In org-mode, markdown-mode, or text-mode derivatives, convert current buffer.
-For virtual buffers, output is saved to ~/Downloads with date-time.docx."
+    "Convert file(s) to docx using NIH template."
     (interactive)
-    (let ((template (expand-file-name "~/Work/80 other writing/80 letter-templates/nih-reference.docx")))
-      (cond
-       ;; Dired mode: use original behavior
-       ((derived-mode-p 'dired-mode)
-        (dwim-shell-command-on-marked-files
-         "Convert to DOCX"
-         (format "pandoc --reference-doc '%s' -i '<<f>>' -o '<<fne>>.docx'" template)
-         :utils "pandoc"))
-       ;; Text-based modes (org, markdown, text, etc.)
-       ((derived-mode-p 'text-mode 'org-mode 'markdown-mode)
-        (let* ((input-format (cond
-                              ((derived-mode-p 'org-mode) "org")
-                              ((derived-mode-p 'markdown-mode) "markdown")
-                              (t "markdown")))
-               (has-file (and buffer-file-name (file-exists-p buffer-file-name)))
-               (input-file (if has-file
-                               buffer-file-name
-                             (let ((temp (make-temp-file "pandoc-input-" nil
-                                                         (concat "." input-format))))
-                               (write-region (point-min) (point-max) temp)
-                               temp)))
-               (output-file (if has-file
-                                (concat (file-name-sans-extension buffer-file-name) ".docx")
-                              (expand-file-name
-                               (format-time-string "%Y-%m-%d-%H%M%S.docx")
-                               "~/Downloads")))
-               (command (format "pandoc --reference-doc '%s' -f %s -i '%s' -o '%s'"
-                                template input-format input-file output-file)))
-          (message "Converting to DOCX...")
-          (if (zerop (call-process-shell-command command))
-              (progn
-                (unless has-file (delete-file input-file))
-                (message "Created: %s" output-file))
-            (error "Pandoc conversion failed"))))
-       (t
-        (user-error "Not in a supported mode (dired, org, markdown, or text)")))))
+    (my--dwim-shell-commands-convert-to-docx
+     (expand-file-name "~/Work/80 other writing/80 letter-templates/nih-reference.docx")
+     "NIH template"))
+
   (defun dwim-shell-commands-pdf-to-txt ()
     "Convert pdf to txt."
     (interactive)
@@ -278,39 +253,22 @@ For virtual buffers, output is saved to ~/Downloads with date-time.docx."
      (concat "mv \"<<f>>\" \"<<fne>>." (format-time-string "%Y%m%d") ".<<e>>\" ")
      :utils "mv"))
   ) ;;dwim-shell-command
+
 ;;* eshell and helpers
 
 ;;** eat
-
 (use-package eat
-  :ensure t
-  ;; :custom
-  ;; (eat-term-name "xterm")
+  :commands (eat eat-eshell-mode)
   :custom-face
   (ansi-color-bright-blue ((t (:foreground "#00afff" :background "#00afff"))))
   :config
-  (eat-eshell-mode)
-  (setq eshell-visual-commands '())
-  (eat-eshell-visual-command-mode))
+  (add-hook 'eshell-load-hook #'eat-eshell-mode))
 
 ;;* ghostel (libghostty terminal)
 (use-package ghostel
   :commands (ghostel ghostel-project ghostel-other)
   :bind (:map ghostel-mode-map
          ("C-g" . ghostel-send-C-c)))
-
-;;* vterm and helpers
-(use-package vterm
-  :commands vterm
-  :config
-  (setq vterm-max-scrollback 10000))
-
-(use-package vterm-toggle
-  :commands vterm-toggle)
-
-;; Managing multiple vterm buffers
-(use-package multi-vterm
-  :after (vterm))
 
 ;;* Tramp
 ;; An easy way to manage files over ssh/scp
