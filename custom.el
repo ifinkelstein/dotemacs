@@ -5,7 +5,10 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(custom-safe-themes
-   '("1b623b81f373d49bcf057315fe404b30c500c3b5a387cf86c699d83f2f5763f4" default))
+   '("0f220ea77c6355c411508e71225680ecb3e308b4858ef6c8326089d9ea94b86f"
+     "1b623b81f373d49bcf057315fe404b30c500c3b5a387cf86c699d83f2f5763f4"
+     "d43860349c9f7a5b96a090ecf5f698ff23a8eb49cd1e5c8a83bb2068f24ea563"
+     "5ec088e25ddfcfe37b6ae7712c9cb37fd283ea5df7ac609d007cafa27dab6c64" default))
  '(package-selected-packages
    '(ace-window activities affe ag aggressive-indent aidermacs applescript-mode
                 avy-menu avy-zap bufler cape casual claude-code consult-dir
