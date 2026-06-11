@@ -67,76 +67,6 @@
     (elfeed-db-save)
     (quit-window))
 
-  ;; Show entry metadata in the header line (replaces the look of the
-  ;; retired elfeed-goodies, without the powerline dependency); the
-  ;; body then contains only the article content.
-  (defun my-elfeed-show--header-line ()
-    "Build a header line for `elfeed-show-entry': title, feed, tags, date."
-    (let* ((entry elfeed-show-entry)
-           (title (or (elfeed-entry-title entry) ""))
-           (feed (elfeed-entry-feed entry))
-           (feed-title (or (and feed (elfeed-feed-title feed)) ""))
-           (date (format-time-string "%Y-%m-%d %H:%M"
-                                     (elfeed-entry-date entry)))
-           (tags (mapconcat #'symbol-name (elfeed-entry-tags entry) ", ")))
-      (concat
-       (propertize (concat " " title) 'face '(:weight bold))
-       "   "
-       (propertize feed-title 'face 'elfeed-search-feed-face)
-       (unless (string-empty-p tags)
-         (concat "  (" (propertize tags 'face 'elfeed-search-tag-face) ")"))
-       "   "
-       (propertize date 'face 'elfeed-search-date-face))))
-
-  (defun my-elfeed-show-refresh ()
-    "Render the current entry with metadata in the header line only."
-    (interactive)
-    (let* ((inhibit-read-only t)
-           (entry elfeed-show-entry)
-           (content (elfeed-deref (elfeed-entry-content entry)))
-           (type (elfeed-entry-content-type entry))
-           (feed (elfeed-entry-feed entry))
-           (base (and feed (elfeed-compute-base (elfeed-feed-url feed)))))
-      (setq header-line-format (my-elfeed-show--header-line))
-      (erase-buffer)
-      (if content
-          (if (eq type 'html)
-              (elfeed-insert-html content base)
-            (insert content))
-        (insert (propertize "(empty)\n" 'face 'italic)))
-      (goto-char (point-min))))
-
-  (setq elfeed-show-refresh-function #'my-elfeed-show-refresh)
-
-  (defun my-elfeed-search-header ()
-    "Search-buffer header: unread/total counts, filter, last update."
-    (cond
-     ((zerop (elfeed-db-last-update))
-      (elfeed-search--intro-header))
-     ((> (elfeed-queue-count-total) 0)
-      (let ((total (elfeed-queue-count-total))
-            (in-process (elfeed-queue-count-active)))
-        (format "%d jobs pending, %d active..."
-                (- total in-process) in-process)))
-     (t
-      (pcase-let ((`(,unread ,total ,feeds)
-                   (split-string (elfeed-search--count-unread) "[/:]"))
-                  (update (format-time-string
-                           "%Y-%m-%d %H:%M"
-                           (seconds-to-time (elfeed-db-last-update)))))
-        (concat
-         (propertize " Elfeed" 'face '(:weight bold))
-         "   "
-         (propertize unread 'face 'elfeed-search-unread-count-face)
-         " unread / " total " entries / " feeds " feeds"
-         (when (string-match-p "[^ ]" elfeed-search-filter)
-           (concat "   "
-                   (propertize elfeed-search-filter
-                               'face 'elfeed-search-filter-face)))
-         "   updated "
-         (propertize update 'face 'elfeed-search-last-update-face))))))
-
-  (setq elfeed-search-header-function #'my-elfeed-search-header)
 
   ;; https://xenodium.com/open-emacs-elfeed-links-in-background/
   (defun elfeed-search-browse-background-url ()
@@ -189,12 +119,26 @@
         ("https://writepublishthrive.blogspot.com/feeds/posts/default" academic)
         ))
 
-;;** Elfeed entry window placement
-;; Show the elfeed entry buffer in a bottom window (~60% height), like mu4e.
-(add-to-list 'display-buffer-alist
-             '("\\*elfeed-entry\\*"
-               (display-buffer-reuse-window display-buffer-at-bottom)
-               (window-height . 0.6)))
+
+;;** Elfeed Goodies
+;; vertical split screen browsing and other enhancements
+(use-package elfeed-goodies
+  :after (elfeed)
+  :config
+  (setq elfeed-goodies/entry-pane-position 'bottom) ;; split with content on the bottom like mu4e
+  (setq elfeed-goodies/entry-pane-size 0.5)
+  (elfeed-goodies/setup)
+
+  ;; Fix upstream defface bug: ':inherit 'face' inside defface is data, not
+  ;; code, so the reader produces (quote face) — a two-face inherit list.
+  ;; Use face-spec-set to overwrite both the live attribute AND the stored
+  ;; defface-spec, so theme recalculation cannot re-apply the buggy spec.
+  (face-spec-set 'elfeed-goodies-show-header-tag
+                 '((t :inherit elfeed-search-tag-face)))
+  (face-spec-set 'elfeed-goodies-show-header-title
+                 '((t :inherit elfeed-search-title-face)))
+  (face-spec-set 'elfeed-goodies-show-header-feed
+                 '((t :inherit elfeed-search-feed-face))))
 
 ;;* end my-setup-reading
 (provide 'my-setup-reading)

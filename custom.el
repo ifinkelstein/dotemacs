@@ -15,24 +15,25 @@
                 consult-notes consult-reftex consult-todo corfu crux ctrlf
                 deadgrep diff-hl dired-hacks dired-narrow dired-preview
                 dired-ranger dired-recent diredfl dogears dwim-shell-command
-                easy-kill-extras eat eglot-ltex-plus elfeed-org elisp-def
-                emacs-everywhere emacs-slack embark-consult embrace emms
-                exec-path-from-shell expreg fancy-dabbrev fix-word fzf ghostel
-                goggles goto-chg gptel-aibo gptel-prompts grab-mac-link helpful
-                highlight-defined highlight-quoted homebrew hungry-delete
-                imenu-list javelin jinx jq-mode json-snatcher keyfreq kind-icon
-                lambda-line lambda-themes latex-change-env link-hint marginalia
-                markdown-table-wrap mcp md-ts-mode meow mixed-pitch move-text
-                mu4e-column-faces mu4e-query mwim nerd-icons-completion
-                nerd-icons-corfu nerd-icons-dired nov ob-applescript olivetti
-                org-appear org-autolist org-bookmark-heading org-contacts
-                org-download org-modern org-mru-clock org-msg org-pomodoro
-                org-ql org-roam org-sticky-header org-timeblock org-transclusion
-                org-web-tools origami ox-pandoc pdf-tools phscroll popper popwin
-                prism puni ragmacs rainbow-delimiters rainbow-identifiers
-                rainbow-mode reveal-in-osx-finder revert-buffer-all rg semext
-                slack substitute svg-tag-mode tabspaces taxy-magit-section
-                trashed ultra-scroll vdiff-magit vertico visual-regexp-steroids
+                easy-kill-extras eat eglot-ltex-plus elfeed-goodies elfeed-org
+                elisp-def emacs-everywhere emacs-slack embark-consult embrace
+                emms exec-path-from-shell expreg fancy-dabbrev fix-word fzf
+                ghostel goggles goto-chg gptel-aibo gptel-prompts grab-mac-link
+                helpful highlight-defined highlight-quoted homebrew
+                hungry-delete imenu-list javelin jinx jq-mode json-snatcher
+                keyfreq kind-icon lambda-line lambda-themes latex-change-env
+                link-hint marginalia markdown-table-wrap mcp md-ts-mode meow
+                mixed-pitch move-text mu4e-column-faces mu4e-query mwim
+                nerd-icons-completion nerd-icons-corfu nerd-icons-dired nov
+                ob-applescript olivetti org-appear org-autolist
+                org-bookmark-heading org-contacts org-download org-modern
+                org-mru-clock org-msg org-pomodoro org-ql org-roam
+                org-sticky-header org-timeblock org-transclusion org-web-tools
+                origami ox-pandoc pdf-tools phscroll popper popwin prism puni
+                ragmacs rainbow-delimiters rainbow-identifiers rainbow-mode
+                reveal-in-osx-finder revert-buffer-all rg semext slack
+                substitute svg-tag-mode tabspaces taxy-magit-section trashed
+                ultra-scroll vdiff-magit vertico visual-regexp-steroids
                 web-server whisper yasnippet-snippets))
  '(package-vc-selected-packages
    '((phscroll :vc-backend Git :url "https://github.com/misohena/phscroll")
