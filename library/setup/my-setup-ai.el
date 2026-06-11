@@ -399,7 +399,7 @@ Each list contains a list of cons cells, where the car is the device number and 
   :bind (:map pi-coding-agent-input-mode-map
          ("<s-return>" . pi-coding-agent-send)
          ("C-c C-l" . org-insert-link-global)
-         ("C-." . flyspell-auto-correct-word))
+         ("C-." . jinx-correct))
 
   :commands (pi-coding-agent)
 
