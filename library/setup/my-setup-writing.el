@@ -109,6 +109,10 @@
 ;; replace undo with hippie expand
 (global-set-key (kbd "C-/") 'hippie-expand)
 
+;; C-w with no active region kills the previous word (shell-style)
+;; instead of signaling an error (Emacs 31).
+(setopt kill-region-dwim 'emacs-word)
+
 ;;* Move-Text
 ;; move the current line using M-up / M-down (or any other bindings you choose) if a region is marked, it will move the region instead.
 (use-package move-text
