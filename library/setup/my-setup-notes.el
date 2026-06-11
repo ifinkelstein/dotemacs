@@ -7,23 +7,6 @@
 ;;* Org Roam
 (use-package org-roam
   :defer 10
-  :after org
-  ;; other meow-specific bindings are in keybindings.el
-  ;; :bind (("C-c n l" . org-roam-buffer-toggle)
-  ;;        ("C-c n f" . org-roam-node-find)
-  ;;        ("C-c n i" . org-roam-node-insert)
-  ;;        ("C-c n c" . org-roam-capture)
-  ;;        ("C-c n o" . org-id-get-create)
-  ;;        ("C-c n a" . org-roam-alias-add)
-
-  ;;        ;; Dailies
-  ;;        ("C-c n j" . org-roam-dailies-capture-today)
-  ;;        ("C-c n y" . org-roam-dailies-capture-yesterday)
-  ;;        ("C-c n t" . org-roam-dailies-goto-today)
-  ;;        ("C-c n g" . org-roam-dailies-capture-tomorrow)
-
-  ;;        :map org-mode-map
-  ;;        ("C-M-i" . completion-at-point))
   :custom
   ;; Configure dirs
   (org-roam-directory "~/Work/org-roam/")
@@ -61,56 +44,36 @@
         (lambda ()
           (not (member "ATTACH" (org-get-tags)))))
 
-  ;; update time stamp after editing org-roam note files
-  ;; https://org-roam.discourse.group/t/update-a-field-last-modified-at-save/321/19
-  (add-hook 'org-roam-mode-hook (lambda ()
-                                  (setq-local time-stamp-active t
-                                              time-stamp-start "#\\+EDITED:[ \t]*"
-                                              time-stamp-end "$"
-                                              time-stamp-format "\[%04y-%02m-%02d %3a %02H:%02M\]")
-                                  (add-hook 'before-save-hook 'time-stamp nil 'local)))
+  ;; Update #+LAST_MODIFIED timestamp on save for org-roam notes
+  (defun my-org-roam-update-timestamp ()
+    "Update #+LAST_MODIFIED timestamp when saving an org-roam file."
+    (when (and (derived-mode-p 'org-mode)
+               (buffer-file-name)
+               (string-prefix-p (expand-file-name org-roam-directory)
+                                (expand-file-name (buffer-file-name))))
+      (setq-local time-stamp-start "#\\+LAST_MODIFIED:[ \t]*"
+                  time-stamp-end "$"
+                  time-stamp-format "[%Y-%m-%d %a %H:%M]")
+      (time-stamp)))
 
-  (org-roam-setup))
+  (add-hook 'before-save-hook #'my-org-roam-update-timestamp)
+
+  (org-roam-db-autosync-mode))
 
 ;;** Consult Notes
 ;; Adapted from https://github.com/minad/consult/wiki/hrm-notes
 (use-package consult-notes
+  :defer 10
   :after org-roam
   :commands (consult-notes
              consult-notes-search-in-all-notes)
   :config
   (consult-notes-org-roam-mode 1)
   (consult-notes-org-headings-mode)
-  (setq consult-notes-file-dir-sources '(("Name"  ?k  "~/Work/org-roam/"))) ;; Set notes dir(s), see below
-
-  (defun consult-notes-open-dired (cand)
-    "Open notes directory dired with point on file CAND."
-    (interactive "fNote: ")
-    ;; dired-jump is in dired-x.el but is moved to dired in Emacs 28
-    (dired-jump nil cand))
-
-  (defun consult-notes-marked (cand)
-    "Open a notes file CAND in Marked 2.
-Marked 2 is a mac app that renders markdown."
-    (interactive "fNote: ")
-    (call-process-shell-command (format "open -a \"Marked 2\" \"%s\"" (expand-file-name cand))))
-
-  (defun consult-notes-grep (cand)
-    "Run grep in directory of notes file CAND."
-    (interactive "fNote: ")
-    (consult-grep (file-name-directory cand)))
-
-  ;; (defvar-keymap consult-notes-map
-  ;;   :doc "Keymap for Embark notes actions."
-  ;;   :parent embark-file-map
-  ;;   "d" #'consult-notes-dired
-  ;;   "g" #'consult-notes-grep
-  ;;   "m" #'consult-notes-marked)
-
-  ;; (add-to-list 'embark-keymap-alist `(,consult-notes-category . consult-notes-map))
 
   ;; make embark-export use dired for notes
-  (setf (alist-get consult-notes-category embark-exporters-alist) #'embark-export-dired))
+  (with-eval-after-load 'embark
+    (setf (alist-get consult-notes-category embark-exporters-alist) #'embark-export-dired)))
 
 ;;* Org Contacts
 (defvar my-org-contacts-file (concat org-directory "contacts/contacts.org")
@@ -119,7 +82,7 @@ Marked 2 is a mac app that renders markdown."
 (use-package org-contacts
   :after org org-roam
   :custom
-  (org-contacts-files (list (concat org-roam-directory "contacts.org")))
+  (org-contacts-files (list my-org-contacts-file))
   ;; NOTE: org-contacts can aggressively override mu4e's native contact
   ;; completion in compose buffers. Set to nil to use mu4e's own completion
   ;; (which draws from your mail history) instead.
