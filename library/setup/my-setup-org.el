@@ -321,6 +321,7 @@
   (org-clock-out-when-done t)
   ;; Save the running clock and all clock history when exiting Emacs, load it on startup
   (org-clock-persist t)
+  (org-clock-persist-file (expand-file-name "org-clock-save.el" my-cache-dir))
   ;; Include current clocking task in clock reports
   (org-clock-report-include-clocking-task t)
   :config
