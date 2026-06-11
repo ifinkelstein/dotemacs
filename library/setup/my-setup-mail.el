@@ -1029,20 +1029,17 @@ Pass ARGS through to ORIG-FUN, then redraw icons."
   (advice-add 'org-msg-attach-delete :around #'my-mu4e-reset-attachment-icons)
   ) ;; org-msg
 
-;;* Org Heading to Email (org-heading-mail)
-;; Convert org headings to mu4e/org-msg emails with auto-attachment
-(use-package org-heading-mail
-  :load-path "~/projects/elisp/org-heading-mail"
-  :after org-msg
-  :commands (org-heading-mail-send org-heading-mail-check-scheduled)
+;;* Org Heading to Email/Slack (org-heading-send)
+;; Convert org headings to mu4e/org-msg emails or Slack messages.
+;; Single merged package; mail deps (org-msg/mu4e) are lazy-required
+;; inside the mail backend, so loading this never pulls the mail stack.
+(use-package org-heading-send
+  :load-path "~/projects/elisp/org-heading-send"
+  :commands (org-heading-mail-send
+             org-heading-mail-check-scheduled
+             org-heading-slack-send)
   :custom
   (org-heading-mail-scheduled-file "~/Work/org/drafts.org"))
-
-;;* Org Heading to Slack (org-heading-slack)
-;; Send Slack messages from org headings via agent-slack CLI
-(use-package org-heading-slack
-  :load-path "~/projects/elisp/org-heading-slack"
-  :commands (org-heading-slack-send))
 
 (defun my-org-heading-send-dwim ()
   "Send org heading as email or Slack message.
