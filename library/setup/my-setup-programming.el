@@ -205,7 +205,8 @@
          ("\\.applescript\\'"       . applescript-mode)))
 
 (use-package ob-applescript
-  :vc (:url "https://github.com/stig/ob-applescript.el"))
+  :vc (:url "https://github.com/stig/ob-applescript.el")
+  :commands (org-babel-execute:applescript))
 
 ;;** Elisp (emacs-lisp)
 (use-package eldoc
