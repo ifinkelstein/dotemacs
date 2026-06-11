@@ -326,7 +326,18 @@
   (org-clock-report-include-clocking-task t)
   :config
   ;; Actually register clock persistence on the kill-emacs/startup hooks.
-  (org-clock-persistence-insinuate)) ;; use-package org-clock
+  (org-clock-persistence-insinuate)
+  ;; org-clock-save writes the file without a lexical-binding cookie,
+  ;; which Emacs 31 warns about on every startup load. Add it post-save.
+  (defun my-org-clock-save-add-lexbind (&rest _)
+    (when (and org-clock-persist-file (file-exists-p org-clock-persist-file))
+      (with-temp-buffer
+        (insert-file-contents org-clock-persist-file)
+        (goto-char (point-min))
+        (unless (looking-at-p ".*lexical-binding")
+          (insert ";;; -*- lexical-binding: t -*-\n")
+          (write-region (point-min) (point-max) org-clock-persist-file nil 'silent)))))
+  (advice-add 'org-clock-save :after #'my-org-clock-save-add-lexbind)) ;; use-package org-clock
 
 
 ;;* org-ql
