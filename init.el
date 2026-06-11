@@ -93,6 +93,14 @@ straight) and by `my-cache-dir'.")
         package-pinned-packages '((org . "elpa")))
 ;; initialize the package system
 (package-initialize)
+
+;;* Custom file
+;; Load early (before themes/modules) so custom-safe-themes and
+;; package-selected-packages are in effect during module loading.
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+(when (file-exists-p custom-file)
+  (load custom-file))
+
 ;;** Use-Package Settings
 (use-package use-package
   :custom
@@ -134,12 +142,13 @@ Loading modules
 ======================================================")
 ;; this order is meaningful, as things may break at some point
 (defmacro my-require (feature)
-  "Require FEATURE with before/after messages and error trapping."
+  "Require FEATURE with timing, messages, and error trapping."
   `(condition-case err
-       (progn
+       (let ((my--t0 (current-time)))
          (message ">> Loading %s..." ',feature)
          (require ',feature)
-         (message ">> Loading %s...done" ',feature))
+         (message ">> Loading %s...done (%.2fs)" ',feature
+                  (float-time (time-since my--t0))))
      (error (display-warning 'init (format "FAILED loading %s: %s" ',feature err) :error))))
 
 (my-require my-setup-server)
@@ -224,11 +233,6 @@ Loading modules
                                       gc-cons-threshold 80000000)
                                 ;; Startup time
                                 ))
-
-;;*  Custom
-(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
-(when (file-exists-p custom-file)
-  (load custom-file))
 
 ;;*  User settings
 ;; user-full-name and user-mail-address are set in private.el
