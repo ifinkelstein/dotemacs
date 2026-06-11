@@ -45,8 +45,9 @@
 
 ;; Resizing the Emacs frame can be an expensive part of changing the
 ;; font. By inhibiting this, we easily halve startup times with fonts that are
-;; larger than the system default.
-(setopt frame-inhibit-implied-resize t
+;; larger than the system default. 'force (Emacs 31) extends the
+;; inhibition to initial frame creation, for tiling WMs (AeroSpace).
+(setopt frame-inhibit-implied-resize 'force
         ;; HACK: Don't show size info (or anything else) in frame title
         frame-title-format "\n"
         ;; Disable start-up screen

@@ -100,7 +100,9 @@
   :hook (after-init . global-auto-revert-mode)
   :custom
   (auto-revert-verbose nil)
-  (auto-revert-interval .5)
+  ;; File buffers revert via kqueue notifications; this interval only
+  ;; drives polling of non-file buffers (dired etc.) — 0.5s was busywork.
+  (auto-revert-interval 2)
   (revert-without-query '(".*")) ;; disable revert query
   (global-auto-revert-non-file-buffers t))
 
