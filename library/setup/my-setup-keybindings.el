@@ -1,49 +1,28 @@
-;; my-setup-keybindings.el --- summary -*- lexical-binding: t -*-
+;;; my-setup-keybindings.el --- keybinding configuration -*- lexical-binding: t -*-
 (message "Setting up keybindings...")
 
 ;;* Global keybindings
 ;; buffer and tab bar navigation
-(global-set-key (kbd "s-[") 'my-previous-user-buffer)
-(global-set-key (kbd "s-]") 'my-next-user-buffer)
-(global-set-key (kbd "s-{") 'tab-bar-switch-to-prev-tab)
-(global-set-key (kbd "s-}") 'tab-bar-switch-to-next-tab)
+(keymap-global-set "s-[" 'my-previous-user-buffer)
+(keymap-global-set "s-]" 'my-next-user-buffer)
+(keymap-global-set "s-{" 'tab-bar-switch-to-prev-tab)
+(keymap-global-set "s-}" 'tab-bar-switch-to-next-tab)
 
 (keymap-global-unset "s-k")
-(keymap-global-set "s-K" 'my-kill-this-buffer)
+(keymap-global-set "s-K" 'kill-current-buffer)
 
-
-;;** Personal Keybindings Prefix
-(defcustom my-prefix "C-c C-SPC"
-  "Prefix for all personal keybinds."
-  :type 'string
-  :group 'my-emacs)
 
 ;;** Personal Leader Key
-(defcustom my-leader-map (make-sparse-keymap)
-  "An overriding keymap for <leader> key, for use with modal keybindings."
-  :type 'string
-  :group 'my-emacs)
+(defvar my-leader-map (make-sparse-keymap)
+  "An overriding keymap for <leader> key, for use with modal keybindings.")
 
 
 ;;* Meow for Modal Editing
 
-;; Set leader This isn't the sanctioned way to do this, but it seems to be the
-;; only way to get `leader' to properly display keys from
-;; `meow-leader-define-key' and my personal keymap in `lem+leader-map' I think
-;; the preferred way is via (setq meow-keypad-leader-dispatch "...") but
-;; that doesn't work as i want it to
-;; (add-to-list 'meow-keymap-alist (cons 'leader lem+leader-map))
-
-
 (defun meow-setup ()
-  (setq meow-cheatsheet-layout meow-cheatsheet-layout-colemak-dh) ;;used to be: meow-cheatsheet-layout-qwerty
-  ;; (setq meow-keypad-leader-dispatch "C-c <SPC>")
+  (setq meow-cheatsheet-layout meow-cheatsheet-layout-colemak-dh)
 
   (meow-motion-overwrite-define-key
-   '("s-[" . my-previous-user-buffer)
-   '("s-]" . my-next-user-buffer)
-   '("s-{" . tab-bar-switch-to-prev-tab)
-   '("s-}" . tab-bar-switch-to-next-tab)
    '("n" . meow-next)
    '("e" . meow-prev))
 
@@ -56,14 +35,11 @@
   (add-to-list 'meow-mode-state-list '(mu4e-main-mode . insert))
   (add-to-list 'meow-mode-state-list '(mu4e-view-mode . motion))
   (add-to-list 'meow-mode-state-list '(edebug-mode . insert))
-  (add-to-list 'meow-mode-state-list '(vterm-mode . insert))
   (add-to-list 'meow-mode-state-list '(ghostel-mode . insert))
 
   (setq meow-selection-command-fallback
         '((meow-change . meow-change-char)
           (meow-kill . meow-c-k)
-          ;; (meow-kill . meow-delete) ;; new val, see how I like it
-          ;; (meow-cancel-selection . keyboard-quit)
           (meow-cancel-selection . ignore)
           (meow-pop-selection . meow-pop-grab)
           (meow-beacon-change . meow-beacon-change-char)))
@@ -78,37 +54,19 @@
 
   (meow-leader-define-key
    ;; bindings for high frequency commands
-   '("<SPC>" . meow-M-x) ;; does this make C-c spc spc the user leader key?
-   ;; '("?" . consult-apropos)
-   ;; high frequency keybindings
-   ;; '(")" . "C-)")
-   ;; '("}" . "C-}")
-   ;; '("." . "M-.")
-   ;; '("[" . cpm/previous-user-buffer)
-   ;; '("]" . cpm/next-user-buffer)
-   ;; '("{" . tab-bar-switch-to-prev-tab)
-   ;; '("}" . tab-bar-switch-to-next-tab)
-   ;; '("TAB" . cpm/tab-bar-select-tab-dwim)
-   ;; '("SPC" . execute-extended-command)
+   '("<SPC>" . meow-M-x)
    '(";" . comment-line)
    '(":" . gptel-menu)
-   ;; '("/" . meow-keypad-describe-key)
-   ;; '("=" . hl-line-mode)
-   ;; '("'" . embark-act)
-   ;; '("\"" . embark-dwim)
    '("a" . my-open-agenda-in-workspace)
    '("A" . my-transient-AI)
    '("b" . my-transient-buffer)
    '("B" . my-bookmarks-tmenu)
-   '("c" . my-transient-comment)
    '("c" . org-capture)
    '("C" . my-transient-config)
-   ;; ;; '("d" . dired-jump)
    '("d" . dired-recent-open)
    '("D" . dired-jump-other-window)
    '("e" . my-transient-eval)
    '("f" . my-transient-files)
-   ;; '("F" . my+flycheck-keys)
    '("g" . my-transient-vc)
    '("j" . avy-goto-word-1)
    '("J" . avy-goto-char-timer)
@@ -117,23 +75,16 @@
    '("L" . my-transient-latex)
    '("M" . my-transient-email)
    '("n" . my-transient-notes)
-   ;; '("N" . consult-notes-search-in-all-notes)
    '("o" . my-transient-org)
    '("q" . my-transient-quit)
    '("r" . consult-register)
    '("R" . point-to-register)
    '("s" . my-transient-search)
-   '("S" . my-transient-slack)
-   ;; '("S" . cpm/search-in-input-dir)
+   '("S" . my-transient-spelling)
    '("t" . my-org-capture-todo)
    '("T" . my-transient-toggle)
-   ;; '("u" . my+user-keys)
-   ;; '("v" . my-transient-vc)
-   ;; '("V" . multi-vterm-dedicated-toggle)
    '("w" . my-transient-window)
    '("W" . my-transient-workspace)
-   ;; '("W" . my+workspace-keys)
-   ;; '("y" . yas-minor-mode-map)
    '("z" . avy-zap-up-to-char-dwim)
    ) ;; meow-leader-define
 
@@ -173,20 +124,14 @@
    '("F" . meow-find-expand)
    ;; g is the quick action key
    '("gg" . meow-visit)
-   
    '("gb" . meow-pop-to-mark)
    '("gf" . meow-unpop-to-mark)
    '("gB" . pop-global-mark)
-   
-   '("gl" . meow-goto-line)
-   ;; '("gc" . avy-goto-char-timer)
-   ;; '("gC" . avy-goto-char)
    '("g:" . jump-to-register)
    '("gr" . xref-find-references)
-   '("gR" . substitute-target)
+   '("gR" . substitute-target-in-buffer)
    '("gd" . xref-find-definitions)
    '("gD" . xref-find-definitions-other-window)
-   '("gs". meow-search)
 
    '("G" . meow-grab)
    '("h" . meow-mark-word)
@@ -205,7 +150,7 @@
    '("O" . meow-to-block)
    '("p" . meow-yank)
 
-   ;; (Q)uote quick bindgs
+   ;; (Q)uote quick bindings
    '("Qa" . embrace-add)
    '("Qc" . embrace-change)
    '("Qd" . embrace-delete)
@@ -213,9 +158,8 @@
    '("Q\(" . embrace-parens)
    '("Q\"" . embrace-double-quotes)
    '("Q'" .  embrace-single-quotes)
-   
+
    '("q" . meow-quit)
-   
    '("r" . meow-replace)
    '("s" . meow-insert)
    '("S" . meow-open-above)
@@ -225,8 +169,6 @@
    '("v" . meow-search)
    '("w" . meow-next-word)
    '("W" . meow-next-symbol)
-   '("x" . meow-delete)
-   '("X" . meow-backward-delete)
    '("y" . meow-save)
    '("Y" . meow-save-append)
    '("z" . meow-pop-selection)
@@ -234,40 +176,22 @@
    '("'" . repeat)
    '("&" . meow-query-replace-regexp)
    '("%" . meow-query-replace)
-   '("=" . meow-grab)
-   '("s-[" . my-previous-user-buffer)
-   '("s-]" . my-next-user-buffer)
-   '("s-{" . tab-bar-switch-to-prev-tab)
-   '("s-}" . tab-bar-switch-to-next-tab)
    '("<escape>" . meow-cancel-selection)))
 
 ;;** Meow
 ;; Note load Meow before loading personal keybindings, otherwise some might get clobbered
 (use-package meow
-  :ensure t
   :config
-  ;; set colors in bespoke theme
-  ;; use system keyboard
   (setq meow-use-clipboard t)
 
   (setq meow-use-dynamic-face-color nil)
   (setq meow-use-cursor-position-hack t)
-  ;; Make sure delete char means delete char
-  ;; see https://github.com/meow-edit/meow/issues/112
-  ;; (setq meow--kbd-delete-char "<deletechar>")
-
   (setq meow-goto-line-function 'consult-goto-line)
 
   ;; add additional meow things
   (meow-thing-register 'angle '(regexp "<" ">") '(regexp "<" ">"))
   (add-to-list 'meow-char-thing-table '(?a . angle))
 
-
-  ;; TODO: write a function to mark org blocks of all kinds for meow
-  ;; (meow-thing-register 'block '(regexp "#+begin_" "#+end_") '((regexp "#+begin_" "#+end_")))
-  ;; (add-to-list 'meow-char-thing-table '(?B . block))
-
-  ;; TODO: write a function to mark latex environments
 
   (meow-setup)
   (meow-global-mode 1))
@@ -292,15 +216,13 @@
     ("s" "Send Region" my-claude-code-send-region-with-prompt)
     ("t" "Toggle Window" claude-code-toggle)
     ("m" "Claude Menu" claude-code-transient)]
-   ;; ["Claude IDE"
-   ;;  ("i" "IDE Menu" claude-code-ide-menu)]
    ["Assistants"
     ("O" "Toggle gptel-mode" (lambda ()
+                               "Toggle gptel-mode in Org and Markdown buffers."
                                (interactive)
-                               "Enable gptel-mode in Org and Markdown buffers."
                                (when (or (derived-mode-p 'org-mode)
                                          (derived-mode-p 'markdown-mode))
-                                 (gptel-mode))))
+                                 (gptel-mode 'toggle))))
     ]])
 
 (transient-define-prefix my-transient-buffer ()
@@ -317,7 +239,7 @@
     ("i" "Imenu" consult-imenu)]
    ["Navigate"
     ("j" "Jump in Buffer" my-jump-in-buffer)
-    ("k" "Kill This Buffer" my-kill-this-buffer)
+    ("k" "Kill This Buffer" kill-current-buffer)
     ("K" "Kill Other Buffers" crux-kill-other-buffers)
     ("m" "Global Mark" consult-global-mark)
     ("n" "Create New Buffer" my-create-new-buffer)
@@ -336,29 +258,13 @@
     ("}" "Next Tab" tab-bar-switch-to-next-tab)
     ("<backtab>" "Switch to Prev Buffer" crux-switch-to-previous-buffer)]])
 
-;;*** Comment Keybindings
-(transient-define-prefix my-transient-comment ()
-  "Comment and wrap commands."
-  [["Comment"
-    ("c" "Comment DWIM" comment-dwim)
-    ("d" "Duplicate & Comment" crux-duplicate-and-comment-current-line-or-region)
-    ("l" "Comment Line" comment-line)]
-   ["Wrap"
-    ("o" "Org Block Wrap" org-insert-structure-template)
-    ;; ("y" "YAML Wrap" my-yaml-wrap)
-    ]])
-
 ;;*** Config Keybindings
 ;; FIXME: fix kill-and-archive so that it creates an archive file
 (transient-define-prefix my-transient-config ()
   "My configuration commands."
   ["Config Commands"
-   ;; ("c" "Goto custom.el" my-goto-custom.el)
    ("d" "Goto emacs-dir" my-goto-emacs-dir)
-   ;; ("e" "Goto early-init.el" my-goto-early-init.el)
    ("f" "Find emacs file" my-find-emacs-file)
-   ;; ("K" "Delete byte compiled files" my-delete-byte-compiled-files)
-   ;; ("l" "Load config" my-load-config)
    ("i" "Goto init.el" my-goto-init.el)
    ("I" "Load init file" my-load-init-file)
    ("o" "Goto org files" my-goto-org-files)
@@ -375,22 +281,16 @@
     ]
    ["Eval Expression/Region"
     ("e" "Eval Last Sexp" eval-last-sexp)
-    ("f" "Eval Defun" eval-defun)
-    ;; ("r" "Eval Last Region" eval-last-region)
-    ]])
+    ("f" "Eval Defun" eval-defun)]])
 
 ;;*** File Keybindings
 (transient-define-prefix my-transient-files ()
   "File operations transient."
   ["File Operations"
    ["Common"
-    ;; ("b" "Bookmark"                   consult-bookmark)
     ("f" "Find File"                  find-file)
     ("l" "Locate"                     consult-locate)
-    ;; ("o" "Open with"                  crux-open-with)
     ("s" "Save Buffer"                save-buffer)
-    ;; ("r" "Recent File"                consult-recent-file)
-    ;; ("y" "Show and Copy Filename"     my-show-and-copy-buffer-filename)
     ]
    ["Dired"
     ("C" "Copy Marked Files"          my-dired-copy-marked-files-add-date)
@@ -428,11 +328,6 @@
     ("O" "Cycle buffer" outline-cycle-buffer)]])
 
 
-;; Ensure org-heading-mail-send is autoloaded even before org-msg loads,
-;; so transient menus referencing it don't error.
-(add-to-list 'load-path (expand-file-name "~/projects/elisp/org-heading-mail"))
-(autoload 'org-heading-mail-send "org-heading-mail" "Send org heading as email." t)
-
 ;;*** Mail Keybindings
 (transient-define-prefix my-transient-email ()
   "Mu4e main menu."
@@ -457,9 +352,7 @@
     ("F" "Forward"             mu4e-compose-forward )
     ;; only draft messages can be edited
     ("E" "Edit draft"          mu4e-compose-edit)
-    ("S" "Supersede"           mu4e-compose-supersede)
-    ;; ("X" "Resend"          mu4e-compose-resend)
-    ]
+    ("S" "Supersede"           mu4e-compose-supersede)]
    ["Message"
     ("e" "Email to Kill Ring" my-email-to-kill-ring)
     ("d" "Send draft"         org-heading-mail-send)]
@@ -475,20 +368,15 @@
     ("b" "Toggle Buffer" org-roam-buffer-toggle)
     ("c" "Capture" org-roam-capture)
     ("f" "Find Node" org-roam-node-find)
-    ;; ("F" "Roam RG Search" bms/org-roam-rg-search)
     ("g" "Capture Tomorrow's Daily" org-roam-dailies-capture-tomorrow)
     ("G" "Graph" org-roam-graph)
     ("i" "Insert Node" org-roam-node-insert)
     ("j" "Capture Today's Daily" org-roam-dailies-capture-today)
-    ;; ("n" "New File Named" org-roam--new-file-named)
     ("o" "Get/Create ID" org-id-get-create)
     ("t" "Goto Today's Daily" org-roam-dailies-goto-today)
     ("y" "Capture Yesterday's Daily" org-roam-dailies-capture-yesterday)]
    ["Consult & Citar"
     ("A" "Consult Notes" consult-notes)
-    ;; ("C" "Citar Open Notes" citar-open-notes)
-    ;; ("r" "Citar Open Notes" citar-open-notes)
-    ;; ("R" "Cited Roam Notes" consult-notes-org-roam-cited)
     ("s" "Search in All Notes" consult-notes-search-in-all-notes)]])
 
 ;;*** Org-mode keybindings
@@ -553,18 +441,12 @@
 
 
 ;;*** Spelling Keybindings
-;; TODO:add grammar and other writing support
-(transient-define-prefix my-transient-writing ()
-  "Spelling, Grammar, and other support"
+(transient-define-prefix my-transient-spelling ()
+  "Spelling and correction commands."
   [["Spelling"
-    ("b" "Check Buffer" ispell-buffer)
-    ("B" "Consult Flyspell" consult-flyspell)
-    ("n" "Correct Next" flyspell-correct-next)
-    ("p" "Correct Previous" flyspell-correct-previous)]
-   ["Grammar"
-    ;; TODO: add transient for this
-    ]])
-
+    ("b" "Check buffer" jinx-correct-all)
+    ("n" "Next error" jinx-next)
+    ("p" "Previous error" jinx-previous)]])
 
 ;;*** Search Keybindings
 (transient-define-prefix my-transient-search ()
@@ -585,7 +467,6 @@
     ("r" "Query Replace" vr/query-replace)
     ("R" "Substitute Target" substitute-target-in-buffer)
     ("s" "Line Search" consult-line)
-    ;; ("S" "Flyspell Next Error" my-flyspell-ispell-goto-next-error)
     ("W" "Affe Find in Work" (lambda () (interactive) (affe-find "~/Work")))
     ("." "Line Symbol at Point" consult-line-symbol-at-point)])
 
@@ -602,8 +483,8 @@
    ["Editing"
     ("p" "Puni Global" puni-global-mode)
     ("P" "Show Paren" show-paren-mode)
-    ("s" "Flyspell" flyspell-mode)
-    ("S" "Flyspell Correct" flyspell-correct-wrapper)
+    ("s" "Jinx" jinx-mode)
+    ("S" "Jinx Correct" jinx-correct)
     ("E" "Eldoc" eldoc-mode)
     ("F" "Flymake" flymake-mode)]
    ["UI"
@@ -623,7 +504,6 @@
     ("L" "Magit Log Buffer File"      magit-log-buffer-file)
     ("P" "Magit Pull from Pushremote" magit-pull-from-pushremote)
     ("n" "VC Next Action"             vc-next-action)
-    ;; ("r" "Magit Reflog"               magit-reflog)
     ("s" "Magit Status"               magit-status)]])
 
 ;;*** Window Keybindings
@@ -634,7 +514,7 @@
    ["Split/Rotate"
     ("b" "Balance Windows" balance-windows)
     ("B" "Cycle 1/2 → 2/3 → 1/3" my-cycle-window-split-ratio)
-    ("o" "Other Window" my-other-window)
+    ("o" "Other Window" other-window)
     ("h" "Split & Focus Below" my-split-window-below-and-focus)
     ("H" "Split Below" split-window-below)
     ("v" "Split & Focus Right" my-split-window-right-and-focus)
@@ -644,12 +524,12 @@
     ("a" "Ace Window" ace-window)
     ("c" "Close Window" delete-window)
     ("m" "Maximize Window" delete-other-windows)
-    ("r" "Rotate Windows" my-rotate-windows)
-    ("R" "Rotate Windows Back" my-rotate-windows-backward)
+    ("r" "Rotate Windows" rotate-windows)
+    ("R" "Rotate Windows Back" rotate-windows-back)
     ("t" "Tear Off Window" tear-off-window)
     ]
    ["Config"
-    ("f" "Toggle Split" my-toggle-window-split)
+    ("f" "Toggle Split" transpose-window-layout)
     ("u" "Undo Config" winner-undo)
     ("U" "Redo Config" winner-redo)
     ("x" "Exchange Buffer in Window" my-window-exchange-buffer)
@@ -670,9 +550,7 @@
     ("N" "New activities" activities-new)
     ("S" "Suspend current" (lambda ()
                              (interactive)
-                             (activities-suspend (activities-current)))) 
-    ;; ("b" "Switch to buffer" tabspaces-switch-to-buffer)
-    
+                             (activities-suspend (activities-current))))
     ]
    ["Tabs"
     ("c" "Close" tab-close)
@@ -681,7 +559,7 @@
     ("p" "Switch project and open file" tabspaces-project-switch-project-open-file)
     ]
    ["Manage Workspaces"
-    ("c" "Clear buffers" tabspaces-clear-buffers)
+    ("C" "Clear buffers" tabspaces-clear-buffers)
     ("d" "Close workspace" tabspaces-close-workspace)
     ("k" "Kill buffers and close" tabspaces-kill-buffers-close-workspace)
     ("o" "Open or create project" tabspaces-open-or-create-project-and-workspace)
@@ -698,9 +576,11 @@
 
 ;;* Which Key
 (use-package which-key
+  :ensure nil ; built-in since Emacs 30.1
   :defer 1
-  :diminish ""
   :config
+  ;; hide the mode-line lighter (diminish is not installed)
+  (setq which-key-lighter "")
   ;; Allow C-h to trigger which-key before it is done automatically
   (setq which-key-show-early-on-C-h t)
   ;; Set the time delay (in seconds) for the which-key popup to appear.
@@ -708,17 +588,12 @@
   ;; triggered.
   (setq which-key-idle-delay .75)
   (setq which-key-idle-secondary-delay 0.05)
-  ;; use widow
   (setq which-key-popup-type 'side-window)
   (setq which-key-side-window-max-height 0.5)
   (setq which-key-allow-imprecise-window-fit nil)
   (setq which-key-side-window-location 'top)
-  ;; use minibuffer
-  ;; (which-key-setup-minibuffer)
-  ;; separator
   (setq which-key-separator " → ")
   (which-key-mode))
 
-;;* End keybindings
 (provide 'my-setup-keybindings)
-
+;;; my-setup-keybindings.el ends here

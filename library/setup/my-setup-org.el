@@ -261,82 +261,8 @@
   ;; (org-agenda-sorting-strategy
   ;;  '((agenda time-up) (todo time-up) (tags time-up) (search time-up)))
 
-  (calendar-week-start-day 1) ;; Start week on Monday
-
-  ;; Agenda Custom Commands
-  ;; Configure custom agenda views
-  ;; https://orgmode.org/manual/Storing-searches.html#Storing-searches
-  ;; https://systemcrafters.cc/emacs-from-scratch/organize-your-life-with-org-mode/
-  ;; https://doc.norang.ca/org-mode.html#CustomAgendaViews
-  (org-agenda-custom-commands
-   (quote (("h" "Ongoing and Habits" tags-todo "ongoing"
-            ((org-agenda-overriding-header "Habits")
-             (org-agenda-sorting-strategy
-              '(todo-state-down effort-up category-keep))))
-           (" " "Agenda"
-            ((agenda "" nil)
-             (tags "REFILE"
-                   ((org-agenda-overriding-header "Tasks to Refile")
-                    (org-tags-match-list-sublevels nil)))
-             (tags-todo "-CANCELLED/!"
-                        ((org-agenda-overriding-header "Stuck Projects")
-                         (org-agenda-skip-function 'bh/skip-non-stuck-projects)
-                         (org-agenda-sorting-strategy
-                          '(category-keep))))
-             (tags-todo "-HOLD-CANCELLED/!"
-                        ((org-agenda-overriding-header "Projects")
-                         (org-agenda-skip-function 'bh/skip-non-projects)
-                         (org-tags-match-list-sublevels 'indented)
-                         (org-agenda-sorting-strategy
-                          '(category-keep))))
-             (tags-todo "-CANCELLED/!NEXT"
-                        ((org-agenda-overriding-header (concat "Project Next Tasks"
-                                                               (if bh/hide-scheduled-and-waiting-next-tasks
-                                                                   ""
-                                                                 " (including WAITING and SCHEDULED tasks)")))
-                         (org-agenda-skip-function 'bh/skip-projects-and-habits-and-single-tasks)
-                         (org-tags-match-list-sublevels t)
-                         (org-agenda-todo-ignore-scheduled bh/hide-scheduled-and-waiting-next-tasks)
-                         (org-agenda-todo-ignore-deadlines bh/hide-scheduled-and-waiting-next-tasks)
-                         (org-agenda-todo-ignore-with-date bh/hide-scheduled-and-waiting-next-tasks)
-                         (org-agenda-sorting-strategy
-                          '(todo-state-down effort-up category-keep))))
-             (tags-todo "-REFILE-CANCELLED-WAITING-HOLD/!"
-                        ((org-agenda-overriding-header (concat "Project Subtasks"
-                                                               (if bh/hide-scheduled-and-waiting-next-tasks
-                                                                   ""
-                                                                 " (including WAITING and SCHEDULED tasks)")))
-                         (org-agenda-skip-function 'bh/skip-non-project-tasks)
-                         (org-agenda-todo-ignore-scheduled bh/hide-scheduled-and-waiting-next-tasks)
-                         (org-agenda-todo-ignore-deadlines bh/hide-scheduled-and-waiting-next-tasks)
-                         (org-agenda-todo-ignore-with-date bh/hide-scheduled-and-waiting-next-tasks)
-                         (org-agenda-sorting-strategy
-                          '(category-keep))))
-             (tags-todo "-REFILE-CANCELLED-WAITING-HOLD/!"
-                        ((org-agenda-overriding-header (concat "Standalone Tasks"
-                                                               (if bh/hide-scheduled-and-waiting-next-tasks
-                                                                   ""
-                                                                 " (including WAITING and SCHEDULED tasks)")))
-                         (org-agenda-skip-function 'bh/skip-project-tasks)
-                         (org-agenda-todo-ignore-scheduled bh/hide-scheduled-and-waiting-next-tasks)
-                         (org-agenda-todo-ignore-deadlines bh/hide-scheduled-and-waiting-next-tasks)
-                         (org-agenda-todo-ignore-with-date bh/hide-scheduled-and-waiting-next-tasks)
-                         (org-agenda-sorting-strategy
-                          '(category-keep))))
-             (tags-todo "-CANCELLED+WAITING|HOLD/!"
-                        ((org-agenda-overriding-header (concat "Waiting and Postponed Tasks"
-                                                               (if bh/hide-scheduled-and-waiting-next-tasks
-                                                                   ""
-                                                                 " (including WAITING and SCHEDULED tasks)")))
-                         (org-agenda-skip-function 'bh/skip-non-tasks)
-                         (org-tags-match-list-sublevels nil)
-                         (org-agenda-todo-ignore-scheduled bh/hide-scheduled-and-waiting-next-tasks)
-                         (org-agenda-todo-ignore-deadlines bh/hide-scheduled-and-waiting-next-tasks)))
-             (tags "-REFILE/"
-                   ((org-agenda-overriding-header "Tasks to Archive")
-                    (org-agenda-skip-function 'bh/skip-non-archivable-tasks)
-                    (org-tags-match-list-sublevels nil))))
-            nil)))))  ;; use-package org-agenda
+  (calendar-week-start-day 1)) ;; Start week on Monday
+  ;; use-package org-agenda
 
 ;; ;;*** org-mode helper functions
 ;; ;; Agenda Jump to Dashboard
@@ -362,44 +288,26 @@
   (org-capture nil "t"))
 
 (setq org-capture-templates
-      ;; Note the ` and , to get concat to evaluate properly
-      `(
-        ("f" "Firefox Bookmark"
+      `(("f" "Firefox Bookmark"
          entry (file+headline org-default-notes-file "Inbox")
          "* TODO %i %?\n:PROPERTIES:\n:Created: %U\n:END:\nReference: %(grab-mac-link 'firefox 'org)\n"
          :prepend t
-         :empty-lines 1
-         :created t)
+         :empty-lines 1)
         ("j" "Job Posting"
          entry (file+headline org-default-notes-file "Jobs")
          "* TODO %i %(grab-mac-link 'firefox 'org) \nDEADLINE: %^t\n:PROPERTIES:\n:Created: %U\n:END:\n %?"
          :prepend t
-         :empty-lines 1
-         :created t)
+         :empty-lines 1)
         ("t" "Todo"
          entry (file+headline org-default-notes-file "Inbox")
          "* TODO %i%? \n:PROPERTIES:\n:Created: %U\n:END:\n"
          :prepend t
-         :empty-lines 1
-         :created t)  ; template
+         :empty-lines 1)
         ("M" "Mail todo"
          entry (file+headline org-default-notes-file "Mail")
          "* TODO %?\n:PROPERTIES:\n:Created: %U\n:END:\n%a\n"
          :prepend t
-         :created t
-         :empty-lines 1)
-        ("W"
-         "Weight"
-         table-line
-         (file+olp "~/Dropbox/org-roam/20210514211724-racing_weight.org" "Weight" "Data")
-         "| %U | %? | "
-         :unnarrowed t)))
-;; enables meow insert mode when entering the org-capture interface. I've disabled modal editors for now.
-(eval-after-load 'org-capture
-  (progn
-    (defun my-org-capture-turn-on-meow-insert-mode ()
-      (meow-insert))
-    (add-hook 'org-capture-mode-hook #'my-org-capture-turn-on-meow-insert-mode)))
+         :empty-lines 1)))
 
 ;;** org-clock
 (use-package org-clock
@@ -407,9 +315,6 @@
   :after org
   :custom
   (org-clock-history-length 23) ;; show more items in the org-clock dispatcher
-  ;; Change tasks to NEXT when clocking in
-  ;; (org-clock-in-switch-to-state 'bh/clock-in-to-next) ;TODO: fix underlying functions
-
   ;; Sometimes I change tasks I'm clocking quickly - this removes clocked tasks with 0:00 duration
   (org-clock-out-remove-zero-time-clocks t)
   ;; Clock out when moving task to a done state
@@ -419,56 +324,16 @@
   ;; Include current clocking task in clock reports
   (org-clock-report-include-clocking-task t)
   :config
-
-  ;; borrowed from:https://doc.norang.ca/org-mode.html#Clocking
-  (defun bh/clock-in-to-next (kw)
-    "Switch a task from TODO to NEXT when clocking in.
-Skips capture tasks, projects, and subprojects.
-Switch projects and subprojects from NEXT back to TODO"
-    (when (not (and (boundp 'org-capture-mode) org-capture-mode))
-      (cond
-       ((and (member (org-get-todo-state) (list "TODO"))
-             (bh/is-task-p))
-        "NEXT")
-       ((and (member (org-get-todo-state) (list "NEXT"))
-             (bh/is-project-p))
-        "TODO"))))  ) ;; use-package org-clock
+  ;; Actually register clock persistence on the kill-emacs/startup hooks.
+  (org-clock-persistence-insinuate)) ;; use-package org-clock
 
 
 ;;* org-ql
 ;; search org files with a query language org-ql
 (use-package org-ql
-  :after (org) ;; for org agenda searches
-  :demand t)
+  :after (org)) ;; for org agenda searches
 
 ;;** org-ql associated functions
-(defun my-org-agenda-next ()
-  "Show the agenda block, followed by NEXT tasks in every project.
-The NEXT tasks are sorted by priority."
-  (interactive)
-  (org-ql-search (org-agenda-files)
-    '(and (or (ts-active :on today)
-              (deadline auto)
-              (scheduled :to today))
-          (not (done)))
-    :title "My Agenda View"
-    ;; The `org-super-agenda-groups' setting is used automatically when set, or it
-    ;; may be overriden by specifying it here:
-    :super-groups '((:name "bla"
-                           :tag "writing")
-                    (:todo ("NEXT" "TODO")
-                           :order 7)
-                    (:name "Personal"
-                           :habit t
-                           :tag "personal"
-                           :order 3)
-                    (:todo "WAITING"
-                           :order 6)
-                    (:priority "A" :order 1)
-                    (:priority "B" :order 2)
-
-                    (:priority "C" :order 2))))
-
 ;; inspiration for the functions below from here:
 ;; https://sachachua.com/blog/2024/01/using-consult-and-org-ql-to-search-my-org-mode-agenda-files-and-sort-the-results-to-prioritize-heading-matches/
 (defun my-consult-org-ql-agenda-jump ()
@@ -522,7 +387,8 @@ Within those groups, sort by date and priority."
 ;;* Other org-mode addons
 ;;** svg-tag-mode
 ;; A minor mode to replace keywords or regular expression with SVG tags.
-(use-package svg-tag-mode)
+(use-package svg-tag-mode
+  :commands (svg-tag-make svg-tag-mode))
 ;;** Org-Appear (Show Markup/Pretty Entities)
 ;; show markup at point -- this should be part of org!
 (use-package org-appear
@@ -555,8 +421,6 @@ Within those groups, sort by date and priority."
   (org-modern-hide-stars 'leading)
   (org-modern-todo nil)
   (org-modern-tag t)
-  ;; Customize this per your font
-  (org-modern-label-border .25)
   ;; Note that these stars allow differentiation of levels
   ;; "①" "②" "③" "④" "⑤" "⑥" "⑦"
   (org-modern-star 'replace)
@@ -568,14 +432,6 @@ Within those groups, sort by date and priority."
   (set-face-attribute 'org-modern-date-active nil :inherit 'fixed-pitch)
   (set-face-attribute 'org-modern-date-inactive nil :inherit 'fixed-pitch))
 
-
-;;** Org Contrib
-;; (use-package org-contrib
-;;   :after org
-;;   :config
-;;   ;; ignore export of headlines marked with :ignore: tag
-;;   (require 'ox-extra)
-;;   (ox-extras-activate '(ignore-headlines)))
 
 ;;** Org Export
 ;; Useful base export settings
@@ -595,38 +451,16 @@ Within those groups, sort by date and priority."
   (org-export-with-author nil)
   (org-export-with-title nil)
 
-
-  (org-export-async-debug t)
   (org-html-postamble nil) ;; dont export postamble
-  (org-export-async-init-file nil)
   (org-export-backends '(html latex pandoc md ascii)) ;;org-export-dispatcher menu
   ;; org v8 bundled with Emacs 24.4
   (org-odt-preferred-output-format "docx")
   :config
-  ;; Only OSX need below setup
-  (defun my-setup-odt-org-convert-process ()
-    (interactive)
-    (let ((cmd "/Applications/LibreOffice.app/Contents/MacOS/soffice"))
-      (when (and (eq system-type 'darwin) (file-exists-p cmd))
-        ;; org v8
-        (setq org-odt-convert-processes '(("LibreOffice" "/Applications/LibreOffice.app/Contents/MacOS/soffice --headless --convert-to %f%x --outdir %d %i"))))))
-  (my-setup-odt-org-convert-process))
-
-;;** use pandoc with org export
-(use-package ox-pandoc
-  :if (executable-find "pandoc")
-  :after (org ox)
-  :custom
-  (org-pandoc-command (executable-find "pandoc"))
-  (org-pandoc-options '((standalone .  t)))
-  (org-pandoc-options-for-docx '((standalone . nil)))
-  ;; (org-pandoc-options-for-beamer-pdf '((pdf-engine . "lualatex")))
-  (org-pandoc-options-for-latex-pdf '((pdf-engine . "lualatex")))
-  (org-pandoc-format-extensions '(org+smart)))
-;;** Org Html Conversion
-
-(use-package htmlize
-  :commands (htmlize-buffer))
+  ;; Only OSX needs below setup
+  (when (and (eq system-type 'darwin)
+             (file-exists-p "/Applications/LibreOffice.app/Contents/MacOS/soffice"))
+    (setq org-odt-convert-processes
+          '(("LibreOffice" "/Applications/LibreOffice.app/Contents/MacOS/soffice --headless --convert-to %f%x --outdir %d %i")))))
 
 ;;** Org ID
 ;; Use org ids for reference
@@ -637,22 +471,6 @@ Within those groups, sort by date and priority."
   (org-id-locations-file (concat my-cache-dir ".org-id-locations"))
   (org-id-method 'ts) ;; use timestamp for id
   (org-id-link-to-org-use-id 'create-if-interactive)) ;; create ids
-
-
-;;** org-mac-link
-(use-package org-mac-link
-  :after (org)
-  :if sys-mac
-  :ensure t
-  :config
-  ;; Remove some org-mac-link options
-  (setq org-mac-grab-Mail-app-p nil)
-  (setq org-mac-grab-Outlook-app-p nil)
-  (setq org-mac-grab-devonthink-app-p nil)
-  (setq org-mac-grab-Together-app-p nil)
-  (setq org-mac-grab-Skim-app-p nil)
-  (setq org-mac-grab-qutebrowser-app-p nil)
-  (setq org-mac-grab-Evernote-app-p nil))
 
 
 ;;** TODO Keywords and tags
@@ -678,7 +496,7 @@ Within those groups, sort by date and priority."
 
 ;;** Org Archive
 ;; Tell org where to archive completed tasks
-(setq org-archive-location (concat org-directory "/org-archive/archived.org::datetree/"))
+(setq org-archive-location (concat org-directory "org-archive/archived.org::datetree/"))
 (setq org-archive-subtree-save-file-p t) ;; save archive file whenever something is archived
 (setq org-archive-subtree-add-inherited-tags t) ;; save inherited tags when archiving a sub-Entry
 
@@ -718,15 +536,7 @@ Within those groups, sort by date and priority."
   (org-refile-use-cache t)  ;; use cache for org refile
   (org-refile-use-outline-path 'file)
   (org-outline-path-complete-in-steps nil)
-  (org-refile-allow-creating-parent-nodes 'confirm)
-  :config
-  ;; Set a timer to regenerate the refile cache automatically every time Emacs is idled for 5 mins:
-  ;; ref: https://yiming.dev/blog/2018/03/02/my-org-refile-workflow/
-  (run-with-idle-timer 300 t (lambda ()
-                               (org-refile-cache-clear)
-                               ;; ignore-errors: non-org buffers (e.g. *elfeed-entry*) cause
-                               ;; "Major mode must be org-mode" errors when scanned as refile targets
-                               (ignore-errors (org-refile-get-targets)))))
+  (org-refile-allow-creating-parent-nodes 'confirm))
 
 ;;** Open Files in Default Application
 ;;Open files in their default applications (ms word being the prime example)
@@ -796,36 +606,6 @@ region between the current heading and the next one, if any."
   (unless (my--cursor-outside-of-any-word)
     (mark-word)))
 
-;;** Narrow & Advance/Retreat
-;; Functions to advance forwards or backwards through narrowed tree
-(defun my-org-advance ()
-  (interactive)
-  (when (buffer-narrowed-p)
-    (goto-char (point-min))
-    (widen)
-    (org-forward-heading-same-level 1))
-  (org-narrow-to-subtree))
-
-(defun my-org-retreat ()
-  (interactive)
-  (when (buffer-narrowed-p)
-    (goto-char (point-min))
-    (widen)
-    (org-backward-heading-same-level 1))
-  (org-narrow-to-subtree))
-
-;; Clone and Narrow
-(defun my-clone-buffer-and-narrow ()
-  "Clone buffer and narrow outline tree"
-  (interactive)
-  (let ((buf (clone-indirect-buffer-other-window nil nil)))
-    (with-current-buffer buf
-      (cond ((derived-mode-p 'org-mode)
-             (org-narrow-to-element))
-            ((derived-mode-p 'markdown-mode)
-             (markdown-narrow-to-subtree))))
-    (switch-to-buffer-other-window buf)))
-
 ;;  Goto Org Files
 (defun my-goto-org-files ()
   "goto org-files directory"
@@ -836,101 +616,6 @@ region between the current heading and the next one, if any."
   "goto org-inbox"
   (interactive)
   (find-file (concat org-directory "inbox.org")))
-(defun my-goto-todo.org ()
-  "goto org-todo"
-  (interactive)
-  (find-file (concat org-directory "todo.org")))
-(defun my-goto-conferences.org ()
-  "goto org-conferences"
-  (interactive)
-  (find-file (concat org-directory "conferences.org")))
-(defun my-goto-referee-reports.org ()
-  "goto org referee reports"
-  (interactive)
-  (find-file (concat org-directory "referee-reports.org")))
-(defun my-goto-reference.org ()
-  "goto org reference notes"
-  (interactive)
-  (find-file (concat org-directory "reference.org")))
-(defun my-goto-someday.org ()
-  "goto org-someday"
-  (interactive)
-  (find-file (concat org-directory "someday.org")))
-(defun my-goto-reading.org ()
-  "goto reading list"
-  (interactive)
-  (find-file (concat org-directory "reading.org")))
-(defun my-goto-writing.org ()
-  "goto writing list"
-  (interactive)
-  (find-file (concat org-directory "writing.org")))
-(defun my-goto-teaching.org ()
-  "goto teaching file"
-  (interactive)
-  (find-file (concat org-directory "teaching.org")))
-
-;; Org demote/promote region
-(defun my-demote-everything (number beg end)
-  "Add a NUMBER of * to all headlines between BEG and END.
-    Interactively, NUMBER is the prefix argument and BEG and END are
-    the region boundaries."
-  (interactive "p\nr")
-  (save-excursion
-    (save-restriction
-      (save-match-data
-        (widen)
-        (narrow-to-region beg end)
-        (goto-char (point-min))
-        (let ((string (make-string number ?*)))
-          (while (search-forward-regexp "^\\*" nil t)
-            (insert string)))))))
-
-;;** Org Hide Property Drawers
-;; From [[https://www.reddit.com/r/emacs/comments/9htd0r/how_to_completely_hide_the_properties_drawer_in/e6fehiw][Reddit]]
-
-(defun my-org-toggle-properties ()
-  "Toggle visibility of properties in current header if it exists."
-  (save-excursion
-    (when (not (org-at-heading-p))
-      (org-previous-visible-heading 1))
-    (when (org-header-property-p)
-      (let* ((a (re-search-forward "\n\\:" nil t)))
-        (if (outline-invisible-p (point))
-            (outline-show-entry)
-          (org-cycle-hide-drawers 'all))))))
-
-
-;;** Org Create Check Box From List Item
-;; A useful macro for converting list items to checkboxes
-(fset 'my-org-checkbox-from-list
-      [?a ?  ?\[ ?  ?\] escape ?\M-x return])
-
-;;** Org Copy Link
-;; see https://emacs.stackexchange.com/a/63038/11934
-(defun my-org-link-copy-at-point ()
-  (interactive)
-  (save-excursion
-    (let* ((ol-regex "\\[\\[.*?:.*?\\]\\(\\[.*?\\]\\)?\\]")
-           (beg (re-search-backward "\\[\\["))
-           (end (re-search-forward ol-regex))
-           (link-string (buffer-substring-no-properties (match-beginning 0) (match-end 0))))
-      (kill-new link-string)
-      (message "Org link %s is copied." link-string))))
-
-;; Remove Org Links
-;; https://emacs.stackexchange.com/a/10714/11934
-(defun my-org-replace-link-by-link-description ()
-  "Replace an org link by its description or, if empty, its address"
-  (interactive)
-  (if (org-in-regexp org-link-bracket-re 1)
-      (save-excursion
-        (let ((remove (list (match-beginning 0) (match-end 0)))
-              (description
-               (if (match-end 2)
-                   (org-match-string-no-properties 2)
-                 (org-match-string-no-properties 1))))
-          (apply 'delete-region remove)
-          (insert description)))))
 
 ;; Reschedule
 (defun my-org-reschedule ()
@@ -980,7 +665,10 @@ the current region, if a region is selected, or the current tree."
 ;; * Third party org-mode mode
 ;;** Org-Web-Tools
 ;; Download snapshots of websites straight into an org file
-(use-package org-web-tools)
+(use-package org-web-tools
+  :commands (org-web-tools-insert-link-for-url
+             org-web-tools-read-url-as-org
+             org-web-tools-insert-web-page-as-entry))
 
 ;;** org-transclusion
 ;; include part of an org file in another file
@@ -1002,55 +690,16 @@ the current region, if a region is selected, or the current tree."
    :background "#f5f5dc"))
 
 
-;;** TOC-Org
-;; export TOCs in org and markdown files for GitHub
-;; DISABLED: testing if this causes hangs when collapsing headers in large org files
-(use-package toc-org
-  :disabled t
-  :hook ((org-mode . toc-org-mode)
-         (markdown-mode . toc-org-mode)))
 ;;** org-bookmark-heading
 ;;Use the standard Emacs bookmark commands, C-x r m, etc, to mark org headings
-(use-package org-bookmark-heading)
-
-;;** org-sticky-header
-(use-package org-sticky-header
-  :disabled t
-  :hook (org-mode . org-sticky-header-mode)
-  :custom
-  (org-sticky-header-full-path 'full))
-
-;;** org appearance and ricing
-;;*** Org-Appear (Show Markup/Pretty Entities)
-;; show markup at point -- this should be part of org!
-(use-package org-appear
-  :after org
-  :commands (org-appear-mode)
-  :hook (org-mode . org-appear-mode)
-  :custom
-  (org-appear-autoemphasis  t)
-  (org-appear-autolinks nil)
-  (org-appear-autosubmarkers t))
-
-;;** easier highlighting in org
-
-;; This library provides two additional markers !!
-;; and !@ over and above those in org-emphasis-alist.
-;; Text enclosed in !! is highlighted in yellow, and exported likewise
-;; Text enclosed in !@ is displayed in red, and exported likewise
-;; (use-package org-extra-emphasis
-;;   :vc (:url "https://github.com/QiangF/org-extra-emphasis" :rev :newest)) 
+(use-package org-bookmark-heading
+  :defer t)
 
 ;;** org-sticky-header
 (use-package org-sticky-header
   :hook (org-mode . org-sticky-header-mode)
   :custom
   (org-sticky-header-full-path 'full))
-
-
-;; Better list behavior
-(use-package org-autolist
-  :hook (org-mode . org-autolist-mode))
 
 ;;** org-super-agenda
 (use-package org-super-agenda
@@ -1193,58 +842,47 @@ the current region, if a region is selected, or the current tree."
                              (:name "Unscheduled"
                                     :scheduled nil
                                     :order 5)
-                             (:discard (:anything t))))))
-                ;; (tags-todo "TODO=\"TODO\"-project-cooking-routine-errands-shopping-video-evilplans"
-                ;;            ((org-agenda-skip-function 'my-org-agenda-skip-scheduled)
-                ;;             (org-agenda-prefix-format "%-6e ")
-                ;;             (org-agenda-overriding-header "Unscheduled TODO entries: ")
-                ;;             (org-agenda-sorting-strategy '(priority-down effort-up tag-up category-keep))))))
-                ;; show all emacs tasks, with the top-most entry as NEXT, then TODO, then WAITING
-                ("e" "Emacs" tags "emacs"
-                 ((org-super-agenda-groups
-                   '((:name "Next Action"
-                            :todo "NEXT"
-                            :order 1)
-                     (:name "TODOs"
-                            :todo "TODO"
-                            :order 2)))))
-                ("i" "Inbox" alltodo ""
-                 ((org-agenda-files '("~/sync/orgzly/Inbox.org" "~/sync/orgzly/computer-inbox.org"))))
+                             (:discard (:anything t)))))))) ;; ("a" "Agenda")
+              ;; show all emacs tasks, with the top-most entry as NEXT, then TODO, then WAITING
+              ("e" "Emacs" tags "emacs"
+               ((org-super-agenda-groups
+                 '((:name "Next Action"
+                          :todo "NEXT"
+                          :order 1)
+                   (:name "TODOs"
+                          :todo "TODO"
+                          :order 2)))))
 
-                ;; quick tasks, with NEXT first, but limited to five entries
-                ;; then show all todo ENTRIES
-                ;; finally, show everything else
-                ("q" "Quick tasks" alltodo ""
-                 ((org-agenda-overriding-header "")
-                  (org-super-agenda-groups
-                   '((:name "Next Action"
-                            :take (5 (:and (:todo "NEXT"
-                                                  :effort< "0:30")))
-                            :order 1)
-                     (:name "TODOs"
-                            :and (:todo "TODO"
-                                        :effort< "0:30")
-                            :order 2)
-                     (:name "Everything else"
-                            :and (:not (:todo "TODO")
-                                       :effort< "0:30")
-                            :discard (:anything t)
-                            :order 3)))))
-                ("0" "Unestimated tasks" tags-todo "EFFORT=\"\"")
-                ("d" "Timeline for today" ((agenda "" ))
-                 ((org-agenda-ndays 1)
-                  (org-agenda-show-log t)
-                  (org-agenda-log-mode-items '(clock closed))
-                  (org-agenda-clockreport-mode t)
-                  (org-agenda-entry-types '())))
-                ("." "Waiting for" todo "WAITING"))))))
+              ;; quick tasks, with NEXT first, but limited to five entries
+              ;; then show all todo ENTRIES
+              ;; finally, show everything else
+              ("q" "Quick tasks" alltodo ""
+               ((org-agenda-overriding-header "")
+                (org-super-agenda-groups
+                 '((:name "Next Action"
+                          :take (5 (:and (:todo "NEXT"
+                                                :effort< "0:30")))
+                          :order 1)
+                   (:name "TODOs"
+                          :and (:todo "TODO"
+                                      :effort< "0:30")
+                          :order 2)
+                   (:name "Everything else"
+                          :and (:not (:todo "TODO")
+                                     :effort< "0:30")
+                          :discard (:anything t)
+                          :order 3)))))
+              ("0" "Unestimated tasks" tags-todo "EFFORT=\"\"")
+              ("d" "Timeline for today" ((agenda "" ))
+               ((org-agenda-span 1)
+                (org-agenda-show-log t)
+                (org-agenda-log-mode-items '(clock closed))
+                (org-agenda-clockreport-mode t)
+                (org-agenda-entry-types '())))
+              ("." "Waiting for" todo "WAITING"))))
 
 
 ;;** org-babel
-
-(org-babel-do-load-languages
- 'org-babel-load-languages
- '((python . t)))
 
 ;; Add mimore LaTeX class for org export
 ;; Clone from: https://github.com/Pseudomanifold/latex-mimore
@@ -1268,9 +906,10 @@ the current region, if a region is selected, or the current tree."
 
 (setq org-babel-python-command "python")
 
-
-(setq python-shell-interpreter "python"
-      python-shell-interpreter-args "-i --simple-prompt")
+(use-package ob-python
+  :ensure nil
+  :after org
+  :commands (org-babel-execute:python))
 
 (use-package ob-lisp
   :ensure nil
@@ -1301,7 +940,7 @@ the current region, if a region is selected, or the current tree."
   (org-download-image-latex-width 500)
   (org-download-screenshot-method "screencapture")
   (org-download-timestamp "%Y-%m-%d_%H-%M-%S_")
-  :hook (dired-mode. org-download-enable))
+  :hook (dired-mode . org-download-enable))
 
 ;;** org export extensions
 ;; Export w/pandoc
@@ -1420,23 +1059,21 @@ the current region, if a region is selected, or the current tree."
 ;;** Productivity
 ;; time tracking
 (use-package org-pomodoro
-  :commands (org-pomodoro ijf-org-clock-time-xbar)
+  :commands (org-pomodoro)
   :after org
-  :defer 5 ;; load after ~5 idle seconds.
   :config
   ;; integrate org-pomodoro with the xbar so I can see timer minutes remaining at all times
   ;; ref: https://colekillian.com/posts/org-pomodoro-and-polybar/
   (setq org-pomodoro-audio-player "/usr/bin/afplay")
-  (setq org-pomodoro-start-sound "~/.config/custom-sounds/water-drip.mp3")
-  (setq org-pomodoro-killed-sound "~/.config/custom-sounds/water-drip.mp3")
-  (setq org-pomodoro-finished-sound "~/.config/custom-sounds/water-drip.mp3")
-  (setq org-pomodoro-short-break-sound "~/.config/custom-sounds/water-drip.mp3")
-  (setq org-pomodoro-long-break-sound "~/.config/custom-sounds/water-drip.mp3")
+  (dolist (sound '(org-pomodoro-start-sound
+                   org-pomodoro-killed-sound
+                   org-pomodoro-finished-sound
+                   org-pomodoro-short-break-sound
+                   org-pomodoro-long-break-sound))
+    (set sound "~/.config/custom-sounds/water-drip.mp3"))
   (setq org-pomodoro-keep-killed-pomodoro-time t)
   (setq org-pomodoro-expiry-time 999999) ;; stop command from asking about resetting count
-  (setq org-pomodoro-length 45)
-
-  ) ;; org-pomodoro
+  (setq org-pomodoro-length 45)) ;; org-pomodoro
 
 ;; Defined at top level so hammerspoon/org-timer.sh can call it via
 ;; emacsclient before org-pomodoro has been loaded (deferred by :defer 5).
@@ -1530,7 +1167,7 @@ If only the list buffer is shown, split the frame first with \\[org-timeblock-to
           (with-current-buffer list-buf
             (org-timeblock-select-block-for-current-entry))
           ;; Return focus to the SVG window.
-          (when-let ((w (or svg-win (get-buffer-window org-timeblock-buffer))))
+          (when-let* ((w (or svg-win (get-buffer-window org-timeblock-buffer))))
             (select-window w))))))
   (define-key org-timeblock-mode-map      (kbd "j") #'my-org-timeblock-avy-jump)
   (define-key org-timeblock-list-mode-map (kbd "j") #'my-org-timeblock-avy-jump))
@@ -1561,15 +1198,6 @@ If only the list buffer is shown, split the frame first with \\[org-timeblock-to
   (org-mru-clock-how-many 100)
   :config
   (add-hook 'minibuffer-setup-hook #'org-mru-clock-embark-minibuffer-hook))
-
-;;** quality of life improvements
-;; make org-mode more cozy!
-;; org-bookmark-heading
-;;Use the standard Emacs bookmark commands, C-x r m, etc, to mark org headings
-;; NOTE: will be upstreamed?
-;; TODO: not working? still need?
-;; https://github.com/alphapapa/org-bookmark-heading/issues/1
-(use-package org-bookmark-heading)
 
 ;;* Provide org
 (provide 'my-setup-org)
