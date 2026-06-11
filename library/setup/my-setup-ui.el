@@ -7,12 +7,6 @@
   :ensure nil
   :defer 1
   :config
-  ;; Hide mouse cursor while typing. Why?
-  ;; .. it can overlap characters we want to see.
-  (setq make-pointer-invisible t)
-  ;; No audible bell/alert
-  (setq ring-bell-function 'ignore)
-  (setq-default visible-bell t)
   ;; (Don't) Blink the cursor
   (blink-cursor-mode 0)
   ;; Skip bidi reordering for LTR-only text (perf win in large files)
@@ -21,26 +15,8 @@
   (setq bidi-inhibit-bpa t)
   ;; Defer fontification while typing (smoother scrolling/input)
   (setq redisplay-skip-fontification-on-input t)
-  ;; Use "y" and "n" to confirm/negate prompt instead of "yes" and "no"
-  ;; Using `advice' here to make it easy to reverse in custom
-  ;; configurations with `(advice-remove 'yes-or-no-p #'y-or-n-p)'
-  ;;
   ;; short answers for y-or-n questions
-  (if (boundp 'use-short-answers)
-      (setq use-short-answers t)
-    (advice-add 'yes-or-no-p :override #'y-or-n-p)))
-
-;; Set custom settings in a separate file in the cache-dir
-(use-package cus-edit
-  :ensure nil
-  :defer 1
-  :custom
-  (custom-file (expand-file-name "custom.el" my-cache-dir))
-  :config
-  (when (not (file-exists-p custom-file))
-    (write-file custom-file))
-  (when (file-exists-p custom-file)
-    (load custom-file)))
+  (setq use-short-answers t))
 
 ;; Text file settings
 (use-package files
@@ -51,9 +27,56 @@
   (require-final-newline t)
   ;; Allow large(r) files
   (large-file-warning-threshold 10000000)
-  (setq confirm-kill-processes nil) ;; don't object when quitting
+  (confirm-kill-processes nil) ;; don't object when quitting
   ;; Follow symlinks
-  (setq find-file-visit-truename t))
+  (find-file-visit-truename t)
+  ;; backups
+  (make-backup-files t)               ; backup of a file the first time it is saved.
+  (backup-by-copying t)               ; don't clobber symlinks
+  (version-control t)                 ; version numbers for backup files
+  (delete-old-versions t)             ; delete excess backup files silently
+  (kept-old-versions 2)               ; oldest versions to keep when a new numbered backup is made
+  (kept-new-versions 10)              ; newest versions to keep when a new numbered backup is made
+  (vc-make-backup-files t)            ; backup versioned files, which Emacs does not do by default
+  :init
+  ;; backups
+  (let ((backup-dir (concat my-cache-dir "backup")))
+    ;; Move backup file to `~/.emacs.d/temp/cache/backup'
+    (setq backup-directory-alist `(("." . ,backup-dir)))
+    ;; Make sure backup directory exist
+    (when (not (file-exists-p backup-dir))
+      (make-directory backup-dir t)))
+  ;; auto save
+  (setq auto-save-list-file-prefix
+        (concat my-cache-dir "auto-save-list/.saves-"))
+  (let ((auto-save-files-dir (concat my-cache-dir "auto-save-files/")))
+    (setq auto-save-file-name-transforms
+          `((".*" ,auto-save-files-dir t)))
+    (when (not (file-exists-p auto-save-files-dir))
+      (make-directory auto-save-files-dir t)))
+  (setq create-lockfiles nil)
+  :config
+  (defun my-full-auto-save ()
+    "Save all file-visiting buffers silently.
+Skip buffers whose file changed on disk (let auto-revert handle those)."
+    (interactive)
+    (dolist (buf (buffer-list))
+      (with-current-buffer buf
+        (when (and (buffer-file-name) (buffer-modified-p)
+                   ;; Only save if file on disk hasn't changed behind our back.
+                   ;; When it has, auto-revert-mode will pick up the new version.
+                   (verify-visited-file-modtime buf))
+          (condition-case err
+              (basic-save-buffer)
+            (error
+             (message "Auto-save failed for %s: %s"
+                      (buffer-name buf) (error-message-string err))))))))
+
+  ;; Auto-chmod files with shebang lines on save
+  (add-hook 'after-save-hook #'executable-make-buffer-file-executable-if-script-p)
+
+  ;; Save all buffers after idle time
+  (run-with-idle-timer 5 t #'my-full-auto-save))
 
 ;; how many spaces after a period?
 (use-package emacs
@@ -87,7 +110,6 @@
 ;; line Numbers
 (use-package display-line-numbers
   :ensure nil
-  ;; :hook (markdown-mode prog-mode)
   :commands display-line-numbers-mode
   :init
   (setq-default display-line-numbers-type 'visual)
@@ -103,7 +125,6 @@
 ;;** Help At Point
 (use-package help-at-pt
   :ensure nil
-  ;; :straight (:type built-in)
   :custom
   (help-at-pt-timer-delay 0.1)
   (help-at-pt-display-when-idle '(flymake-diagnostic)))
@@ -122,98 +143,17 @@
          ;; Display file commentary section
          ("C-h C-c" . finder-commentary)))
 
-;;** Help Transient
-
-;; A little more useful for calling help than just C-h (less info density)
-;; see https://luca.cambiaghi.me/vanilla-emacs/readme.html#h:14F8ECDE-9E15-46F7-B903-ECE383251C48
-;; (with-eval-after-load 'transient
-;;   (bind-key (concat my-prefix " h") 'my-help-transient)
-;;   (transient-define-prefix my-help-transient ()
-;;     ["Help Commands"
-;;      ["Mode & Bindings"
-;;       ("m" "Mode" describe-mode)
-;;       ("b" "Major Bindings" which-key-show-full-major-mode)
-;;       ("B" "Minor Bindings" which-key-show-full-minor-mode-keymap)
-;;       ("d" "Descbinds" describe-bindings)
-;;       ]
-;;      ["Describe"
-;;       ("c" "Command" helpful-command)
-;;       ("f" "Function" helpful-callable)
-;;       ("o" "Symbol"  helpful-symbol)
-;;       ("v" "Variable" helpful-variable)
-;;       ("k" "Key" helpful-key)
-;;       ]
-;;      ["Info on"
-;;       ("C-c" "Emacs Command" Info-goto-emacs-command-node)
-;;       ("C-f" "Function" info-lookup-symbol)
-;;       ("C-v" "Variable" info-lookup-symbol)
-;;       ("C-k" "Emacs Key" Info-goto-emacs-key-command-node)
-;;       ]
-;;      ["Goto Source"
-;;       ("L" "Library" find-library)
-;;       ("F" "Function" find-function)
-;;       ("V" "Variable" find-variable)
-;;       ("K" "Key" find-function-on-key)
-;;       ]
-;;      ]
-;;     [
-;;      ["Internals"
-;;       ("e" "Echo Messages" view-echo-area-messages)
-;;       ("l" "Lossage" view-lossage)
-;;       ]
-;;      ["Describe"
-;;       ("s" "Symbol" helpful-symbol)
-;;       ("." "At Point   " helpful-at-point)
-;;       ("C-d" "Face" describe-face)
-;;       ("w" "Where Is" where-is)
-;;       ("=" "Position" what-cursor-position)
-;;       ]
-;;      ["Info Manuals"
-;;       ("C-i" "Info" info)
-;;       ("C-4" "Other Window " info-other-window)
-;;       ("C-e" "Emacs" completing-read-info-emacs-manual)
-;;       ("C-l" "Elisp" completing-read-info-elisp-manual)
-;;       ]
-;;      ["Exit"
-;;       ("q" "Quit" transient-quit-one)
-;;       ("<escape>" "Quit" transient-quit-one)
-;;       ]
-;;      ]
-;;     [
-;;      ["External"
-;;       ("W" "Dictionary" dictionary-lookup-definition)
-;;       ]
-;;      ]
-;;     ))
-
 ;;* Indentation & Tabs
 (use-package emacs
   :ensure nil
   :defer 1
   :config
-  (setq tab-width 4)
-  (setq-default fill-column 80)
-  (setq fill-column 80)
-  (setq-default indent-tabs-mode nil)
   (setq-default tab-width 4)
+  (setq-default fill-column 80)
+  (setq-default indent-tabs-mode nil)
   (setq-default tab-always-indent 'complete)
   ;; TAB cycle if there are only few candidates
   (setq-default completion-cycle-threshold 3))
-
-;; UTF 8
-(use-package mule-cmds
-  :ensure nil
-  :defer t
-  :config
-  ;; UTF-8 for all the things!
-  (prefer-coding-system 'utf-8))
-
-
-;;** Private File
-;; Where to store private or "secret" info
-(let ((private (expand-file-name "private.el" my-user-dir)))
-  (if (file-exists-p private)
-      (load-file private)))
 
 ;;** Save history and backups
 (use-package savehist
@@ -221,15 +161,11 @@
   :hook (after-init . savehist-mode)
   :config
   (setq-default savehist-file (concat my-cache-dir "savehist"))
-  (when (not (file-exists-p savehist-file))
-    (write-file savehist-file))
-  (setq savehist-save-minibuffer-history t)
   (setq history-length 100)
-  ;; (put 'minibuffer-history 'history-length 50)
 
   (put 'kill-ring 'history-length 100)
   ;; save kill ring between sessions
-  (add-to-list 'savehist-additional-variables 'kill-ring )
+  (add-to-list 'savehist-additional-variables 'kill-ring)
   (add-to-list 'savehist-additional-variables 'mark-ring)
   (add-to-list 'savehist-additional-variables 'search-ring)
   (add-to-list 'savehist-additional-variables 'regexp-search-ring)
@@ -240,77 +176,7 @@
             (lambda ()
               (setq kill-ring
                     (mapcar #'substring-no-properties
-                            (cl-remove-if-not #'stringp kill-ring)))))
-  (savehist-mode 1)) ;; Save History
-
-
-;;* Backups / Auto-Save
-(use-package files
-  :ensure nil
-  :defer 1
-  :init
-  ;; backups
-  (let ((backup-dir (concat my-cache-dir "backup")))
-    ;; Move backup file to `~/.emacs.d/temp/cache/backup'
-    (setq backup-directory-alist `(("." . ,backup-dir)))
-    ;; Makesure backup directory exist
-    (when (not (file-exists-p backup-dir))
-      (make-directory backup-dir t)))
-  ;; auto save
-  (setq auto-save-list-file-prefix
-        (concat my-cache-dir "auto-save-list/.saves-"))
-  (let ((auto-save-files-dir (concat my-cache-dir "auto-save-files/")))
-    (setq auto-save-file-name-transforms
-          `((".*" ,auto-save-files-dir t)))
-    (when (not (file-exists-p auto-save-files-dir))
-      (make-directory auto-save-files-dir t)))
-  ;; auto-save every file visiting buffer
-  ;; see https://emacs.stackexchange.com/q/7729/11934
-  (setq-default auto-save-default t)
-  (setq-default
-   auto-save-timeout 30              ; number of seconds idle time before auto-save (default: 30)
-   auto-save-interval 300            ; number of keystrokes between auto-saves (default: 300)
-   auto-save-visited-mode t
-   delete-auto-save-files t
-   create-lockfiles nil)
-  :config
-  (setq  make-backup-files t               ; backup of a file the first time it is saved.
-         backup-by-copying t               ; don't clobber symlinks
-         version-control t                 ; version numbers for backup files
-         delete-old-versions t             ; delete excess backup files silently
-         kept-old-versions 2               ; oldest versions to keep when a new numbered backup is made
-         kept-new-versions 10              ; newest versions to keep when a new numbered backup is made
-         vc-make-backup-files t            ; backup versioned files, which Emacs does not do by default
-         )
-
-  (defun my-full-auto-save ()
-    "Save all file-visiting buffers silently.
-Skip buffers whose file changed on disk (let auto-revert handle those)."
-    (interactive)
-    (save-excursion
-      (dolist (buf (buffer-list))
-        (set-buffer buf)
-        (when (and (buffer-file-name) (buffer-modified-p)
-                   ;; Only save if file on disk hasn't changed behind our back.
-                   ;; When it has, auto-revert-mode will pick up the new version.
-                   (verify-visited-file-modtime buf))
-          (condition-case err
-              (basic-save-buffer)
-            (error
-             (message "Auto-save failed for %s: %s"
-                      (buffer-name buf) (error-message-string err))))))))
-
-  (add-hook 'auto-save-hook 'my-full-auto-save)
-
-  ;; Auto-chmod files with shebang lines on save
-  (add-hook 'after-save-hook #'executable-make-buffer-file-executable-if-script-p)
-
-  ;; Save all buffers after idle time
-  (run-with-idle-timer 5 t (lambda () (my-full-auto-save)))) ;; use-package files
-;; traverse through the backup file list
-;; never used this package, but will keep around
-(use-package backup-walker
-  :commands backup-walker-start)
+                            (cl-remove-if-not #'stringp kill-ring))))))
 
 ;;* Transient
 (use-package transient
@@ -322,8 +188,8 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
         ("<escape>" . transient-quit-one)))
 
 ;;* Fonts
-;; With the following snippet, we configure the three “faces” that are
-;; used to specify font families. Emacs has the concept of a “face” for a bundle
+;; With the following snippet, we configure the three "faces" that are
+;; used to specify font families. Emacs has the concept of a "face" for a bundle
 ;; of text properties that include typographic properties (font family, font
 ;; height, font weight, …) and colours (text/foreground colour, background
 ;; colour).
@@ -339,9 +205,6 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
 ;; Remember to do M-x and run `nerd-icons-install-fonts' to get the
 ;; font files.
 (use-package nerd-icons)
-
-;; Remember to do all-the-icons-install-fonts
-(use-package all-the-icons)
 
 (use-package nerd-icons-completion
   :after marginalia
@@ -368,37 +231,13 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
   ;; load preferred theme
   (load-theme 'lambda-light-faded))
 
-;; nice theme from Prot, built in, use as fallback
-(use-package modus-themes
-  :disabled t
-  :config
-  (load-theme 'modus-operandi-tinted :no-confirm-loading))
-
 ;;* Modeline
-;; highlight the active window at the bottom 
+;; highlight the active window at the bottom
+;; NOTE: this hardcoded face may conflict with theme reloads; kept intentionally
 (set-face-attribute 'mode-line-active nil
                     :foreground "black" :background "goldenrod" :box '(:line-width 1 :color
                                                                                    "black"))
 ;; minimal and cute
-;; NOTE: disabled for now, as I'm back to using lambda-line
-(use-package moody
-  :disabled t
-  :after (minions)
-  :config
-  (moody-replace-mode-line-front-space)
-  (moody-replace-mode-line-buffer-identification)
-  (moody-replace-vc-mode)
-  ;; hide minor modes
-  (minions-mode)
-  
-  ;; switch modeline to the top
-  (setq-default header-line-format mode-line-format)
-  (setq-default mode-line-format nil))
-
-(use-package minions
-  :disabled t)
-
-;; I generally like 
 ;; TODO: revert to upstream once https://github.com/Lambda-Emacs/lambda-line/pull/25 is merged
 ;; :vc (:url "https://github.com/Lambda-Emacs/lambda-line" :branch "main")
 (use-package lambda-line
@@ -413,7 +252,7 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
   (lambda-line-gui-ro-symbol  " ⨂")  ;; ⬤◯⨂
   (lambda-line-gui-mod-symbol " ⬤") ;; ⨀⬤
   (lambda-line-gui-rw-symbol  " ◯")  ;; ◉ ◎ ⬤◯
-  (lambda-line-vc-symbol "")
+  (lambda-line-vc-symbol "")
   (lambda-line-space-top 0)
   (lambda-line-space-bottom 0)
   (lambda-line-symbol-position 0)
@@ -428,10 +267,6 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
     (setq-default mode-line-format (list "%_"))
     (setq mode-line-format (list "%_"))))
 
-;; Hide Modeline
-(use-package hide-mode-line
-  :commands hide-mode-line-mode)
-
 ;;* Windows
 ;; Vertical window divider
 (use-package frame
@@ -441,8 +276,6 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
   (window-divider-default-bottom-width 1)
   (window-divider-default-places 'right-only)
   (window-divider-mode t))
-;; Make sure new frames use window-divider
-(add-hook 'before-make-frame-hook 'window-divider-mode)
 
 ;; Quickly switch windows in Emacs
 (use-package ace-window
@@ -452,20 +285,12 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
   :config
   (setq aw-keys '(?a ?r ?s ?t ?n ?e ?i ?o)))
 
-(defun my-other-window ()
-  (interactive)
-  (other-window 1))
-
 (use-package windmove
   :ensure nil
   :commands (windmove-up
              windmove-down
              windmove-left
              windmove-right)
-  ;; :bind (("C-c C-h" . #'windmove-left)
-  ;;        ("C-c C-l" . #'windmove-right)
-  ;;        ("C-c C-j" . #'windmove-down)
-  ;;        ("C-c C-k" . #'windmove-up))
   :config
   ;; Default bindings conflict with org-mode
   ;; documentation: https://orgmode.org/manual/Conflicts.html
@@ -494,15 +319,10 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
 (use-package frame
   :ensure nil
   :config
-  ;; Make a clean & minimalist frame
-  ;; To modify initial frame set `initial-frame-alist`
-  (setq-default default-frame-alist
-                (append (list
-                         '(frame-title-format . nil)
-                         '(internal-border-width . 18)
-                         '(tool-bar-lines . 0)
-                         '(vertical-scroll-bars . nil)
-                         '(horizontal-scroll-bars . nil))))
+  ;; Push entries individually to preserve early-init's menu-bar-lines/tool-bar-lines entries
+  (add-to-list 'default-frame-alist '(internal-border-width . 18))
+  (add-to-list 'default-frame-alist '(vertical-scroll-bars . nil))
+  (add-to-list 'default-frame-alist '(horizontal-scroll-bars . nil))
   ;; Resize pixel-wise to avoid gaps
   (setq-default window-resize-pixelwise t)
   (setq-default frame-resize-pixelwise t)
@@ -512,22 +332,9 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
   ;; Don't show icon in frame
   (setq-default ns-use-proxy-icon nil))
 
-;; (Re)Center Frames
-(defun my-frame-recenter (&optional frame)
-  "Center FRAME on the screen.
-FRAME can be a frame name, a terminal name, or a frame.
-If FRAME is omitted or nil, use currently selected frame."
-  (interactive)
-  (unless (eq 'maximised (frame-parameter nil 'fullscreen))
-    (modify-frame-parameters
-     frame '((user-position . t) (top . 0.5) (left . 0.5)))))
-
-;; un/comment this hook if you want frames recentered
-;; (add-hook 'after-make-frame-functions #'my-frame-recenter)
 ;;* Tabs
 (use-package tab-bar
   :ensure nil
-  :after (project)
   :commands (tab-bar-new-tab
              tab-bar-switch-to-tab
              tab-bar-switch-to-next-tab
@@ -594,49 +401,18 @@ If FRAME is omitted or nil, use currently selected frame."
     "Add empty space.
 This ensures that the last tab's face does not extend to the end
 of the tab bar."
-    " ")
+    " "))
 
-  ;; https://protesilaos.com/codelog/2020-08-03-emacs-custom-functions-galore/
-  (defun my-tab-bar-select-tab-dwim ()
-    "Do-What-I-Mean function for getting to a `tab-bar-mode' tab.
-If no other tab exists, create one and switch to it.  If there is
-one other tab (so two in total) switch to it without further
-questions.  Otherwise use completion to select the tab."
-    (interactive)
-    (let ((tabs (mapcar (lambda (tab)
-                          (alist-get 'name tab))
-                        (tab-bar--tabs-recent))))
-      (cond ((eq tabs nil)
-             (tab-new))
-            ((eq (length tabs) 1)
-             (tab-next))
-            (t
-             (tab-bar-switch-to-tab
-              (completing-read "Select tab: " tabs nil t)))))))
 ;;* Colors
 ;; Colorize color names in buffers
 (use-package rainbow-mode
   :commands rainbow-mode)
 
-;; for macs
-(setq-default ns-use-srgb-colorspace t)
-
 ;;* Highlight
-
-;;** Highlight Numbers
-;; check if I like/need this package
-(use-package highlight-numbers
-  :disabled t
-  :commands highlight-numbers-mode
-  :init
-  (add-hook 'prog-mode-hook #'highlight-numbers-mode))
 
 ;;** highlight TODOS
 (use-package hl-todo
-  :commands hl-todo-mode
-  :hook ((prog-mode . hl-todo-mode)
-         (markdown-mode . hl-todo-mode)
-         (LaTeX-mode . hl-todo-mode))
+  :hook (after-init . global-hl-todo-mode)
   :custom
   (hl-todo-keyword-faces '(("zzz"   . "#FF0000")
                            ("ZZZ"   . "#FF0000")
@@ -644,11 +420,10 @@ questions.  Otherwise use completion to select the tab."
                            ("???"   . "#FF0000")
 	                       ("FIXME"  . "#FF0000")
                            ("todo"  . "#A020F0")
-	                       ("TODO"  . "#A020F0")))
-  :config
-  (global-hl-todo-mode))
+	                       ("TODO"  . "#A020F0"))))
 
 (use-package consult-todo
+  :commands (consult-todo)
   :after (hl-todo consult))
 
 
