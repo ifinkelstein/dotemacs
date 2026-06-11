@@ -529,7 +529,7 @@
     ("t" "Tear Off Window" tear-off-window)
     ]
    ["Config"
-    ("f" "Toggle Split" transpose-window-layout)
+    ("f" "Toggle Split" window-layout-transpose)
     ("u" "Undo Config" winner-undo)
     ("U" "Redo Config" winner-redo)
     ("x" "Exchange Buffer in Window" my-window-exchange-buffer)
