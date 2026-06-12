@@ -220,47 +220,30 @@ Works with exactly two windows in any split direction."
 
 ;; TODO: make this respect workspace buffers
 (defun my-user-buffer-q ()
-  "Return t if current buffer is a user buffer, else nil.
-  Typically, if buffer name starts with *, it's not considered a user buffer.
-  This function is used by buffer switching command and close buffer command, so that next buffer shown is a user buffer.
-  You can override this function to get your idea of "user buffer".
-  version 2016-06-18
+  "Return non-nil if the current buffer is a user buffer.
+Buffers whose names start with * and Dired buffers are not user
+buffers."
+  (not (or (string-prefix-p "*" (buffer-name))
+           (derived-mode-p 'dired-mode))))
 
-Include: gptel, mu4e, and OrgMsg buffers in the user-buffer list"
-  (if (string-equal "*" (substring (buffer-name) 0 1))
-      nil
-    (if (string-equal major-mode "dired-mode")
-        nil
-      t
-      )))
+(defun my--cycle-user-buffer (step)
+  "Call STEP until a user buffer is current, at most 20 times.
+A \"user buffer\" is determined by `my-user-buffer-q'."
+  (funcall step)
+  (let ((i 0))
+    (while (and (not (my-user-buffer-q)) (< i 20))
+      (funcall step)
+      (setq i (1+ i)))))
 
 (defun my-next-user-buffer ()
-  "Switch to the next user buffer.
-  "user buffer" is determined by `my-user-buffer-q'.
-  URL `http://ergoemacs.org/emacs/elisp_next_prev_user_buffer.html'
-  Version 2016-06-19"
+  "Switch to the next user buffer (see `my-user-buffer-q')."
   (interactive)
-  (next-buffer)
-  (let ((i 0))
-    (while (< i 20)
-      (if (not (my-user-buffer-q))
-          (progn (next-buffer)
-                 (setq i (1+ i)))
-        (progn (setq i 100))))))
+  (my--cycle-user-buffer #'next-buffer))
 
 (defun my-previous-user-buffer ()
-  "Switch to the previous user buffer.
-  "user buffer" is determined by `my-user-buffer-q'.
-  URL `http://ergoemacs.org/emacs/elisp_next_prev_user_buffer.html'
-  Version 2016-06-19"
+  "Switch to the previous user buffer (see `my-user-buffer-q')."
   (interactive)
-  (previous-buffer)
-  (let ((i 0))
-    (while (< i 20)
-      (if (not (my-user-buffer-q))
-          (progn (previous-buffer)
-                 (setq i (1+ i)))
-        (progn (setq i 100))))))
+  (my--cycle-user-buffer #'previous-buffer))
 
 ;;* File Functions
 ;;** Directory Functions
