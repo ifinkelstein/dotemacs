@@ -94,7 +94,12 @@ and sends a message of the current volume status."
     ("m" "Modeline" emms-mode-line-mode)
     ("M" "current info" emms-show)
     ("e" "emms" emms)]
-   ])
+   ]
+  (interactive)
+  ;; emms is deferred; its commands must be defined before transient-setup
+  ;; checks the suffixes.
+  (require 'emms)
+  (transient-setup 'my-transient-emms))
 
 ;;* Provide my-setup-media.el
 (provide 'my-setup-media)
