@@ -258,6 +258,32 @@ A \"user buffer\" is determined by `my-user-buffer-q'."
 
 (add-hook 'find-file-not-found-functions #'make-parent-directory)
 
+;;** Scan Document
+(defun my-scan-document ()
+  "Scan from the ScanSnap ADF to a PDF and open it in a window on the right.
+Runs the scansnap CLI asynchronously (all pages in the feeder,
+duplex, color, 300 dpi); see scansnap -h for the underlying tool."
+  (interactive)
+  (let* ((file (expand-file-name (format-time-string "scan-%Y%m%d-%H%M%S.pdf")
+                                 "~/Downloads/"))
+         (buf-name " *scansnap*")
+         (buf (progn (when (get-buffer buf-name) (kill-buffer buf-name))
+                     (get-buffer-create buf-name))))
+    (message "Scanning to %s..." file)
+    (set-process-sentinel
+     (start-process "scansnap" buf "scansnap" file)
+     (lambda (process _signal)
+       (when (eq (process-status process) 'exit)
+         (if (zerop (process-exit-status process))
+             (progn
+               (when (buffer-live-p buf) (kill-buffer buf))
+               (select-window (split-window-right))
+               (find-file file))
+           (message "Scan failed: %s"
+                    (if (buffer-live-p buf)
+                        (string-trim (with-current-buffer buf (buffer-string)))
+                      (format "exit %d" (process-exit-status process))))))))))
+
 ;;* Text Functions
 ;; Narrow/Widen
 ;; https://github.com/ultronozm/emacsd/blob/main/init-latex.el
