@@ -681,8 +681,25 @@ Uses `my-email-primary-name' and `my-email-primary-address' from private.el."
                (mu4e-trash-folder   . ,(plist-get account :trash))
                (smtpmail-smtp-user  . ,(plist-get account :smtp-user))))))
 
+  ;; Non-PII shared/lab accounts kept in this tracked file; personal
+  ;; accounts live in `my-mu4e-context-accounts' (private.el).  The
+  ;; hisserlab app password is in the macOS Keychain, not here.
+  (defvar my-mu4e-extra-context-accounts
+    '((:name "Hisser"
+       :maildir-prefix "/Hisser"
+       :email "hisserlab@gmail.com"
+       :full-name "Hisser Lab"
+       :smtp-user "hisserlab@gmail.com"
+       :drafts "/Hisser/[Gmail]/Drafts"
+       :sent "/Hisser/[Gmail]/Sent Mail"
+       :refile "/Hisser/[Gmail]/All Mail"
+       :trash "/Hisser/[Gmail]/Trash"))
+    "Shared account definitions (no PII) merged into `mu4e-contexts'.")
+
   (setq mu4e-contexts
-        (mapcar #'my--build-mu4e-context my-mu4e-context-accounts))
+        (mapcar #'my--build-mu4e-context
+                (append my-mu4e-context-accounts
+                        my-mu4e-extra-context-accounts)))
 
   ;; Ask for context if none is set
   (setq mu4e-context-policy 'pick-first)
