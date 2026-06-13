@@ -736,6 +736,7 @@ Uses `my-email-primary-name' and `my-email-primary-address' from private.el."
   (setq mu4e-maildir-shortcuts
 	    '(("/UT/Inbox"               . ?u)
 	      ("/Lab/Inbox"              . ?l)
+          ("/Hisser/Inbox"           . ?h)
           ("/Lab/Inbox/@SaneJobs"   . ?j)
 	      ("/Lab/Inbox/@SaneLater"   . ?s)
           ("/Lab/Inbox/@SaneReceipts"   . ?r)
