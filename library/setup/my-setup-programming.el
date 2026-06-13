@@ -7,7 +7,6 @@
 (use-package prism
   :hook
   (emacs-lisp-mode . prism-mode)
-  (LaTeX-mode . prism-mode)
   :config
   (prism-set-colors :num 16
     :desaturations (cl-loop for i from 0 below 16
