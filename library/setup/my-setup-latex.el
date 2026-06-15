@@ -103,8 +103,20 @@
      ("^%subsubsection{\\(.*\\)}" 1 'font-latex-sectioning-4-face t)
      ("^%paragraph{\\(.*\\)}"     1 'font-latex-sectioning-5-face t)))
 
-  ;; Fold all citation macros as [C]
+  ;; Fold all citation macros to a static [C].
+  ;; AUCTeX 14 defaults map cite/textcite/parencite/footcite to dynamic
+  ;; display functions that render the citation keys; the fold resolver lets
+  ;; later-processed specs win, so a plain add-to-list (which prepends) loses
+  ;; to them. Strip those function specs first, then add our [C] spec.
   (with-eval-after-load 'tex-fold
+    (setq TeX-fold-macro-spec-list
+          (seq-remove (lambda (spec)
+                        (memq (car-safe (car spec))
+                              '(TeX-fold-cite-display
+                                TeX-fold-textcite-display
+                                TeX-fold-parencite-display
+                                TeX-fold-footcite-display)))
+                      TeX-fold-macro-spec-list))
     (add-to-list 'TeX-fold-macro-spec-list
                  '("[C]" ("cite" "Cite" "citep" "citet" "citealt" "citealp"
                           "citeauthor" "citeyear" "autocite" "Autocite"
