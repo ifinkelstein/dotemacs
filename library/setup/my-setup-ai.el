@@ -235,7 +235,43 @@ See `my-whisper-mlx-model' and `my-whisper-mlx-extra-flags' to tune."
                   my-whisper-mlx-extra-flags)))
       (list "sh" "-c"
             (concat (mapconcat #'shell-quote-argument args " ")
-                    " && cat " (shell-quote-argument txt))))))
+                    " && cat " (shell-quote-argument txt)))))
+
+  (defun my-whisper-mlx-model-installed-p ()
+    "Return non-nil if `my-whisper-mlx-model' is available locally.
+True for an explicit local directory path, or a populated Hugging Face
+cache entry for the repo id."
+    (or (file-directory-p my-whisper-mlx-model)
+        (let* ((hf-home (or (getenv "HF_HOME")
+                            (expand-file-name "~/.cache/huggingface")))
+               (snapshots (expand-file-name
+                           (format "hub/models--%s/snapshots"
+                                   (replace-regexp-in-string "/" "--" my-whisper-mlx-model))
+                           hf-home)))
+          (and (file-directory-p snapshots)
+               (directory-files snapshots nil "\\`[^.]" t)))))
+
+  ;; Mirror whisper.el's "model isn't available, download now?" prompt for the
+  ;; mlx_whisper model, so the first run doesn't silently stall on a large
+  ;; Hugging Face download.
+  (defun my-whisper-mlx-ensure-model ()
+    "Offer to download `my-whisper-mlx-model' if it isn't installed yet.
+Downloads via uv: \"uvx --from huggingface_hub hf download REPO\"."
+    (unless (my-whisper-mlx-model-installed-p)
+      (if (yes-or-no-p
+           (format "mlx_whisper model %S isn't installed, download now? "
+                   my-whisper-mlx-model))
+          (let* ((uvx (or (executable-find "uvx")
+                          (error "uvx not found; install uv")))
+                 (cmd (format "%s --from huggingface_hub hf download %s"
+                              (shell-quote-argument uvx)
+                              (shell-quote-argument my-whisper-mlx-model))))
+            (compile cmd)
+            (error "Downloading %s; re-run whisper (s-R) when it finishes"
+                   my-whisper-mlx-model))
+        (error "mlx_whisper model %S not installed" my-whisper-mlx-model))))
+
+  (add-hook 'whisper-before-transcription-hook #'my-whisper-mlx-ensure-model))
 
 (defcustom rk/default-audio-device nil
   "The default audio device to use for whisper.el and other audio processes."
