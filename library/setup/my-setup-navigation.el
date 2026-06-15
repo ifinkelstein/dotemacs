@@ -140,13 +140,21 @@
     (activate-mark)
     (goto-char (+ 1 pt)))
 
-  ;; Jump and correct spelling with jinx (replaces flyspell action)
+  ;; Jump and correct spelling with the jinx cycler (replaces flyspell action).
+  ;; Applies the top suggestion and leaves point on the corrected word so C-.
+  ;; cycles to the other suggestions in place. The pre-jump location is saved
+  ;; to a register (and the mark ring), so after cycling you can return with
+  ;; `C-x r j j' (or `C-u C-SPC').
+  (defvar my-avy-jinx-return-register ?j
+    "Register where `avy-action-jinx' stores the pre-jump location.")
+
   (defun avy-action-jinx (pt)
-    (save-excursion
-      (goto-char pt)
-      (jinx-correct))
-    (select-window
-     (cdr (ring-ref avy-ring 0)))
+    (with-selected-window (cdr (ring-ref avy-ring 0))
+      (point-to-register my-avy-jinx-return-register)
+      (push-mark nil t))           ; silent; integrates with C-u C-SPC
+    (goto-char pt)
+    (setq my-jinx-cycle--state nil) ; force a fresh correction at PT
+    (my-jinx-correct-cycle)
     t)
   (setf (alist-get ?. avy-dispatch-alist) 'avy-action-jinx)
 
