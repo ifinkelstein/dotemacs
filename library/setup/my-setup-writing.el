@@ -75,8 +75,98 @@
   :hook (emacs-startup . global-jinx-mode)
   :bind (("M-$" . jinx-correct)
          ("C-;" . jinx-correct)
-         ("C-M-$" . jinx-languages))
-  :custom (jinx-languages "en_US"))
+         ("C-M-$" . jinx-languages)
+         (:map text-mode-map ("C-." . my-jinx-correct-cycle)))
+  :custom (jinx-languages "en_US")
+  :config
+  ;; jinx has no built-in in-place candidate cycler (only the `jinx-correct'
+  ;; menu), so reproduce `flyspell-auto-correct-word': replace the misspelled
+  ;; word at point with its top suggestion, and on repeat cycle to the next.
+  (defvar-local my-jinx-cycle--state nil
+    "State for `my-jinx-correct-cycle': (BEG END CANDS IDX).")
+
+  (defvar my-jinx-cycle-max-suggestions 8
+    "How many spelling suggestions `my-jinx-correct-cycle' cycles through.
+The original misspelled word is always appended after these, so the full
+cycle length is at most this many suggestions plus one.  Set higher to see
+more candidates, or nil for all of them.")
+
+  (defun my-jinx--overlay-at-point ()
+    "Return the jinx misspelling overlay at or just before point."
+    (seq-find (lambda (o) (eq (overlay-get o 'category) 'jinx-overlay))
+              (append (overlays-at (point))
+                      (and (> (point) (point-min))
+                           (overlays-at (1- (point)))))))
+
+  (defun my-jinx--word-suggestions (word)
+    "Return plain-string spelling suggestions for WORD.
+Drops jinx's \"accept and save\" entries (tagged with face `jinx-save')."
+    (delete-dups
+     (delq nil
+           (mapcar (lambda (s)
+                     (unless (eq (get-text-property 0 'face s) 'jinx-save)
+                       (substring-no-properties s)))
+                   (jinx--correct-suggestions word)))))
+
+  (defun my-jinx--replace (beg end word)
+    "Replace region BEG..END with WORD; return the new end position."
+    (goto-char beg)
+    (delete-region beg end)
+    (insert word)
+    (point))
+
+  (defun my-jinx--echo (cands idx)
+    "Echo all CANDS in the minibuffer, highlighting the one at IDX.
+The final entry (the original misspelled word) is shown dimmed."
+    (let ((message-log-max nil)
+          (last (1- (length cands)))
+          (n -1))
+      (message "%s"
+               (mapconcat
+                (lambda (c)
+                  (setq n (1+ n))
+                  (cond ((= n idx) (propertize c 'face 'highlight))
+                        ((= n last) (propertize c 'face 'shadow))
+                        (t c)))
+                cands "  "))))
+
+  (defun my-jinx-correct-cycle ()
+    "Correct the misspelled word at point, cycling suggestions on repeat.
+First call replaces it with the most likely suggestion; repeating the
+command cycles through the rest in place, like `flyspell-auto-correct-word'.
+At most `my-jinx-cycle-max-suggestions' candidates are offered.  The last
+entry in the cycle is the original misspelled word, so one more repeat
+restores it before wrapping back to the top suggestion.  Each step echoes
+the candidate list with the current pick highlighted."
+    (interactive)
+    ;; Continue cycling while point still sits on the just-corrected word.
+    ;; Position-based (not `last-command'-based) so it also resumes after the
+    ;; avy jump action lands point there, and after the word loses its overlay.
+    (if (and my-jinx-cycle--state
+             (<= (nth 0 my-jinx-cycle--state) (point) (nth 1 my-jinx-cycle--state)))
+        (pcase-let ((`(,beg ,end ,cands ,idx) my-jinx-cycle--state))
+          (setq idx (mod (1+ idx) (length cands)))
+          (let* ((cand (nth idx cands))
+                 (new-end (my-jinx--replace beg end cand)))
+            (setq my-jinx-cycle--state (list (copy-marker beg) (copy-marker new-end) cands idx))
+            (my-jinx--echo cands idx)))
+      (let ((ov (my-jinx--overlay-at-point)))
+        (unless ov (user-error "No misspelled word at point"))
+        (let* ((beg (overlay-start ov))
+               (end (overlay-end ov))
+               (word (buffer-substring-no-properties beg end))
+               (sugg (my-jinx--word-suggestions word))
+               ;; Cap to `my-jinx-cycle-max-suggestions'; the original word is
+               ;; the last entry, so cycling eventually restores it before
+               ;; wrapping back to the top suggestion.
+               (cands (append (if my-jinx-cycle-max-suggestions
+                                  (seq-take sugg my-jinx-cycle-max-suggestions)
+                                sugg)
+                              (list word))))
+          (unless (cdr cands) (user-error "No suggestions for %S" word))
+          (let ((new-end (my-jinx--replace beg end (car cands))))
+            (setq my-jinx-cycle--state (list (copy-marker beg) (copy-marker new-end) cands 0))
+            (my-jinx--echo cands 0)))))))
 
 ;;* Grammar
 
