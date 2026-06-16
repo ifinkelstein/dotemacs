@@ -98,6 +98,30 @@ more candidates, or nil for all of them.")
                       (and (> (point) (point-min))
                            (overlays-at (1- (point)))))))
 
+  (defun my-jinx--overlay-before-point ()
+    "Return the nearest jinx misspelling overlay ending at/before point.
+The search stays on the current line and skips over correctly-spelled
+words, so it lands on the most recent misspelling behind point (like
+`flyspell-auto-correct-previous-word')."
+    (let ((bol (line-beginning-position)))
+      (car
+       (last
+        (sort
+         (seq-filter (lambda (o)
+                       (and (eq (overlay-get o 'category) 'jinx-overlay)
+                            (<= (overlay-end o) (point))))
+                     (overlays-in bol (point)))
+         (lambda (a b) (< (overlay-end a) (overlay-end b))))))))
+
+  (defun my-jinx--find-overlay ()
+    "Return the jinx overlay to correct.
+Prefers the misspelling at or just before point (so the avy jump action
+and a cursor sitting on a word both work); otherwise falls back to the
+nearest misspelling earlier on the line, reaching across whitespace,
+punctuation and correctly-spelled words."
+    (or (my-jinx--overlay-at-point)
+        (my-jinx--overlay-before-point)))
+
   (defun my-jinx--word-suggestions (word)
     "Return plain-string spelling suggestions for WORD.
 Drops jinx's \"accept and save\" entries (tagged with face `jinx-save')."
@@ -150,8 +174,14 @@ the candidate list with the current pick highlighted."
                  (new-end (my-jinx--replace beg end cand)))
             (setq my-jinx-cycle--state (list (copy-marker beg) (copy-marker new-end) cands idx))
             (my-jinx--echo cands idx)))
-      (let ((ov (my-jinx--overlay-at-point)))
+      (let ((ov (my-jinx--find-overlay))
+            (orig (point)))
         (unless ov (user-error "No misspelled word at point"))
+        ;; When the correction sits behind point (reached across whitespace,
+        ;; punctuation or earlier words), leave a mark at the original spot so
+        ;; `C-u C-SPC' returns there after cycling.
+        (when (> orig (overlay-end ov))
+          (push-mark orig t))
         (let* ((beg (overlay-start ov))
                (end (overlay-end ov))
                (word (buffer-substring-no-properties beg end))
