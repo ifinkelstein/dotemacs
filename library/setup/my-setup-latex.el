@@ -36,6 +36,7 @@
               ("C-M-e" . LaTeX-forward-environment)
               ("C-M-a" . LaTeX-backward-environment)
               ("M-RET" . LaTeX-insert-item)
+              ("C-c l" . my-LaTeX-wrap-list)
               ("s-u" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "underline"))))
               ("s-b" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "textbf"))))
               ("s-i" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "emph"))))
@@ -189,6 +190,46 @@ return `nil'."
           ;; location of end
           (delete-region end-start end-end)
           (delete-region begin-start begin-end)))))
+
+  ;; Wrap a region (or the current line) in a LaTeX list environment,
+  ;; turning each line into an \item.  AUCTeX's own `LaTeX-environment'
+  ;; (C-c C-e) already wraps a region in any environment but only seeds a
+  ;; single \item; this adds the per-line \item conversion that the
+  ;; abandoned `latex-wrap' package did (https://github.com/abo-abo/latex-wrap),
+  ;; layered on top of AUCTeX completion and indentation instead of Helm.
+  (defun my-LaTeX-wrap-list (environment)
+    "Wrap the active region (or current line) in a LaTeX list ENVIRONMENT.
+Each non-empty line becomes an \\item, with leading/trailing whitespace
+trimmed.  Interactively, prompt for ENVIRONMENT (default \"itemize\").
+With no real content, leave point at an empty \\item ready to type."
+    (interactive
+     (list (completing-read "List environment: "
+                            '("itemize" "enumerate" "description")
+                            nil nil nil nil "itemize")))
+    (let* ((region (use-region-p))
+           (beg (if region (region-beginning) (line-beginning-position)))
+           (end (if region (region-end) (line-end-position)))
+           (items (delq nil
+                        (mapcar (lambda (l)
+                                  (let ((s (string-trim l)))
+                                    (unless (string-empty-p s) s)))
+                                (split-string (buffer-substring-no-properties beg end)
+                                              "\n"))))
+           item-point)
+      (delete-region beg end)
+      (goto-char beg)
+      (insert (format "\\begin{%s}\n" environment))
+      (if items
+          (dolist (s items)
+            (insert (format "\\item %s\n" s)))
+        (insert "\\item ")
+        (setq item-point (copy-marker (point)))
+        (insert "\n"))
+      (insert (format "\\end{%s}" environment))
+      (indent-region beg (point))
+      (when item-point
+        (goto-char item-point)
+        (set-marker item-point nil))))
 
   ;; view generated PDF with `pdf-tools'.
   (unless (assoc "PDF Tools" TeX-view-program-list)
