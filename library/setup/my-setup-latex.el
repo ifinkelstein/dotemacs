@@ -7,10 +7,25 @@
 (use-package latex
   :ensure auctex
   :mode ("\\.tex\\'" . LaTeX-mode)
+  ;; Autoload every command surfaced in `my-transient-latex' so the menu
+  ;; works even when opened before auctex is loaded (it is on a global
+  ;; leader, not just LaTeX-mode-map). Custom my-LaTeX-* helpers live in
+  ;; this package's :config, so they load alongside these.
   :commands (LaTeX-environment TeX-insert-macro
                         LaTeX-narrow-to-environment
                         TeX-fold-dwim
-                        TeX-fold-buffer)
+                        TeX-fold-buffer
+                        TeX-fold-clearout-buffer
+                        TeX-command-run-all
+                        TeX-view
+                        TeX-next-error
+                        TeX-kill-job
+                        TeX-recenter-output-buffer
+                        TeX-clean
+                        LaTeX-section
+                        LaTeX-mark-section
+                        LaTeX-insert-item
+                        LaTeX-fill-environment)
 
   :hook ((LaTeX-mode . variable-pitch-mode)
          (LaTeX-mode . LaTeX-preview-setup)
@@ -240,7 +255,8 @@ With no real content, leave point at an empty \\item ready to type."
 ;;** reftex
 (use-package reftex
   :after auctex
-  :commands (turn-on-reftex reftex-citation reftex-reference reftex-toc)
+  :commands (turn-on-reftex reftex-citation reftex-reference reftex-toc
+                            reftex-view-crossref)
   :config
   (setq reftex-plug-into-AUCTeX t)
   (setq reftex-insert-label-flags '("sf" "sfte"))

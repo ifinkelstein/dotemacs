@@ -305,14 +305,29 @@
   ["LaTeX Commands"
    ["Reftex"
     ("c" "Citation" reftex-citation)
-    ("r" "Reference" reftex-reference)
-    ("t" "TOC" reftex-toc)]
+    ("r" "Reference" consult-reftex-insert-reference)
+    ("g" "Goto label" consult-reftex-goto-label)
+    ("t" "TOC" reftex-toc)
+    ("&" "View crossref" reftex-view-crossref)]
+   ["Build/View"
+    ("a" "Build all" TeX-command-run-all)
+    ("v" "View PDF" TeX-view)
+    ("j" "Next error" TeX-next-error)
+    ("k" "Kill job" TeX-kill-job)
+    ("l" "Output log" TeX-recenter-output-buffer)
+    ("W" "Clean aux" TeX-clean)]
    ["LaTeX"
     ("e" "Environment" LaTeX-environment)
     ("E" "Delete Environment" my-LaTeX-delete-environment)
+    ("R" "Change Environment" latex-change-env)
     ("m" "Insert Macro" TeX-insert-macro)
     ("M" "Delete Macro" my-LaTeX-delete-macro)
-    ("n" "Narrow to Environment" LaTeX-narrow-to-environment)]
+    ("i" "Insert Item" LaTeX-insert-item)
+    ("I" "Wrap as List" my-LaTeX-wrap-list)]
+   ["Mark/Fill"
+    ("n" "Narrow to Environment" LaTeX-narrow-to-environment)
+    ("b" "Mark Inside Env" my-LaTeX-mark-inside-environment)
+    ("q" "Fill Environment" LaTeX-fill-environment)]
    ["Sections"
     ("s" "Insert Section" LaTeX-section)
     ("S" "Mark Section" LaTeX-mark-section)
@@ -322,6 +337,7 @@
     ("N" "Move Down" outline-move-subtree-down)
     ("h" "Mark Subtree" outline-mark-subtree)]
    ["Folding"
+    ("z" "Fold dwim" TeX-fold-dwim)
     ("f" "Fold buffer" TeX-fold-buffer)
     ("F" "Unfold buffer" TeX-fold-clearout-buffer)
     ("o" "Cycle heading" outline-cycle)
