@@ -167,6 +167,10 @@
 
 ;; * buffler for buffer management/organization
 
+;; Needed so `pretty-hydra-define+' below can read the upstream
+;; `hydra:bufler' heads at macro-expansion (compile) time and merge into them.
+(eval-when-compile (require 'bufler))
+
 (use-package bufler
   :commands (bufler-list bufler-switch-buffer)
   :config
@@ -175,6 +179,42 @@
   ;; fixed sensible column widths (avoids computing from daemon dummy frame)
   (setq bufler-column-Name-max-width 40)
   (setq bufler-column-Path-max-width 30)
+
+  ;; Transient name filter for the *Bufler* list, bound to "/".
+  ;; Modeled on `dired-narrow': the regexp is bound only for one rebuild, so
+  ;; plain "g" (`bufler') reverts to the full list with no extra handling.
+  (defvar my-bufler-narrow-regexp nil
+    "Bound only while `my-bufler-narrow' rebuilds the list.")
+
+  (defun my-bufler--name-hidden-p (buffer)
+    "Hide BUFFER when its name doesn't match `my-bufler-narrow-regexp'."
+    (and my-bufler-narrow-regexp
+         (not (string-match-p my-bufler-narrow-regexp (buffer-name buffer)))))
+
+  (defun my-bufler-narrow (regexp)
+    "Narrow the Bufler list to buffer names matching REGEXP.
+Press \"g\" to return to the full list."
+    (interactive (list (read-string "Narrow buffers (regexp): ")))
+    (let ((my-bufler-narrow-regexp (unless (string-empty-p regexp) regexp))
+          (bufler-cache nil))
+      (bufler)))
+
+  (defun my-bufler-refresh ()
+    "Rebuild the Bufler list from scratch, discarding caches.
+Returns to the full (un-narrowed) list, like reverting Dired with \"g\"."
+    (interactive)
+    (bufler '(4)))
+
+  (add-to-list 'bufler-filter-buffer-fns #'my-bufler--name-hidden-p t)
+  (define-key bufler-list-mode-map (kbd "/") #'my-bufler-narrow)
+  (define-key bufler-list-mode-map (kbd "g") #'my-bufler-refresh)
+
+  ;; Surface both commands in bufler's "?" hydra.  `pretty-hydra-define+'
+  ;; merges into the existing heads; same-key heads ("g") are overridden.
+  (pretty-hydra-define+ hydra:bufler ()
+    ("Bufler"
+     (("g" my-bufler-refresh "Refresh")
+      ("/" my-bufler-narrow "Narrow"))))
   (setf bufler-groups
         (bufler-defgroups
           (group
