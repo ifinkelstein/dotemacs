@@ -218,6 +218,9 @@ Returns to the full (un-narrowed) list, like reverting Dired with \"g\"."
   (setf bufler-groups
         (bufler-defgroups
           (group
+           ;; Ghostel (libghostty terminal) buffers, pinned to the top.
+           (mode-match "*Terminals*" (rx bos "ghostel-mode")))
+          (group
            ;; Subgroup collecting all named workspaces.
            (auto-workspace))
           (group
