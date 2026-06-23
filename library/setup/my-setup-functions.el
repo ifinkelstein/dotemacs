@@ -216,6 +216,18 @@ Works with exactly two windows in any split direction."
   (interactive)
   (clipboard-kill-ring-save (point-min) (point-max)))
 
+(defun my-copy-buffer-file-name (&optional basename)
+  "Copy the current buffer's file name to the clipboard.
+By default copy the absolute path.  With a prefix arg BASENAME,
+copy just the file name without its directory."
+  (interactive "P")
+  (if-let* ((file (buffer-file-name)))
+      (let ((name (if basename (file-name-nondirectory file)
+                    (abbreviate-file-name file))))
+        (kill-new name)
+        (message "Copied: %s" name))
+    (user-error "Buffer is not visiting a file")))
+
 ;; Useful Buffers
 
 ;; TODO: make this respect workspace buffers
