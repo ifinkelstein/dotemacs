@@ -1,6 +1,11 @@
 ;;; my-setup-keybindings.el --- keybinding configuration -*- lexical-binding: t -*-
 (message "Setting up keybindings...")
 
+;; Needed at compile time so `transient-define-prefix' is recognized as a
+;; macro; otherwise the byte-compiler treats it as a function call and the
+;; prefix name is miscompiled into a variable reference (void-variable at load).
+(require 'transient)
+
 ;;* Global keybindings
 ;; buffer and tab bar navigation
 (keymap-global-set "s-[" 'my-previous-user-buffer)
@@ -236,7 +241,8 @@
     ("d" "Kill Buffer & Window" kill-buffer-and-window)
     ("E" "Erase Buffer" erase-buffer)
     ("f" "Reveal in Finder" reveal-in-osx-finder)
-    ("i" "Imenu" consult-imenu)]
+    ("i" "Imenu" consult-imenu)
+    ("w" "Copy File Name (C-u: basename)" my-copy-buffer-file-name)]
    ["Navigate"
     ("j" "Jump in Buffer" my-jump-in-buffer)
     ("k" "Kill This Buffer" kill-current-buffer)
