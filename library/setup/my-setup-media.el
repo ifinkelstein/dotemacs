@@ -1,6 +1,11 @@
 ;;; my-setup-media.el -*- lexical-binding: t -*-
 
 (message "Setting up media packages...")
+
+;; Needed at compile time so `transient-define-prefix' is recognized as a
+;; macro; otherwise the byte-compiler treats it as a function call and the
+;; prefix name is miscompiled into a variable reference (void-variable at load).
+(require 'transient)
 ;;* emms (emacs multimedia system)
 ;; http://blog.binchen.org/posts/how-to-use-emms-effectively/
 ;; https://www.gnu.org/software/emms/manual/
