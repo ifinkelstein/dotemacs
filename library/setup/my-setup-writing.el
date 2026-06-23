@@ -207,6 +207,10 @@ the candidate list with the current pick highlighted."
   :hook ((org-mode markdown-mode LaTeX-mode)
          . (lambda ()
              (require 'eglot-ltex-plus)
+             ;; LanguageTool spell-checks via the MORFOLOGIK rule; disable it
+             ;; so it doesn't double up on jinx, which owns spelling here.
+             (setq-local eglot-workspace-configuration
+                         '(:ltex (:disabledRules (:en-US ["MORFOLOGIK_RULE_EN_US"]))))
              (eglot-ensure)))
   :init
   (setq eglot-ltex-plus-server-path (expand-file-name "~/bin/ltex-ls-plus/bin/ltex-ls-plus")
