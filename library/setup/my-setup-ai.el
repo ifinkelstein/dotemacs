@@ -271,7 +271,17 @@ Downloads via uv: \"uvx --from huggingface_hub hf download REPO\"."
                    my-whisper-mlx-model))
         (error "mlx_whisper model %S not installed" my-whisper-mlx-model))))
 
-  (add-hook 'whisper-before-transcription-hook #'my-whisper-mlx-ensure-model))
+  (add-hook 'whisper-before-transcription-hook #'my-whisper-mlx-ensure-model)
+
+  ;; Route dictation into ghostel terminal buffers through the subprocess
+  ;; (bracketed paste) instead of `insert', which fails on the renderer-owned,
+  ;; read-only ghostel buffer.  Mirrors whisper's built-in vterm/eat handling.
+  (defun my-whisper-insert-text-ghostel (orig text)
+    "Around-advice for `whisper--insert-text': paste into ghostel buffers."
+    (if (derived-mode-p 'ghostel-mode)
+        (ghostel-paste-string text)
+      (funcall orig text)))
+  (advice-add 'whisper--insert-text :around #'my-whisper-insert-text-ghostel))
 
 (defcustom rk/default-audio-device nil
   "The default audio device to use for whisper.el and other audio processes."
