@@ -281,7 +281,70 @@ Downloads via uv: \"uvx --from huggingface_hub hf download REPO\"."
     (if (derived-mode-p 'ghostel-mode)
         (ghostel-paste-string text)
       (funcall orig text)))
-  (advice-add 'whisper--insert-text :around #'my-whisper-insert-text-ghostel))
+  (advice-add 'whisper--insert-text :around #'my-whisper-insert-text-ghostel)
+
+  ;; Raw transcription log.  Every transcription is appended verbatim under a
+  ;; timestamped subheading in two sibling sections: `* Raw' (pristine
+  ;; reference) and `* Corrected' (an identical duplicate to hand-edit later).
+  ;; Read the Corrected section periodically and fix mis-transcriptions there.
+  ;; NOTE: this logging is temporary scaffolding — once `my-whisper-replacements'
+  ;; (or better correction heuristics) cover the common errors, remove the log
+  ;; and its hook.
+  (defvar my-whisper-log-file
+    (expand-file-name "whisper-log.org" my-var-dir)
+    "Org file accumulating raw and to-be-corrected whisper transcriptions.")
+
+  (defun my-whisper--ensure-log ()
+    "Create `my-whisper-log-file' with its section scaffold if absent."
+    (unless (file-exists-p my-whisper-log-file)
+      (with-temp-file my-whisper-log-file
+        (insert "#+title: Whisper transcription log\n\n* Raw\n* Corrected\n"))))
+
+  (defun my-whisper--append-under (heading text stamp)
+    "Append a STAMP subheading containing TEXT under top-level HEADING."
+    (goto-char (point-min))
+    (re-search-forward (format "^\\* %s$" (regexp-quote heading)))
+    (let ((end (if (re-search-forward "^\\* " nil t)
+                   (match-beginning 0)
+                 (point-max))))
+      (goto-char end)
+      (insert (format "** %s\n%s\n" stamp text))))
+
+  (defun my-whisper-log-org ()
+    "Append the raw transcription to `my-whisper-log-file'.
+Runs in whisper's output buffer via `whisper-after-transcription-hook'."
+    (let ((text (string-trim (buffer-string)))
+          (stamp (format-time-string "[%Y-%m-%d %a %H:%M]")))
+      (unless (string-empty-p text)
+        (my-whisper--ensure-log)
+        (with-current-buffer (find-file-noselect my-whisper-log-file)
+          (save-excursion
+            (my-whisper--append-under "Raw" text stamp)
+            (my-whisper--append-under "Corrected" text stamp))
+          (save-buffer)))))
+
+  (add-hook 'whisper-after-transcription-hook #'my-whisper-log-org)
+
+  ;; Deterministic fixups for recurrent whisper mis-transcriptions.  Each
+  ;; REGEXP (whisper's wrong output) is rewritten to the intended term.  Runs
+  ;; on the output buffer *after* `my-whisper-log-org' so the raw log keeps the
+  ;; original for review while the inserted text is corrected.  Grow this list
+  ;; as new errors surface in the Corrected section of `my-whisper-log-file'.
+  (defvar my-whisper-replacements
+    '(("\\bMinecraft\\b"      . "BindCraft")   ; protein binder design tool
+      ("\\bBB copy\\b"        . "pbcopy")       ; macOS clipboard command
+      ("\\bKlaus\\b"          . "Claus")        ; collaborator Claus (Wilke)
+      ("\\bChong\\b"          . "Chung"))       ; collaborator's name
+    "Alist of (REGEXP . REPLACEMENT) fixing recurrent whisper errors.")
+
+  (defun my-whisper-fix-vocabulary ()
+    "Apply `my-whisper-replacements' to the whisper output buffer."
+    (dolist (pair my-whisper-replacements)
+      (goto-char (point-min))
+      (while (re-search-forward (car pair) nil t)
+        (replace-match (cdr pair) t))))
+
+  (add-hook 'whisper-after-transcription-hook #'my-whisper-fix-vocabulary t))
 
 (defcustom rk/default-audio-device nil
   "The default audio device to use for whisper.el and other audio processes."
