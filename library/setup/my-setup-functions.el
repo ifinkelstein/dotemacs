@@ -185,8 +185,17 @@ Works with exactly two windows in any split direction."
         ((derived-mode-p 'markdown-mode)
          (markdown-narrow-to-subtree))
         ((derived-mode-p 'latex-mode)
-         (LaTeX-narrow-to-environment))
+         (cond ((ignore-errors (LaTeX-narrow-to-environment) t)) ; inside an env
+               (t (my-LaTeX-narrow-to-section))))                ; else the section
         (t (narrow-to-defun))))
+
+(defun my-LaTeX-narrow-to-section (&optional no-subsections)
+  "Narrow to the current LaTeX section.
+With prefix NO-SUBSECTIONS, exclude nested subsections."
+  (interactive "P")
+  (save-mark-and-excursion
+    (LaTeX-mark-section no-subsections)
+    (narrow-to-region (region-beginning) (region-end))))
 
 ;; Blank Buffer New Frame
 ;; Make a blank buffer when opening a new frame. From

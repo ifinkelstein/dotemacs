@@ -331,7 +331,7 @@
     ("i" "Insert Item" LaTeX-insert-item)
     ("I" "Wrap as List" my-LaTeX-wrap-list)]
    ["Mark/Fill"
-    ("n" "Narrow to Environment" LaTeX-narrow-to-environment)
+    ("n" "Narrow/Widen" my-narrow-or-widen-dwim)
     ("b" "Mark Inside Env" my-LaTeX-mark-inside-environment)
     ("q" "Fill Environment" LaTeX-fill-environment)]
    ["Sections"
@@ -447,7 +447,14 @@
     ("s" "Search with org-ql" org-ql-search)
     ("S" "Org reschedule" my-org-reschedule)
     ("w" "Refile" org-refile)]
-   ])
+   ]
+  ;; Several suffixes (e.g. `org-set-effort', `org-set-tags-command') live in
+  ;; org.el without autoload cookies. When this transient is invoked from a
+  ;; non-org buffer before org has loaded, `transient-setup' warns that they are
+  ;; "not defined or autoloaded". Load org first so every suffix is defined.
+  (interactive)
+  (require 'org)
+  (transient-setup 'my-transient-org))
 
 
 (with-eval-after-load 'org
