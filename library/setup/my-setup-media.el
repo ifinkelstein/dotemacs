@@ -10,9 +10,7 @@
 ;; http://blog.binchen.org/posts/how-to-use-emms-effectively/
 ;; https://www.gnu.org/software/emms/manual/
 (use-package emms
-  :bind
-  (:map global-map
-        ("M-M" . my-transient-emms))
+  :defer t
 
   :custom
   (emms-player-list '(emms-player-mpv
@@ -105,6 +103,11 @@ and sends a message of the current volume status."
   ;; checks the suffixes.
   (require 'emms)
   (transient-setup 'my-transient-emms))
+
+;; Bind globally to the locally-defined transient (which loads emms lazily),
+;; instead of via `use-package' :bind, which would autoload the command from
+;; the emms feature and warn that it is defined multiple times.
+(keymap-global-set "M-M" #'my-transient-emms)
 
 ;;* Provide my-setup-media.el
 (provide 'my-setup-media)
