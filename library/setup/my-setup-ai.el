@@ -542,6 +542,41 @@ Each list contains a list of cons cells, where the car is the device number and 
 
   (claude-code-mode))
 
+;;* codex (OpenAI Codex CLI in a ghostel terminal)
+;; Minimal launcher modeled on how claude-code.el starts its terminal:
+;; `ghostel-exec' execs PROGRAM directly in a fresh ghostel buffer, wrapped
+;; in `inheritenv' so the subprocess inherits the buffer's process
+;; environment (same pattern as `claude-code--term-make' for the ghostel
+;; backend).  No claude-code dependency — this is a standalone command.
+(defcustom my-codex-program "codex"
+  "Executable used to start the OpenAI Codex CLI."
+  :type 'string)
+
+(defun my-codex (&optional arg)
+  "Launch Codex in a new ghostel terminal.
+The working directory is the directory of the file the current buffer
+visits, or `default-directory' otherwise (Dired, a scratch buffer, etc.).
+With prefix ARG, prompt for the directory instead.
+
+A fresh, uniquely-named buffer is created on each call, so several Codex
+sessions can run at once (in different windows or tabs)."
+  (interactive "P")
+  (require 'ghostel)
+  (require 'inheritenv)
+  (let* ((dir (cond (arg (read-directory-name "Codex directory: "))
+                    (buffer-file-name (file-name-directory buffer-file-name))
+                    (t default-directory)))
+         (default-directory (expand-file-name dir))
+         (buffer (generate-new-buffer
+                  (format "*codex: %s*"
+                          (abbreviate-file-name
+                           (directory-file-name default-directory))))))
+    ;; Display before exec: `ghostel-exec' sizes the terminal to the window
+    ;; showing BUFFER (else falls back to 80x24).
+    (pop-to-buffer buffer)
+    (inheritenv (ghostel-exec buffer my-codex-program))
+    buffer))
+
 ;;* pi-coding-agent
 (use-package md-ts-mode :ensure t :defer t)
 (use-package markdown-table-wrap :ensure t :defer t)
