@@ -306,7 +306,6 @@ The window scope is determined by `avy-all-windows' (ARG negates it)."
           meow-keypad-self-insert
           mwheel-scroll
           mouse-set-point
-          vterm--self-insert
           puni-backward-delete-char
           ultra-scroll
           eat-self-input
