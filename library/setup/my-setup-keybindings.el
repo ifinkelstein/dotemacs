@@ -221,6 +221,8 @@
     ("s" "Send Region" my-claude-code-send-region-with-prompt)
     ("t" "Toggle Window" claude-code-toggle)
     ("m" "Claude Menu" claude-code-transient)]
+   ["Codex"
+    ("x" "Codex here" my-codex)]
    ["Assistants"
     ("O" "Toggle gptel-mode" (lambda ()
                                "Toggle gptel-mode in Org and Markdown buffers."
