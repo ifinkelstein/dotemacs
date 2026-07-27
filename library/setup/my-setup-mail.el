@@ -445,11 +445,11 @@ still run.  The whole thing is idempotent."
 
   ;;* mu4e actions (headers & view)
   ;; Shortcut key is the first character of the action name.
-  ;;   a → add contact          g → gcal add
-  ;;   o → org link             r → retag message
-  ;;   R → Remove all tags      t → todo from email
-  ;;   v → view in browser      y → yank path
-  ;;   z → search for sender
+  ;;   a → add contact          e → export pdf
+  ;;   g → gcal add             o → org link
+  ;;   r → retag message        R → Remove all tags
+  ;;   t → todo from email      v → view in browser
+  ;;   y → yank path            z → search for sender
   (defun my-mu4e-action-gcal-add (msg)
     "Add a calendar event from MSG via `gcal-add'.
 `gcal-add' is context-aware: it pulls the message at point in mu4e
@@ -457,6 +457,7 @@ buffers, so MSG is only used to ensure a message is present."
     (require 'gcal-add)
     (gcal-add))
   (dolist (action '(("add contact"       . mu4e-action-add-org-contact)
+                    ("export pdf"         . my-mu4e-export-message-to-pdf)
                     ("gcal add"           . my-mu4e-action-gcal-add)
                     ("org link"           . org-store-link)
                     ("retag message"      . mu4e-action-retag-message)
@@ -798,6 +799,14 @@ Tested with mu4e 1.12.2"
       (when (zerop (call-process mu4e-mu-binary nil t nil "view" path))
         (string-trim (buffer-string)))))
 
+  (defun my-mu4e--format-contacts (contacts)
+    "Format mu4e CONTACTS plist list as \"Name <email>, ...\"."
+    (mapconcat (lambda (c)
+                 (let ((name (plist-get c :name))
+                       (email (plist-get c :email)))
+                   (if name (format "%s <%s>" name email) email)))
+               contacts ", "))
+
   (defun my-mu4e-copy-message-to-kill-ring ()
     "Copy the current mu4e message (headers + body) to the kill ring.
 Works in both `mu4e-headers-mode' and `mu4e-view-mode'.
@@ -806,18 +815,8 @@ Claude Code or other LLM contexts."
     (interactive)
     (let* ((msg (or (mu4e-message-at-point)
                     (user-error "No message at point")))
-           (from (mapconcat
-                  (lambda (c)
-                    (let ((name (plist-get c :name))
-                          (email (plist-get c :email)))
-                      (if name (format "%s <%s>" name email) email)))
-                  (mu4e-message-field msg :from) ", "))
-           (to (mapconcat
-                (lambda (c)
-                  (let ((name (plist-get c :name))
-                        (email (plist-get c :email)))
-                    (if name (format "%s <%s>" name email) email)))
-                (mu4e-message-field msg :to) ", "))
+           (from (my-mu4e--format-contacts (mu4e-message-field msg :from)))
+           (to (my-mu4e--format-contacts (mu4e-message-field msg :to)))
            (subject (or (mu4e-message-field msg :subject) "(no subject)"))
            (date (format-time-string "%Y-%m-%d %a %H:%M"
                                      (mu4e-message-field msg :date)))
@@ -838,6 +837,177 @@ Claude Code or other LLM contexts."
                          (or body "(body not available)"))))
       (kill-new text)
       (message "Copied: %s" (truncate-string-to-width subject 60 nil nil t))))
+
+  ;;** Export message to PDF (Gmail-print style, via lualatex)
+  (defvar my-mu4e-pdf-font "Helvetica Neue"
+    "Main font for message PDF export.  Must be visible to fontspec.")
+
+  (defvar my-mu4e-pdf-directory nil
+    "Directory for exported message PDFs.
+Nil means use `mu4e-attachment-dir'.")
+
+  (defun my-mu4e-pdf--escape (str)
+    "Escape LaTeX special characters in STR."
+    (replace-regexp-in-string
+     "[\\{}$&#^_%~]"
+     (lambda (m)
+       (pcase m
+         ("\\" "\\textbackslash{}")
+         ("^"  "\\textasciicircum{}")
+         ("~"  "\\textasciitilde{}")
+         (_    (concat "\\" m))))
+     (replace-regexp-in-string "\r" "" str)
+     t t))
+
+  (defun my-mu4e-pdf--strip-header-block (text)
+    "Return TEXT without its leading header block.
+The block runs through the first blank line; if there is no blank
+line, TEXT is all headers and the result is empty."
+    (if (string-match "\n[ \t]*\n" text)
+        (string-trim (substring text (match-end 0)))
+      ""))
+
+  (defun my-mu4e-pdf--body (msg)
+    "Return the plain-text body of MSG.
+Tries `mu view' on the message file first; for HTML-only messages
+that yields nothing, so fall back to the rendered text of the
+current `mu4e-view-mode' buffer when it is showing MSG."
+    (let* ((path (mu4e-message-field msg :path))
+           (raw (and path (file-exists-p path)
+                     (my-mu4e--extract-body path)))
+           (body (and raw (my-mu4e-pdf--strip-header-block raw))))
+      (cond
+       ((and body (not (string-blank-p body))) body)
+       ((derived-mode-p 'mu4e-view-mode)
+        (my-mu4e-pdf--strip-header-block
+         (buffer-substring-no-properties (point-min) (point-max))))
+       (t (user-error "No text body found; open the message first and retry")))))
+
+  (defun my-mu4e-pdf--format-body (text)
+    "Convert plain-text TEXT to LaTeX, preserving line and paragraph breaks."
+    (let ((paras (split-string (my-mu4e-pdf--escape text)
+                               "\n[ \t]*\n+" t "[ \t\n]+")))
+      (if (null paras)
+          "(no message body)"
+        (mapconcat
+         (lambda (p)
+           (mapconcat #'string-trim-right (split-string p "\n") "\\newline\n"))
+         paras "\n\n"))))
+
+  (defun my-mu4e-pdf--slug (subject)
+    "Sanitize SUBJECT for use as a file name component."
+    (let ((s (string-trim
+              (replace-regexp-in-string
+               "[ \t]+" " "
+               (replace-regexp-in-string "[/:*?\"<>|\\\\]+" " " subject)))))
+      (truncate-string-to-width (if (string-empty-p s) "message" s) 60)))
+
+  (defun my-mu4e-pdf--tex (msg body)
+    "Return LaTeX source for MSG with LaTeX-formatted BODY."
+    (let* ((subject (my-mu4e-pdf--escape
+                     (or (mu4e-message-field msg :subject) "(no subject)")))
+           (from (car (mu4e-message-field msg :from)))
+           (from-name (my-mu4e-pdf--escape
+                       (or (plist-get from :name) (plist-get from :email) "Unknown")))
+           (from-email (my-mu4e-pdf--escape (or (plist-get from :email) "")))
+           (to (my-mu4e-pdf--escape
+                (my-mu4e--format-contacts (mu4e-message-field msg :to))))
+           (cc (my-mu4e-pdf--escape
+                (my-mu4e--format-contacts (mu4e-message-field msg :cc))))
+           (date (format-time-string "%a, %b %-d, %Y at %-I:%M %p"
+                                     (mu4e-message-field msg :date)))
+           (account (my-mu4e-pdf--escape
+                     (if (and (bound-and-true-p my-email-primary-name)
+                              (bound-and-true-p my-email-primary-address))
+                         (format "%s <%s>" my-email-primary-name
+                                 my-email-primary-address)
+                       (or user-mail-address "")))))
+      (concat
+       "\\documentclass[11pt]{article}\n"
+       "\\usepackage[margin=2.2cm]{geometry}\n"
+       "\\usepackage{fontspec}\n"
+       "\\setmainfont{" my-mu4e-pdf-font "}\n"
+       "\\usepackage[parfill]{parskip}\n"
+       "\\usepackage{xcolor}\n"
+       "\\definecolor{metagray}{HTML}{5F6368}\n"
+       "\\definecolor{rulegray}{HTML}{DADCE0}\n"
+       "\\usepackage{fancyhdr}\n"
+       "\\pagestyle{fancy}\n"
+       "\\fancyhf{}\n"
+       "\\renewcommand{\\headrulewidth}{0pt}\n"
+       "\\fancyfoot[C]{\\footnotesize\\color{metagray}\\thepage}\n"
+       "\\setlength{\\emergencystretch}{3em}\n"
+       "\\sloppy\n"
+       "\\begin{document}\n"
+       "{\\footnotesize\\color{metagray}" account "}\\par\n"
+       "\\vspace{1mm}\n"
+       "{\\color{rulegray}\\hrule height 0.8pt}\n"
+       "\\vspace{6mm}\n"
+       "{\\LARGE\\bfseries " subject "\\par}\n"
+       "\\vspace{4mm}\n"
+       "{\\color{rulegray}\\hrule height 0.4pt}\n"
+       "\\vspace{6mm}\n"
+       "\\noindent\\textbf{" from-name "} {\\color{metagray}<" from-email ">}"
+       "\\hfill {\\color{metagray}\\footnotesize " date "}\\par\n"
+       "\\vspace{0.5mm}\n"
+       (unless (string-empty-p to)
+         (concat "{\\color{metagray}\\footnotesize To: " to "\\par}\n"))
+       (unless (string-empty-p cc)
+         (concat "{\\color{metagray}\\footnotesize Cc: " cc "\\par}\n"))
+       "\\vspace{6mm}\n"
+       "\\begin{flushleft}\n"
+       body
+       "\n\\end{flushleft}\n"
+       "\\end{document}\n")))
+
+  (defun my-mu4e-export-message-to-pdf (&optional msg)
+    "Export MSG (default: message at point) to a formatted PDF via lualatex.
+The layout mimics Gmail's print view: account line, subject rule,
+sender/date header, then the plain-text body.  The PDF lands in
+`my-mu4e-pdf-directory' (default `mu4e-attachment-dir') and opens
+when compilation finishes.  Compilation runs asynchronously."
+    (interactive)
+    (unless (executable-find "lualatex")
+      (user-error "Cannot find lualatex in PATH"))
+    (let* ((msg (or msg (mu4e-message-at-point 'noerror)
+                    (user-error "No message at point")))
+           (body (my-mu4e-pdf--format-body (my-mu4e-pdf--body msg)))
+           (dir (file-name-as-directory
+                 (or my-mu4e-pdf-directory mu4e-attachment-dir)))
+           (target (expand-file-name
+                    (format "%s %s.pdf"
+                            (format-time-string
+                             "%Y-%m-%d" (mu4e-message-field msg :date))
+                            (my-mu4e-pdf--slug
+                             (or (mu4e-message-field msg :subject) "")))
+                    dir))
+           (tmpdir (make-temp-file "mu4e-pdf-" t))
+           (texfile (expand-file-name "message.tex" tmpdir))
+           (buf-name " *mu4e-pdf-lualatex*")
+           (buf (progn (when (get-buffer buf-name) (kill-buffer buf-name))
+                       (get-buffer-create buf-name))))
+      (make-directory dir t)
+      (with-temp-file texfile (insert (my-mu4e-pdf--tex msg body)))
+      (message "Exporting message to PDF…")
+      (let* ((default-directory tmpdir)
+             (proc (start-process "mu4e-pdf-lualatex" buf "lualatex"
+                                  "-interaction=nonstopmode" "-halt-on-error"
+                                  "message.tex")))
+        (set-process-sentinel
+         proc
+         (lambda (process _signal)
+           (when (memq (process-status process) '(exit signal))
+             (let ((pdf (expand-file-name "message.pdf" tmpdir)))
+               (if (and (zerop (process-exit-status process))
+                        (file-exists-p pdf))
+                   (progn
+                     (copy-file pdf target t)
+                     (delete-directory tmpdir t)
+                     (when (buffer-live-p buf) (kill-buffer buf))
+                     (call-process "open" nil 0 nil target)
+                     (message "Exported: %s" target))
+                 (message "lualatex failed (exit %s) — log in %s"
+                          (process-exit-status process) tmpdir)))))))))
 
   (defun my-email-to-kill-ring ()
     "Prompt user to search for an email address. Save selected ones to the kill ring.
