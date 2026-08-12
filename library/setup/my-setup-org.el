@@ -324,6 +324,10 @@
   (org-clock-persist-file (expand-file-name "org-clock-save.el" my-cache-dir))
   ;; Include current clocking task in clock reports
   (org-clock-report-include-clocking-task t)
+  ;; Show the running clock in the macOS title bar only, not the mode line
+  (org-clock-clocked-in-display 'frame-title)
+  ;; Keep the usual "file [mode]" title and append the clock
+  (org-clock-frame-title-format '("%f [" mode-name "] " org-mode-line-string))
   :config
   ;; Actually register clock persistence on the kill-emacs/startup hooks.
   (org-clock-persistence-insinuate)
