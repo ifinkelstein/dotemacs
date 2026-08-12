@@ -261,6 +261,26 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
   :config
   (lambda-line-mode)
   (lambda-line-visual-bell-config)
+
+  ;; Show the running org clock on the right of the status line.  org-clock
+  ;; already builds and truncates `org-mode-line-string' (see
+  ;; `org-clock-string-limit'), but lambda-line only reads it in its
+  ;; org-clock-mode format, which loses to the prog-mode/org-mode formats.
+  ;; Splicing it into SECONDARY shows it in every mode, and keeps
+  ;; `lambda-line-compose' aware of its width when truncating the file name.
+  ;; Drop the built-in org-clock format, or the clock is shown twice.
+  (setf (alist-get 'org-clock-mode lambda-line-mode-formats nil t) nil)
+
+  (defun my-lambda-line-add-clock (args)
+    "Prepend the running org clock to the SECONDARY element of ARGS.
+Filter-args advice for `lambda-line-compose'."
+    (if (and (fboundp 'org-clocking-p) (org-clocking-p) (> (length args) 4))
+        (let ((args (copy-sequence args)))
+          (setf (nth 4 args) (concat org-mode-line-string lambda-line-hspace (nth 4 args)))
+          args)
+      args))
+  (advice-add 'lambda-line-compose :filter-args #'my-lambda-line-add-clock)
+
   ;; set divider line in footer
   (when (eq lambda-line-position 'top)
     (setq-default mode-line-format (list "%_"))
