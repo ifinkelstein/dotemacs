@@ -53,7 +53,11 @@
      (lambda-themes :url "https://github.com/Lambda-Emacs/lambda-themes" :branch
                     "main")))
  '(safe-local-variable-values
-   '((line-spacing . 0.3) (reftex-default-bibliography "bibliography.bib")
+   '((org-archive-location . "../archive.org::* Archived from job-targets.org")
+     (org-archive-location . "archive.org::* Archived from archive.org")
+     (org-archive-save-context-info time file olpath category todo itags)
+     (org-archive-location . "archive.org::* Archived from next-steps.org")
+     (line-spacing . 0.3) (reftex-default-bibliography "bibliography.bib")
      (line-spacing . 0.5) (olivetti-mode . -1)
      (org-duration-format quote (("h" . t) (special . 2))) (eval valign-mode t)
      (eval and (fboundp 'gptel-mode) (gptel-mode 1)))))
