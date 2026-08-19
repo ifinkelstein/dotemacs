@@ -586,6 +586,7 @@
    ["Tabs"
     ("c" "Close" tab-close)
     ("m" "Move" my-move-tab-to)
+    ("n" "Rename (name)" tab-rename)
     ("s" "Switch or create workspace" tabspaces-switch-or-create-workspace)
     ("p" "Switch project and open file" tabspaces-project-switch-project-open-file)
     ]
