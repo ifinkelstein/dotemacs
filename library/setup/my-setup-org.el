@@ -1217,7 +1217,14 @@ If only the list buffer is shown, split the frame first with \\[org-timeblock-to
   :custom
   (org-mru-clock-how-many 100)
   :config
-  (add-hook 'minibuffer-setup-hook #'org-mru-clock-embark-minibuffer-hook))
+  ;; `org-mru-clock-embark-minibuffer-hook' reads `embark-general-map' without
+  ;; requiring Embark, which signals void-variable while Embark is still lazy.
+  (defun my-org-mru-clock-embark-setup ()
+    "Like `org-mru-clock-embark-minibuffer-hook', but load Embark first."
+    (when (eq this-command 'org-mru-clock-in)
+      (require 'embark)
+      (org-mru-clock-embark-minibuffer-hook)))
+  (add-hook 'minibuffer-setup-hook #'my-org-mru-clock-embark-setup))
 
 ;;* Provide org
 (provide 'my-setup-org)
