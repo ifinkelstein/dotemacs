@@ -743,6 +743,49 @@ the current region, if a region is selected, or the current tree."
                                        :order 20)
                                 (:discard (:anything t))))))))
 
+              ;; Date-driven triage: what slipped, what is due now, what is coming.
+              ;; The tagged block comes first and claims its items, so a :today:
+              ;; or :tomorrow: task is never also listed by date below.
+              ("t" "Triage"
+               ((tags-todo "today|tomorrow"
+                           ((org-agenda-overriding-header "")
+                            (org-super-agenda-groups
+                             '((:name "Tagged today"    :tag "today"    :order 1)
+                               (:name "Tagged tomorrow" :tag "tomorrow" :order 2)
+                               (:discard (:anything t))))))
+                (agenda ""
+                        ((org-agenda-span 1)
+                         (org-agenda-overriding-header "")
+                         (org-super-agenda-groups
+                          ;; Order matters: today's group claims calendar events
+                          ;; before the :calendar discard removes the rest. The
+                          ;; cal/ files use SCHEDULED with no TODO keyword, so
+                          ;; every past event otherwise lands in Overdue forever.
+                          '((:discard (:tag ("today" "tomorrow")))
+                            (:name "Due / scheduled today"
+                                   :time-grid t :deadline today :scheduled today :order 2)
+                            (:discard (:tag "calendar"))
+                            (:discard (:todo nil))
+                            (:name "Overdue"
+                                   :deadline past :scheduled past :order 1)
+                            (:discard (:anything t))))))
+                (agenda ""
+                        ((org-agenda-span 7)
+                         (org-agenda-start-day "+1d")
+                         (org-agenda-start-on-weekday nil)
+                         (org-agenda-overriding-header "")
+                         (org-super-agenda-groups
+                          ;; :name none, because a named group repeats its header
+                          ;; once per day section. The day headers carry it.
+                          '((:discard (:tag ("today" "tomorrow" "calendar")))
+                            (:discard (:todo nil))
+                            (:name none :anything t))))))
+               ((org-agenda-skip-deadline-if-done t)
+                (org-agenda-skip-scheduled-if-done t)
+                (org-agenda-skip-scheduled-if-deadline-is-shown t)
+                (org-agenda-start-with-log-mode nil)
+                (org-agenda-show-inherited-tags 'always)))
+
               ("z" "Super View"
                ((agenda "" ((org-agenda-span 'day)
                             (org-super-agenda-groups

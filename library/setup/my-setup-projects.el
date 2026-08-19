@@ -103,7 +103,7 @@ Email is opened last because mu4e starts asynchronously."
   ;; load the inbox, gtd, and agenda
   (my-goto-gtd.org)
   (my-goto-inbox.org)
-  (org-agenda nil "f"))
+  (org-agenda nil "t"))
 
 ;;** Open Notes in Workspace
 (defun my-open-notes-in-workspace ()
