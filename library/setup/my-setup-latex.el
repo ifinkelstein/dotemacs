@@ -777,37 +777,6 @@ With no real content, leave point at an empty \\item ready to type."
 (add-hook 'LaTeX-mode-hook #'prettify-symbols-latex-symbols)
 
 
-;;* Sentence boundaries in LaTeX
-;; `sentence-end-base' ends a sentence with terminal punctuation followed by a
-;; run of closing delimiters -- [.?!...] then []"'”’)}»›]* -- because in
-;; English the closer belongs to the sentence: He said "go home."  In LaTeX the
-;; `}' of \emph{a sentence.} is a macro group, not a quote, so sentence motion
-;; overshoots it.  Trimming `}' out of the class does NOT work: the period is
-;; then no longer followed by whitespace, nothing matches, and forward-sentence
-;; runs to the end of the paragraph.  The class has to keep `}' so the sentence
-;; end is recognized; we back over the brace afterwards instead.  Fixes
-;; forward/backward-sentence, `my-kill-sentence-dwim', and meow's `.' sentence
-;; thing, which all route through `forward-sentence'.
-(defun my-latex-forward-sentence (&optional arg)
-  "Move by sentences, without stepping past a LaTeX closing brace.
-Like `forward-sentence-default-function' with ARG, but when moving
-forward, back up over any `}' we landed past -- only when a sentence
-terminator sits behind them, so a paragraph merely ending in `}' is left
-alone."
-  (let ((arg (or arg 1)))
-    (forward-sentence-default-function arg)
-    (when (> arg 0)
-      (let ((pos (point)))
-        (skip-chars-backward "}")
-        (unless (memq (char-before) '(?. ?? ?! ?… ?‽))
-          (goto-char pos))))))
-
-(defun my-latex-sentence-setup ()
-  "Use LaTeX-aware sentence motion in this buffer."
-  (setq-local forward-sentence-function #'my-latex-forward-sentence))
-
-(add-hook 'LaTeX-mode-hook #'my-latex-sentence-setup)
-
 
 ;;* Helpful functions
 ;;** control how reftex toc shows up
