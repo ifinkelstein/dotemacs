@@ -371,6 +371,64 @@ sentence. Otherwise kill forward but preserve any punctuation at the sentence en
 
 (define-key (current-global-map) [remap kill-sentence] 'my-kill-sentence-dwim)
 
+;;* Sentence boundaries in markup modes
+;; `sentence-end-base' is terminal punctuation followed by a run of CLOSING
+;; delimiters.  Markup breaks it in two opposite ways.  Org's */=~_+$ are not
+;; in the closer class, so a terminator hugged by them is never followed by
+;; whitespace, nothing matches, and sentence motion runs to the end of the
+;; paragraph.  LaTeX's } IS in the class, so \emph{a sentence.} overshoots the
+;; brace.  Emacs regexps have no lookahead, so "recognize but do not consume"
+;; cannot be expressed in the variable alone.  Fix both per buffer: splice
+;; extra closers into a local `sentence-end-base' so the end is found at all,
+;; and back over unwanted closers afterwards via `forward-sentence-function'.
+;; Repairs M-e, `kill-sentence', `my-kill-sentence-dwim', and meow's `.'
+;; sentence thing, which all route through `forward-sentence'.
+
+(defvar-local my-sentence-excluded-closers nil
+  "Closers (a `skip-chars-backward' set) left outside the sentence.
+When non-nil, `my-forward-sentence' backs over these after moving
+forward, provided a sentence terminator sits behind them.")
+
+(defun my-forward-sentence (&optional arg)
+  "Move by sentences, leaving `my-sentence-excluded-closers' unselected.
+Like `forward-sentence-default-function' with ARG, but after forward
+motion back over excluded closers -- only when a sentence terminator
+sits behind them, so text merely ending in one is left alone."
+  (forward-sentence-default-function arg)
+  (when (> (or arg 1) 0)
+    (let ((pos (point)))
+      (skip-chars-backward my-sentence-excluded-closers)
+      (unless (looking-back sentence-end-base (pos-bol))
+        (goto-char pos)))))
+
+(defun my-sentence-setup (&optional recognize exclude)
+  "Adapt sentence boundaries to this buffer's markup.
+RECOGNIZE is a string of extra characters allowed between a sentence
+terminator and the following whitespace, spliced into the closer class
+of a buffer-local `sentence-end-base' so a terminator hugged by markup
+still ends a sentence.  EXCLUDE is a `skip-chars' set of closers to
+leave outside the sentence: point stops before them instead of after.
+A character may appear in both.  With both nil, behavior is stock."
+  (when recognize
+    (setq-local sentence-end-base
+                (if (string-suffix-p "]*" sentence-end-base)
+                    (concat (substring sentence-end-base 0 -2) recognize "]*")
+                  (concat sentence-end-base "[" recognize "]*"))))
+  (when exclude
+    (setq-local my-sentence-excluded-closers exclude
+                forward-sentence-function #'my-forward-sentence)))
+
+(defun my-org-sentence-setup ()
+  "Org: markup chars close sentences; } (LaTeX fragments) stays outside."
+  (my-sentence-setup "*/=~_+$" "}"))
+
+(defun my-latex-sentence-setup ()
+  "LaTeX: closing braces stay outside the sentence."
+  (my-sentence-setup nil "}"))
+
+(add-hook 'org-mode-hook #'my-org-sentence-setup)
+(add-hook 'LaTeX-mode-hook #'my-latex-sentence-setup)
+
 (defun my-toggle-line-spacing ()
   "Toggle line spacing between no extra space to extra half line height.
 URL `http://xahlee.info/emacs/emacs/emacs_toggle_line_spacing.html'
