@@ -386,20 +386,21 @@ sentence. Otherwise kill forward but preserve any punctuation at the sentence en
 
 (defvar-local my-sentence-excluded-closers nil
   "Closers (a `skip-chars-backward' set) left outside the sentence.
-When non-nil, `my-forward-sentence' backs over these after moving
+When non-nil, `my-forward-sentence-around' backs over these after moving
 forward, provided a sentence terminator sits behind them.")
 
-(defun my-forward-sentence (&optional arg)
-  "Move by sentences, leaving `my-sentence-excluded-closers' unselected.
-Like `forward-sentence-default-function' with ARG, but after forward
-motion back over excluded closers -- only when a sentence terminator
-sits behind them, so text merely ending in one is left alone."
-  (forward-sentence-default-function arg)
+(defun my-forward-sentence-around (forward-fn &optional arg)
+  "Call FORWARD-FN with ARG, leaving excluded closers unselected.
+After forward motion, back over `my-sentence-excluded-closers' only
+when a sentence terminator sits behind them, so text merely ending in
+one is left alone.  Return the resulting buffer position."
+  (funcall forward-fn arg)
   (when (> (or arg 1) 0)
     (let ((pos (point)))
       (skip-chars-backward my-sentence-excluded-closers)
       (unless (looking-back sentence-end-base (pos-bol))
-        (goto-char pos)))))
+        (goto-char pos))))
+  (point))
 
 (defun my-sentence-setup (&optional recognize exclude)
   "Adapt sentence boundaries to this buffer's markup.
@@ -415,8 +416,9 @@ A character may appear in both.  With both nil, behavior is stock."
                     (concat (substring sentence-end-base 0 -2) recognize "]*")
                   (concat sentence-end-base "[" recognize "]*"))))
   (when exclude
-    (setq-local my-sentence-excluded-closers exclude
-                forward-sentence-function #'my-forward-sentence)))
+    (setq-local my-sentence-excluded-closers exclude)
+    (add-function :around (local 'forward-sentence-function)
+                  #'my-forward-sentence-around)))
 
 (defun my-org-sentence-setup ()
   "Org: markup chars close sentences; } (LaTeX fragments) stays outside."
