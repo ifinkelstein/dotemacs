@@ -160,6 +160,84 @@ Works with exactly two windows in any split direction."
       (select-window (active-minibuffer-window))
     (error "Minibuffer is not active")))
 
+;;** Split With Agent Terminal
+;; Left: the current text buffer.  Right: a terminal session running in that
+;; buffer's own directory.  Sessions are classified by their process command
+;; line rather than by buffer name, because ghostel renames its buffers from
+;; the terminal title (a live Claude session is "*ghostel: <session title>*",
+;; not "*claude:...*").
+
+(defvar my-agent-split-preference '(claude codex shell)
+  "Kinds of terminal session to reuse, most preferred first.
+Also the order the right window cycles through on repeat calls.")
+
+(defun my-agent--directory ()
+  "Directory the agent should run in.
+The current file's directory, or `default-directory' in a non-file buffer."
+  (file-truename (if buffer-file-name
+                     (file-name-directory buffer-file-name)
+                   default-directory)))
+
+(defun my-agent--session-kind (buffer)
+  "Classify ghostel BUFFER as `claude', `codex' or `shell'."
+  (let ((cmd (if-let* ((proc (get-buffer-process buffer)))
+                 (string-join (process-command proc) " ")
+               "")))
+    (cond ((string-match-p "\\bclaude\\b" cmd) 'claude)
+          ((string-match-p "\\bcodex\\b" cmd) 'codex)
+          (t 'shell))))
+
+(defun my-agent--sessions (dir)
+  "Live ghostel buffers running in DIR, ordered by `my-agent-split-preference'."
+  (let ((bufs (seq-filter
+               (lambda (buf)
+                 (and (eq (buffer-local-value 'major-mode buf) 'ghostel-mode)
+                      (process-live-p (get-buffer-process buf))
+                      (string= dir (file-truename
+                                    (buffer-local-value 'default-directory buf)))))
+               (buffer-list))))
+    (mapcan (lambda (kind)
+              (seq-filter (lambda (buf) (eq kind (my-agent--session-kind buf)))
+                          bufs))
+            my-agent-split-preference)))
+
+(defun my-agent--start-claude (dir window)
+  "Start a Claude Code session in DIR, displayed in WINDOW."
+  (require 'cl-lib)
+  (require 'claude-code)
+  ;; `claude-code--directory' prefers the project root; we want the file's
+  ;; own directory, so shadow it for the duration of the call the same way
+  ;; `claude-code-start-in-directory' does.
+  (let ((claude-code-display-window-fn
+         (lambda (buffer) (set-window-buffer window buffer) window)))
+    (cl-letf (((symbol-function 'claude-code--directory) (lambda () dir)))
+      (claude-code))))
+
+(defun my-split-with-agent (&optional new)
+  "Put this buffer on the left and an agent terminal on the right.
+
+The terminal runs in the current file's directory.  An existing session
+for that directory is reused, preferring Claude Code, then Codex, then any
+other ghostel terminal; if none exists, a new Claude Code session is
+started there.  Repeat calls cycle the right window through the remaining
+sessions for that directory.  With prefix arg NEW, always start a fresh
+Claude Code session."
+  (interactive "P")
+  (let* ((dir (my-agent--directory))
+         (sessions (unless new (my-agent--sessions dir)))
+         (right (window-in-direction 'right)))
+    ;; Rebuild the two-window layout unless the right window already holds
+    ;; one of the candidate sessions (that is the repeat-call case).
+    (unless (and right (memq (window-buffer right) sessions))
+      (delete-other-windows)
+      (setq right (split-window-right)))
+    (if (null sessions)
+        (my-agent--start-claude dir right)
+      (let* ((pos (seq-position sessions (window-buffer right)))
+             (next (nth (if pos (mod (1+ pos) (length sessions)) 0) sessions)))
+        (set-window-buffer right next)))
+    (select-window right)))
+
 ;;* Buffer Functions
 (defun my-narrow-or-widen-dwim (p)
   "Widen if buffer is narrowed, narrow-dwim otherwise.
