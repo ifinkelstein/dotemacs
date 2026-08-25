@@ -220,7 +220,8 @@
     ("C" "Claude in Dir" claude-code-start-in-directory)
     ("s" "Send Region" my-claude-code-send-region-with-prompt)
     ("t" "Toggle Window" claude-code-toggle)
-    ("m" "Claude Menu" claude-code-transient)]
+    ("m" "Claude Menu" claude-code-transient)
+    ("S" "Split with Agent" my-split-with-agent)]
    ["Codex"
     ("x" "Codex here" my-codex)]
    ["Assistants"
@@ -550,6 +551,7 @@
     ("H" "Split Below" split-window-below)
     ("v" "Split & Focus Right" my-split-window-right-and-focus)
     ("V" "Split Right" split-window-right)
+    ("S" "Split with Agent" my-split-with-agent)
     ]
    ["Manage"
     ("a" "Ace Window" ace-window)
