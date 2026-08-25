@@ -53,7 +53,27 @@
      (lambda-themes :url "https://github.com/Lambda-Emacs/lambda-themes" :branch
                     "main")))
  '(safe-local-variable-values
-   '((org-archive-location . "../archive.org::* Archived from job-targets.org")
+   '((eval add-hook 'before-save-hook
+           (lambda nil
+             (let
+                 ((stamp (format-time-string "[%Y-%m-%d %a %H:%M]"))
+                  (case-fold-search t))
+               (save-excursion
+                 (goto-char (point-min))
+                 (unless (re-search-forward "^#\\+CREATED:" nil t)
+                   (goto-char (point-min))
+                   (if (re-search-forward "^#\\+DATE:.*$" nil t) (end-of-line)
+                     (goto-char (point-min)))
+                   (insert "\12#+CREATED: " stamp))
+                 (goto-char (point-min))
+                 (if (re-search-forward "^#\\+LAST_MODIFIED:.*$" nil t)
+                     (replace-match (concat "#+LAST_MODIFIED: " stamp) t t)
+                   (if (re-search-forward "^#\\+CREATED:.*$" nil t)
+                       (end-of-line)
+                     (goto-char (point-min)))
+                   (insert "\12#+LAST_MODIFIED: " stamp)))))
+           nil t)
+     (org-archive-location . "../archive.org::* Archived from job-targets.org")
      (org-archive-location . "archive.org::* Archived from archive.org")
      (org-archive-save-context-info time file olpath category todo itags)
      (org-archive-location . "archive.org::* Archived from next-steps.org")
