@@ -45,9 +45,6 @@
   ;; Prefer UTF-8 for MIME decoding, and provide sensible fallbacks
   (setq mm-coding-system-priorities '(utf-8 utf-8-auto))
   (setq mm-default-coding-system 'utf-8)
-  (setq mm-body-charset-encoding-alist '((iso-8859-1  . utf-8)
-                                         (iso-8859-15 . utf-8)
-                                         (us-ascii     . utf-8)))
   ;; Override declared charsets → utf-8 during MIME decoding.
   ;; Only override charsets that are routinely mislabeled; do NOT
   ;; override iso-8859-1/15 — genuine Latin-1 emails (e.g. "María")
