@@ -146,7 +146,7 @@
   (embark-indicators '(embark-verbose-indicator
                        embark-highlight-indicator
                        embark-isearch-highlight-indicator))
-  (embark-verbose-indicator-buffer-sections '(bindings))
+  (embark-verbose-indicator-buffer-sections '(my-embark-bindings-grid))
   (embark-verbose-indicator-nested nil)
   (embark-verbose-indicator-display-action
    '(display-buffer-in-side-window
@@ -156,6 +156,22 @@
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)
   :config
+  (defvar my-embark-grid-columns 4
+    "Number of columns in the embark verbose indicator.")
+
+  (cl-defun my-embark-bindings-grid (&key bindings &allow-other-keys)
+    "Verbose indicator section: BINDINGS as a compact key/command grid."
+    (let* ((cells (cl-loop for b in bindings
+                           unless (embark--verbose-indicator-excluded-p (caddr b))
+                           collect (car b)))
+           (width (apply #'max 0 (mapcar #'string-width cells)))
+           (fmt (format "%%-%ds" (+ width 2))))
+      (concat
+       (mapconcat (lambda (row) (mapconcat (lambda (c) (format fmt c)) row ""))
+                  (seq-partition cells my-embark-grid-columns)
+                  "\n")
+       "\n")))
+
   ;; Hide the mode line of the Embark live/completions buffers
   (add-to-list 'display-buffer-alist
                '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
