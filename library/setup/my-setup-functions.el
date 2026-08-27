@@ -83,8 +83,8 @@
 (use-package crux
   :defer 1
   :bind
-  ("C-k"   . crux-smart-kill-line)
-  ("C-a"   . crux-move-beginning-of-line))
+  ;; C-a is left to mwim (remap of move-beginning-of-line)
+  ("C-k"   . crux-smart-kill-line))
 
 ;;* Search Functions
 ;;** Search given directory
