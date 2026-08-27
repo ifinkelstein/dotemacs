@@ -15,10 +15,10 @@
               ("f" . link-hint-open-link)
               ;; Quickly switch between plain text and HTML mime type.
               ("K" . my-mu4e-copy-message-to-kill-ring)
-              ("r" . mu4e-view-mark-for-read)
-              ("u" . mu4e-view-mark-for-unread)
-              ("!" . mu4e-view-mark-for-refile)
-              ("?" . mu4e-view-mark-for-unmark)
+              ("r" . mu4e-headers-mark-for-read)
+              ("u" . mu4e-headers-mark-for-unread)
+              ("!" . mu4e-headers-mark-for-refile)
+              ("?" . mu4e-headers-mark-for-unmark)
               ("L" . org-store-link)
               ("M-o" . my-transient-email)
 
