@@ -180,13 +180,11 @@
             ;;   cp libtree-sitter-latex.dylib ~/.config/.emacs/tree-sitter/
             (latex      "https://github.com/latex-lsp/tree-sitter-latex")))
 
-  ;; Remap classic modes to tree-sitter modes where available
-  (setopt major-mode-remap-alist
-          '((python-mode     . python-ts-mode)
-            (sh-mode         . bash-ts-mode)
-            (js-json-mode    . json-ts-mode)
-            (dockerfile-mode . dockerfile-ts-mode)
-            (conf-toml-mode  . toml-ts-mode))))
+  ;; Opt selected tree-sitter modes in; the setter installs the remaps from
+  ;; `treesit-major-mode-remap-alist'.
+  (setopt treesit-enabled-modes
+          '(python-ts-mode bash-ts-mode json-ts-mode
+            dockerfile-ts-mode toml-ts-mode)))
 
 ;;* Programming modes
 ;; reminder to run eglot-upgrade-eglot every so often
