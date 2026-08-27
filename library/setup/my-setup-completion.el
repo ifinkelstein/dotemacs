@@ -58,6 +58,15 @@
           (side . top)))
   (vertico-buffer-mode 1))
 
+;; Show embark actions as a compact grid of "key command"
+(use-package vertico-multiform
+  :ensure nil
+  :after vertico
+  :custom
+  (vertico-multiform-categories '((embark-keybinding grid)))
+  :config
+  (vertico-multiform-mode 1))
+
 ;; Vertico repeat last command
 (use-package vertico-repeat
   :ensure nil
