@@ -151,9 +151,7 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
   (setq-default tab-width 4)
   (setq-default fill-column 80)
   (setq-default indent-tabs-mode nil)
-  (setq-default tab-always-indent 'complete)
-  ;; TAB cycle if there are only few candidates
-  (setq-default completion-cycle-threshold 3))
+  (setq-default tab-always-indent 'complete))
 
 ;;** Save history and backups
 (use-package savehist
