@@ -176,8 +176,6 @@ Loading modules
 (my-require my-setup-ai)
 (my-require my-setup-media)
 
-(my-require my-setup-slack)
-
 
 ;;** MacOS settings - defer load until after init.
 (when sys-mac

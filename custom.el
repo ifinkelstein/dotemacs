@@ -17,7 +17,7 @@
                 dired-preview dired-ranger dired-recent diredfl dogears
                 dwim-shell-command easy-kill-extras eat editorconfig
                 elfeed-goodies elfeed-org elisp-def elixir-ts-mode
-                emacs-everywhere emacs-slack embark-consult embrace emms
+                emacs-everywhere embark-consult embrace emms
                 exec-path-from-shell expreg faceup fancy-dabbrev fix-word fzf
                 ghostel goggles goto-chg gptel gptel-aibo gptel-prompts
                 grab-mac-link helpful highlight-quoted homebrew hungry-delete
@@ -31,9 +31,9 @@
                 org-pomodoro org-ql org-roam org-sticky-header org-timeblock
                 org-transclusion org-web-tools origami ox-pandoc pdf-tools peg
                 phscroll popper popwin prism puni ragmacs rainbow-delimiters
-                reveal-in-osx-finder revert-buffer-all rg semext slack
-                substitute svg-tag-mode tabspaces taxy-magit-section timeout
-                tramp trashed ultra-scroll vdiff-magit verilog-mode vertico
+                reveal-in-osx-finder revert-buffer-all rg semext substitute
+                svg-tag-mode tabspaces taxy-magit-section timeout tramp trashed
+                ultra-scroll vdiff-magit verilog-mode vertico
                 visual-regexp-steroids wallpaper web-server which-key whisper
                 yasnippet-snippets))
  '(package-vc-selected-packages
@@ -41,7 +41,6 @@
      (lambda-line :url "https://codeberg.org/Lambda-Emacs/lambda-line" :branch
                   "main")
      (homebrew :url "https://github.com/jdormit/homebrew.el")
-     (emacs-slack :url "https://github.com/emacs-slack/emacs-slack")
      (semext :url "https://github.com/ahyatt/semext/" :branch "master")
      (ragmacs :url "https://github.com/positron-solutions/ragmacs" :branch
               "master")

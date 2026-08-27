@@ -255,7 +255,6 @@ the candidate list with the current pick highlighted."
   :commands (olivetti-mode)
   :hook
   (org-mode . olivetti-mode)
-  ;; (slack-mode . olivetti-mode)
   (markdown-mode . olivetti-mode)
   :config
   (setq olivetti-body-width 0.75)
