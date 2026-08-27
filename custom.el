@@ -10,8 +10,8 @@
      "d43860349c9f7a5b96a090ecf5f698ff23a8eb49cd1e5c8a83bb2068f24ea563"
      "5ec088e25ddfcfe37b6ae7712c9cb37fd283ea5df7ac609d007cafa27dab6c64" default))
  '(package-selected-packages
-   '(ace-window activities affe ag aggressive-indent aidermacs avy-menu avy-zap
-                bufler cape casual claude-code consult-dir consult-notes
+   '(ace-window activities affe ag aggressive-indent aidermacs auctex avy-menu
+                avy-zap bufler cape casual claude-code consult-dir consult-notes
                 consult-reftex consult-todo corfu cperl-mode crux csharp-mode
                 ctrlf deadgrep dictionary diff-hl dired-hacks dired-narrow
                 dired-preview dired-ranger dired-recent diredfl dogears
