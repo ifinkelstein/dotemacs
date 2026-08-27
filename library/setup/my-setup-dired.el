@@ -168,45 +168,19 @@ OPERATION is a function of two args (OLD-NAME NEW-NAME), e.g.
   (interactive)
   (my-dired--operate-marked-files-add-date #'copy-file))
 
-(defun xah-open-in-external-app (&optional @fname)
-  "Open the current file or dired/dirvish-marked files in external app.
-When called in emacs lisp, if @fname is given, open that.
-URL `http://xahlee.info/emacs/emacs/emacs_dired_open_file_in_ext_apps.html'
-Version 2022-09-14"
+(defun xah-open-in-external-app (&optional fname)
+  "Open the current file or dired-marked files in the system's external app.
+When called from Lisp with FNAME, open that file instead.  Uses
+`shell-command-do-open', which picks the opener by platform."
   (interactive)
-  (let* (
-         ($file-list
-          (if @fname
-              (progn (list @fname))
-            (if (or (string-equal major-mode "dired-mode") (string-equal major-mode "dirvish-mode"))
-                (dired-get-marked-files)
-              ;; `buffer-file-name' returns nil for buffers that don't visit a
-              ;; file (e.g. *mu4e-headers*, *Messages*, *scratch*).  The original
-              ;; code did (list (buffer-file-name)) unconditionally, which put nil
-              ;; into the list and then crashed with "wrong-type-argument: arrayp,
-              ;; nil" when shell-quote-argument tried to quote it.  The `when'
-              ;; guard makes $file-list nil in that case, so the (when $do-it-p …)
-              ;; block below simply does nothing.
-              (when (buffer-file-name) (list (buffer-file-name))))))
-         ($do-it-p (if (<= (length $file-list) 5)
-                       t
-                     (y-or-n-p "Open more than 5 files? "))))
-    (when $do-it-p
-      (cond
-       ((string-equal system-type "windows-nt")
-        (mapc
-         (lambda ($fpath)
-           (shell-command (concat "PowerShell -Command \"Invoke-Item -LiteralPath\" " "'" (shell-quote-argument (expand-file-name $fpath )) "'")))
-         $file-list))
-       ((string-equal system-type "darwin")
-        (mapc
-         (lambda ($fpath)
-           (shell-command
-            (concat "open " (shell-quote-argument $fpath))))  $file-list))
-       ((string-equal system-type "gnu/linux")
-        (mapc
-         (lambda ($fpath) (let ((process-connection-type nil))
-                       (start-process "" nil "xdg-open" $fpath))) $file-list))))))
+  (let ((files (cond (fname (list fname))
+                     ((derived-mode-p 'dired-mode) (dired-get-marked-files))
+                     ;; nil for non-file buffers (*mu4e-headers*, *scratch*...)
+                     ((buffer-file-name) (list (buffer-file-name))))))
+    (when (and files
+               (or (<= (length files) 5)
+                   (y-or-n-p "Open more than 5 files? ")))
+      (shell-command-do-open files))))
 
 ;;** Dired-Recent to keep track of recently visited folders
 (use-package dired-recent
