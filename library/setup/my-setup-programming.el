@@ -51,6 +51,15 @@
 (use-package rainbow-delimiters
   :hook (prog-mode . rainbow-delimiters-mode))
 
+;; Reuse prism's depth palette for rainbow-delimiters (parens only,
+;; so symbol colours stay with `elisp-fontify-semantically').
+(with-eval-after-load 'rainbow-delimiters
+  (require 'prism)                       ; runs prism-set-colors
+  (dotimes (i 9)
+    (set-face-foreground
+     (intern (format "rainbow-delimiters-depth-%d-face" (1+ i)))
+     (face-foreground (intern (format "prism-level-%d" i))))))
+
 (use-package elec-pair
   :ensure nil
   :defer 1
