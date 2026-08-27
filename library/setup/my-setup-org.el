@@ -673,8 +673,7 @@ When a heading has subheadings, ask whether to change them as well.
 In an agenda buffer, act on the headings behind the agenda lines in
 the region (or the current line), then refresh the agenda."
   (interactive)
-  (let ((state (org-fast-todo-selection))
-        (org-enforce-todo-dependencies nil))
+  (let ((org-enforce-todo-dependencies nil))
     (if (derived-mode-p 'org-agenda-mode)
         (let ((markers nil)
               (beg (if (use-region-p) (region-beginning) (line-beginning-position)))
@@ -687,19 +686,24 @@ the region (or the current line), then refresh the agenda."
                 (push m markers))
               (forward-line 1)))
           (setq markers (nreverse markers))
-          (let ((scope (my-org--todo-scope markers)))
+          (unless markers (user-error "No agenda entries here"))
+          ;; The todo keyword setup lives in the org buffer, not the agenda
+          (let ((state (org-with-point-at (car markers)
+                         (org-fast-todo-selection)))
+                (scope (my-org--todo-scope markers)))
             (dolist (m markers)
               (org-with-point-at m
                 (if scope
                     (org-map-entries (lambda () (org-todo state)) nil scope)
                   (org-todo state)))))
           (org-agenda-redo))
-      (cond
-       ((use-region-p)
-        (org-map-entries (lambda () (org-todo state)) nil 'region))
-       ((my-org--todo-scope (list (point-marker)))
-        (org-map-entries (lambda () (org-todo state)) nil 'tree))
-       (t (org-todo state))))))
+      (let ((state (org-fast-todo-selection)))
+        (cond
+         ((use-region-p)
+          (org-map-entries (lambda () (org-todo state)) nil 'region))
+         ((my-org--todo-scope (list (point-marker)))
+          (org-map-entries (lambda () (org-todo state)) nil 'tree))
+         (t (org-todo state)))))))
 
 ;;  Hooks
 (defun my-org-mode-hooks ()
