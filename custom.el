@@ -26,7 +26,7 @@
                 less-css-mode link-hint lua-mode marginalia markdown-table-wrap
                 markdown-ts-mode mcp md-ts-mode meow mixed-pitch move-text
                 mu4e-column-faces mu4e-query mwim nerd-icons-completion
-                nerd-icons-corfu nerd-icons-dired nov olivetti org org-appear
+                nerd-icons-corfu nerd-icons-dired olivetti org org-appear
                 org-autolist org-contacts org-download org-modern org-mru-clock
                 org-msg org-pomodoro org-ql org-roam org-sticky-header
                 org-timeblock org-transclusion org-web-tools origami ox-pandoc
