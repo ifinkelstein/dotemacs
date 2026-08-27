@@ -667,7 +667,7 @@ Return the `org-map-entries' scope: `tree' or nil (heading only)."
       'tree
     nil))
 
-(defun my-org-change-todo-region ()
+(defun my-org-todo-dwim ()
   "Set one TODO state on every entry in the region, or on the current heading.
 When a heading has subheadings, ask whether to change them as well.
 In an agenda buffer, act on the headings behind the agenda lines in
