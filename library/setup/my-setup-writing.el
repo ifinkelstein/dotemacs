@@ -198,28 +198,6 @@ the candidate list with the current pick highlighted."
             (setq my-jinx-cycle--state (list (copy-marker beg) (copy-marker new-end) cands 0))
             (my-jinx--echo cands 0)))))))
 
-;;* Grammar
-
-;;** LTeX+ (LanguageTool via LSP, fully offline)
-(use-package eglot-ltex-plus
-  :vc (:url "https://github.com/emacs-languagetool/eglot-ltex-plus")
-  :defer t ; lambda hooks can't autoload, so without this the block loads eagerly
-  :hook ((org-mode markdown-mode LaTeX-mode)
-         . (lambda ()
-             (require 'eglot-ltex-plus)
-             (eglot-ensure)))
-  :init
-  (setq eglot-ltex-plus-server-path (expand-file-name "~/bin/ltex-ls-plus/bin/ltex-ls-plus")
-        eglot-ltex-plus-communication-channel 'stdio)
-  ;; LanguageTool spell-checks via the MORFOLOGIK rule; disable it so it
-  ;; doesn't double up on jinx, which owns spelling here.  This MUST be the
-  ;; global value, not buffer-local: eglot answers the server's
-  ;; `workspace/configuration' request from inside a `with-temp-buffer'
-  ;; (see `eglot--workspace-configuration-plist'), so a value set in a mode
-  ;; hook is invisible and eglot replies null.  The top-level key must match
-  ;; the section ltex-ls requests, which is "ltex".
-  (setq-default eglot-workspace-configuration
-                '(:ltex (:disabledRules (:en-US ["MORFOLOGIK_RULE_EN_US"])))))
 
 ;;* Abbreviations (abbrev)
 (use-package abbrev
