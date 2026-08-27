@@ -328,7 +328,6 @@
    ["LaTeX"
     ("e" "Environment" LaTeX-environment)
     ("E" "Delete Environment" my-LaTeX-delete-environment)
-    ("R" "Change Environment" latex-change-env)
     ("m" "Insert Macro" TeX-insert-macro)
     ("M" "Delete Macro" my-LaTeX-delete-macro)
     ("i" "Insert Item" LaTeX-insert-item)
