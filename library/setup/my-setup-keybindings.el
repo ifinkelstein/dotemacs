@@ -521,7 +521,6 @@
    ["UI"
     ("o" "Imenu List" imenu-list-smart-toggle)
     ("O" "Olivetti" olivetti-mode)
-    ("r" "Rainbow Identifiers" rainbow-identifiers-mode)
     ("z" "Zone" zone)]])
 
 ;;*** Version Control (Git) Keybindings

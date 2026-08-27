@@ -420,11 +420,6 @@ This ensures that the last tab's face does not extend to the end
 of the tab bar."
     " "))
 
-;;* Colors
-;; Colorize color names in buffers
-(use-package rainbow-mode
-  :commands rainbow-mode)
-
 ;;* Highlight
 
 ;;** highlight TODOS
