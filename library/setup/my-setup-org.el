@@ -655,21 +655,26 @@ region between the current heading and the next one, if any."
 
 (defun my-org-change-todo-region ()
   "Set one TODO state on every entry in the region, or the current tree.
-In an agenda buffer, act on the agenda lines in the region, or on
-the current line."
+In an agenda buffer, do the same for the tree behind each agenda
+line in the region (or the current line), then refresh the agenda."
   (interactive)
   (let ((state (org-fast-todo-selection))
         (org-enforce-todo-dependencies nil))
     (if (derived-mode-p 'org-agenda-mode)
-        (let ((beg (if (use-region-p) (region-beginning) (line-beginning-position)))
+        (let ((markers nil)
+              (beg (if (use-region-p) (region-beginning) (line-beginning-position)))
               (end (if (use-region-p) (region-end) (line-end-position))))
           (deactivate-mark)
           (save-excursion
             (goto-char beg)
             (while (< (point) end)
-              (when (org-get-at-bol 'org-marker)
-                (org-agenda-todo state))
-              (forward-line 1))))
+              (when-let* ((m (org-get-at-bol 'org-hd-marker)))
+                (push m markers))
+              (forward-line 1)))
+          (dolist (m (nreverse markers))
+            (org-with-point-at m
+              (org-map-entries (lambda () (org-todo state)) nil 'tree)))
+          (org-agenda-redo))
       (org-map-entries (lambda () (org-todo state)) nil
                        (if (use-region-p) 'region 'tree)))))
 
