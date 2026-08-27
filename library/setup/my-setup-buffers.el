@@ -236,9 +236,6 @@ Returns to the full (un-narrowed) list, like reverting Dired with \"g\"."
                      (mode-match "*mu4e*" (rx bos "mu4e"))
                      (mode-match "*" (rx bos "org-msg"))))
           (group
-           ;; Subgroup collecting all slack-mode buffer
-           (name-match "Slack" (rx bos "*slack")))
-          (group
            ;; Subgroup collecting all special buffers (i.e. ones that are not
            ;; file-backed), except `magit-status-mode' buffers (which are allowed to fall
            ;; through to other groups, so they end up grouped with their project buffers).
