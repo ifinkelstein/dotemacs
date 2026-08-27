@@ -137,18 +137,10 @@
          (";" . embark-act)
          :map embark-file-map
          ("x" . embark-open-externally)
-         ("O" . xah-open-in-external-app)
          ;; When using the Embark package, you can bind `marginalia-cycle' as an Embark action
          :map embark-general-map
          ("A"  . marginalia-cycle)
          ("G" . my-embark-google-search))
-  :custom
-  ;; Use which-key
-  ;; Don't display extra embark buffer
-  (embark-indicators '(embark-which-key-indicator
-                       embark-minimal-indicator
-                       embark-highlight-indicator
-                       embark-isearch-highlight-indicator))
   :init
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)
