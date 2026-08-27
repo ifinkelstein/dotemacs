@@ -50,9 +50,6 @@
 (use-package rainbow-delimiters
   :hook (prog-mode . rainbow-delimiters-mode))
 
-(use-package rainbow-identifiers
-  :commands rainbow-identifiers-mode)
-
 (use-package elec-pair
   :ensure nil
   :defer 1
