@@ -58,16 +58,6 @@
           (side . top)))
   (vertico-buffer-mode 1))
 
-;; Show embark actions as a compact grid of "key command"
-(use-package vertico-multiform
-  :ensure nil
-  :after vertico
-  :custom
-  (vertico-multiform-categories
-   '((embark-keybinding grid (vertico-grid-min-columns . 4))))
-  :config
-  (vertico-multiform-mode 1))
-
 ;; Vertico repeat last command
 (use-package vertico-repeat
   :ensure nil
@@ -152,11 +142,16 @@
          ("A"  . marginalia-cycle)
          ("G" . my-embark-google-search))
   :custom
-  ;; Pick actions with completing-read (same UI as M-x); no extra popup
-  (embark-prompter #'embark-completing-read-prompter)
-  (embark-indicators '(embark-minimal-indicator
+  ;; Keys run actions directly; show a compact key/command grid at top
+  (embark-indicators '(embark-verbose-indicator
                        embark-highlight-indicator
                        embark-isearch-highlight-indicator))
+  (embark-verbose-indicator-buffer-sections '(bindings))
+  (embark-verbose-indicator-nested nil)
+  (embark-verbose-indicator-display-action
+   '(display-buffer-in-side-window
+     (side . top)
+     (window-height . fit-window-to-buffer)))
   :init
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)
