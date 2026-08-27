@@ -50,11 +50,6 @@
   (setq magit-section-initial-visibility-alist
         '((stashes . hide) (untracked . hide) (unpushed . hide) ([unpulled status] . show)))
 
-  ;; refresh status buffer on every save
-  ;; NOTE: this is on the global after-save-hook so fires for every saved file.
-  ;; If magit status refreshes feel slow, consider removing this hook.
-  (add-hook 'after-save-hook 'magit-after-save-refresh-status t)
-
   ;; make magit full frame and restore frame config after
   ;; https://takeonrules.com/2024/03/01/quality-of-life-improvement-for-entering-and-exiting-magit/
   (setq magit-display-buffer-function
