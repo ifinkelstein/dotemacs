@@ -90,9 +90,7 @@
 ;; A few more useful configurations...
 ;; Add prompt indicator to `completing-read-multiple'.
 ;; We display [CRM<separator>], e.g., [CRM,] if the separator is a comma.
-(defun crm-indicator (args)
-  (cons (concat "[CRM] " (car args)) (cdr args)))
-(advice-add #'completing-read-multiple :filter-args #'crm-indicator)
+(setopt crm-prompt "[CRM] %p")
 
 ;; Grow and shrink minibuffer
 (setq resize-mini-windows t)
