@@ -10,31 +10,33 @@
      "d43860349c9f7a5b96a090ecf5f698ff23a8eb49cd1e5c8a83bb2068f24ea563"
      "5ec088e25ddfcfe37b6ae7712c9cb37fd283ea5df7ac609d007cafa27dab6c64" default))
  '(package-selected-packages
-   '(ace-window activities affe ag aggressive-indent aidermacs auctex avy-menu
-                avy-zap bufler cape casual claude-code consult-dir consult-notes
-                consult-reftex consult-todo corfu cperl-mode crux csharp-mode
-                ctrlf deadgrep dictionary diff-hl dired-hacks dired-narrow
-                dired-preview dired-ranger dired-recent diredfl dogears
-                dwim-shell-command easy-kill-extras eat editorconfig
-                elfeed-goodies elfeed-org elisp-def elixir-ts-mode
-                emacs-everywhere embark-consult embrace emms
-                exec-path-from-shell expreg faceup fancy-dabbrev fix-word fzf
-                ghostel goggles goto-chg gptel gptel-prompts grab-mac-link
-                helpful highlight-quoted homebrew hungry-delete imenu-list
-                inheritenv javelin jinx json-snatcher keyfreq kind-icon
-                lambda-line lambda-themes less-css-mode link-hint llm lua-mode
-                marginalia markdown-table-wrap markdown-ts-mode mcp md-ts-mode
-                meow mixed-pitch move-text mu4e-column-faces mu4e-query mwim
-                nerd-icons-completion nerd-icons-corfu nerd-icons-dired olivetti
-                orderless org org-appear org-autolist org-contacts org-download
-                org-modern org-mru-clock org-msg org-pomodoro org-ql org-roam
-                org-sticky-header org-timeblock org-transclusion org-web-tools
-                origami ox-pandoc pdf-tools peg phscroll popper popwin prism
-                puni rainbow-delimiters reveal-in-osx-finder revert-buffer-all
-                rg substitute svg-tag-mode tabspaces taxy-magit-section timeout
-                tramp trashed ultra-scroll vdiff-magit verilog-mode vertico
-                visual-regexp-steroids wallpaper web-server which-key whisper
-                yasnippet-snippets))
+   '(ace-window activities affe ag aggressive-indent aidermacs async auctex avy
+                avy-menu avy-zap bufler burly cape casual claude-code consult
+                consult-dir consult-notes consult-reftex consult-todo corfu
+                cperl-mode crux csharp-mode ctrlf deadgrep dictionary diff-hl
+                dired-hacks dired-narrow dired-preview dired-ranger dired-recent
+                diredfl dogears dwim-shell-command easy-kill easy-kill-extras
+                eat editorconfig elfeed elfeed-goodies elfeed-org elisp-def
+                elisp-refs elixir-ts-mode emacs-everywhere embark embark-consult
+                embrace emms exec-path-from-shell expreg faceup fancy-dabbrev
+                fix-word fzf ghostel goggles goto-chg gptel gptel-prompts
+                grab-mac-link helpful highlight-quoted hl-todo homebrew htmlize
+                hungry-delete imenu-list inheritenv javelin jinx json-snatcher
+                keyfreq kind-icon lambda-line lambda-themes less-css-mode
+                link-hint llm lua-mode magit marginalia markdown-mode
+                markdown-table-wrap markdown-ts-mode mcp md-ts-mode meow
+                mixed-pitch move-text mu4e-column-faces mu4e-query mwim
+                nerd-icons nerd-icons-completion nerd-icons-corfu
+                nerd-icons-dired olivetti orderless org org-appear org-autolist
+                org-contacts org-download org-modern org-mru-clock org-msg
+                org-pomodoro org-ql org-roam org-sticky-header org-super-agenda
+                org-timeblock org-transclusion org-web-tools origami ox-pandoc
+                pdf-tools peg phscroll popper popwin prism puni
+                rainbow-delimiters reveal-in-osx-finder revert-buffer-all rg
+                substitute svg-tag-mode tabspaces taxy-magit-section timeout
+                tramp trashed ultra-scroll vdiff vdiff-magit verilog-mode
+                vertico visual-regexp visual-regexp-steroids wallpaper
+                web-server wgrep which-key whisper yasnippet yasnippet-snippets))
  '(package-vc-selected-packages
    '((phscroll :vc-backend Git :url "https://github.com/misohena/phscroll")
      (lambda-line :url "https://codeberg.org/Lambda-Emacs/lambda-line" :branch
