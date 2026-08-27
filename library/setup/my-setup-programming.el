@@ -189,19 +189,6 @@
 (setq python-shell-interpreter "python3"
       python-shell-interpreter-args "-i")
 
-;;** json and jq
-(use-package jq-mode
-  :mode "\\.jq\\'")
-
-;;** Applescript
-(use-package applescript-mode
-  :mode (("\\.scpt\\'" . applescript-mode)
-         ("\\.applescript\\'"       . applescript-mode)))
-
-(use-package ob-applescript
-  :vc (:url "https://github.com/stig/ob-applescript.el")
-  :commands (org-babel-execute:applescript))
-
 ;;** Elisp (emacs-lisp)
 (use-package eldoc
   :ensure nil
