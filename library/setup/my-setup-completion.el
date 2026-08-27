@@ -141,6 +141,12 @@
          :map embark-general-map
          ("A"  . marginalia-cycle)
          ("G" . my-embark-google-search))
+  :custom
+  ;; Pick actions with completing-read (same UI as M-x); no extra popup
+  (embark-prompter #'embark-completing-read-prompter)
+  (embark-indicators '(embark-minimal-indicator
+                       embark-highlight-indicator
+                       embark-isearch-highlight-indicator))
   :init
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)
