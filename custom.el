@@ -16,13 +16,13 @@
                 csharp-mode ctrlf deadgrep dictionary diff-hl dired-hacks
                 dired-narrow dired-preview dired-ranger dired-recent diredfl
                 dogears dwim-shell-command easy-kill-extras eat editorconfig
-                eglot-ltex-plus elfeed-goodies elfeed-org elisp-def
-                elixir-ts-mode emacs-everywhere emacs-slack embark-consult
-                embrace emms exec-path-from-shell expreg faceup fancy-dabbrev
-                fix-word fzf ghostel goggles goto-chg gptel gptel-aibo
-                gptel-prompts grab-mac-link helpful highlight-defined
-                highlight-quoted homebrew hungry-delete imenu-list inheritenv
-                javelin jinx jq-mode json-snatcher keyfreq kind-icon lambda-line
+                elfeed-goodies elfeed-org elisp-def elixir-ts-mode
+                emacs-everywhere emacs-slack embark-consult embrace emms
+                exec-path-from-shell expreg faceup fancy-dabbrev fix-word fzf
+                ghostel goggles goto-chg gptel gptel-aibo gptel-prompts
+                grab-mac-link helpful highlight-defined highlight-quoted
+                homebrew hungry-delete imenu-list inheritenv javelin jinx
+                jq-mode json-snatcher keyfreq kind-icon lambda-line
                 lambda-themes latex-change-env less-css-mode link-hint lua-mode
                 marginalia markdown-table-wrap markdown-ts-mode mcp md-ts-mode
                 meow mixed-pitch move-text mu4e-column-faces mu4e-query mwim
