@@ -11,7 +11,7 @@
   ;; Change keybindings to look more like elfeed
   ;; in headers view, "r" for read messages, "u" for unread messages
   :bind (:map mu4e-view-mode-map
-              ("c" . mu4e-copy-thing-at-point)
+              ("w" . mu4e-copy-thing-at-point) ; "c" is taken by mu4e-search-minor-mode-map (mu4e-search-query)
               ("f" . link-hint-open-link)
               ;; Quickly switch between plain text and HTML mime type.
               ("K" . my-mu4e-copy-message-to-kill-ring)
