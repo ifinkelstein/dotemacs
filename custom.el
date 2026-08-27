@@ -10,26 +10,25 @@
      "d43860349c9f7a5b96a090ecf5f698ff23a8eb49cd1e5c8a83bb2068f24ea563"
      "5ec088e25ddfcfe37b6ae7712c9cb37fd283ea5df7ac609d007cafa27dab6c64" default))
  '(package-selected-packages
-   '(ace-window activities affe ag aggressive-indent aidermacs applescript-mode
-                avy-menu avy-zap bufler cape casual claude-code consult-dir
-                consult-notes consult-reftex consult-todo corfu cperl-mode crux
-                csharp-mode ctrlf deadgrep dictionary diff-hl dired-hacks
-                dired-narrow dired-preview dired-ranger dired-recent diredfl
-                dogears dwim-shell-command easy-kill-extras eat editorconfig
+   '(ace-window activities affe ag aggressive-indent aidermacs avy-menu avy-zap
+                bufler cape casual claude-code consult-dir consult-notes
+                consult-reftex consult-todo corfu cperl-mode crux csharp-mode
+                ctrlf deadgrep dictionary diff-hl dired-hacks dired-narrow
+                dired-preview dired-ranger dired-recent diredfl dogears
+                dwim-shell-command easy-kill-extras eat editorconfig
                 elfeed-goodies elfeed-org elisp-def elixir-ts-mode
                 emacs-everywhere emacs-slack embark-consult embrace emms
                 exec-path-from-shell expreg faceup fancy-dabbrev fix-word fzf
                 ghostel goggles goto-chg gptel gptel-aibo gptel-prompts
                 grab-mac-link helpful highlight-defined highlight-quoted
                 homebrew hungry-delete imenu-list inheritenv javelin jinx
-                jq-mode json-snatcher keyfreq kind-icon lambda-line
-                lambda-themes less-css-mode link-hint lua-mode marginalia
-                markdown-table-wrap markdown-ts-mode mcp md-ts-mode meow
-                mixed-pitch move-text mu4e-column-faces mu4e-query mwim
-                nerd-icons-completion nerd-icons-corfu nerd-icons-dired nov
-                ob-applescript olivetti org org-appear org-autolist
-                org-bookmark-heading org-contacts org-download org-modern
-                org-mru-clock org-msg org-pomodoro org-ql org-roam
+                json-snatcher keyfreq kind-icon lambda-line lambda-themes
+                less-css-mode link-hint lua-mode marginalia markdown-table-wrap
+                markdown-ts-mode mcp md-ts-mode meow mixed-pitch move-text
+                mu4e-column-faces mu4e-query mwim nerd-icons-completion
+                nerd-icons-corfu nerd-icons-dired nov olivetti org org-appear
+                org-autolist org-bookmark-heading org-contacts org-download
+                org-modern org-mru-clock org-msg org-pomodoro org-ql org-roam
                 org-sticky-header org-timeblock org-transclusion org-web-tools
                 origami ox-pandoc pdf-tools peg phscroll popper popwin prism
                 puni ragmacs rainbow-delimiters reveal-in-osx-finder
