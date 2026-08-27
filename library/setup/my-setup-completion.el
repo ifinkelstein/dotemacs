@@ -55,7 +55,9 @@
   (setq vertico-buffer-display-action
         '(display-buffer-in-side-window
           (window-height . 12)
-          (side . top)))
+          (side . top)
+          ;; lambda-line's tall header line would eat the last row
+          (window-parameters (header-line-format . none))))
   (vertico-buffer-mode 1))
 
 ;; Vertico repeat last command
@@ -151,7 +153,9 @@
   (embark-verbose-indicator-display-action
    '(display-buffer-in-side-window
      (side . top)
-     (window-height . fit-window-to-buffer)))
+     (window-height . fit-window-to-buffer)
+     (window-parameters (mode-line-format . none)
+                        (header-line-format . none))))
   :init
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)
