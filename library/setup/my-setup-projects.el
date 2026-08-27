@@ -33,9 +33,7 @@
   :config
   ;; Use Ripgrep if installed
   (when (executable-find "rg")
-    (setopt xref-search-program 'ripgrep))
-  ;; remove deleted projects from list
-  (project-forget-zombie-projects))
+    (setopt xref-search-program 'ripgrep)))
 
 ;;* Isolate buffers to a tab with tabspaces
 (use-package tabspaces
