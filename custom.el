@@ -20,22 +20,22 @@
                 emacs-everywhere emacs-slack embark-consult embrace emms
                 exec-path-from-shell expreg faceup fancy-dabbrev fix-word fzf
                 ghostel goggles goto-chg gptel gptel-aibo gptel-prompts
-                grab-mac-link helpful highlight-defined highlight-quoted
-                homebrew hungry-delete imenu-list inheritenv javelin jinx
-                json-snatcher keyfreq kind-icon lambda-line lambda-themes
-                less-css-mode link-hint lua-mode marginalia markdown-table-wrap
-                markdown-ts-mode mcp md-ts-mode meow mixed-pitch move-text
-                mu4e-column-faces mu4e-query mwim nerd-icons-completion
-                nerd-icons-corfu nerd-icons-dired olivetti org org-appear
-                org-autolist org-contacts org-download org-modern org-mru-clock
-                org-msg org-pomodoro org-ql org-roam org-sticky-header
-                org-timeblock org-transclusion org-web-tools origami ox-pandoc
-                pdf-tools peg phscroll popper popwin prism puni ragmacs
-                rainbow-delimiters reveal-in-osx-finder revert-buffer-all rg
-                semext slack substitute svg-tag-mode tabspaces
-                taxy-magit-section timeout tramp trashed ultra-scroll
-                vdiff-magit verilog-mode vertico visual-regexp-steroids
-                wallpaper web-server which-key whisper yasnippet-snippets))
+                grab-mac-link helpful highlight-quoted homebrew hungry-delete
+                imenu-list inheritenv javelin jinx json-snatcher keyfreq
+                kind-icon lambda-line lambda-themes less-css-mode link-hint
+                lua-mode marginalia markdown-table-wrap markdown-ts-mode mcp
+                md-ts-mode meow mixed-pitch move-text mu4e-column-faces
+                mu4e-query mwim nerd-icons-completion nerd-icons-corfu
+                nerd-icons-dired olivetti org org-appear org-autolist
+                org-contacts org-download org-modern org-mru-clock org-msg
+                org-pomodoro org-ql org-roam org-sticky-header org-timeblock
+                org-transclusion org-web-tools origami ox-pandoc pdf-tools peg
+                phscroll popper popwin prism puni ragmacs rainbow-delimiters
+                reveal-in-osx-finder revert-buffer-all rg semext slack
+                substitute svg-tag-mode tabspaces taxy-magit-section timeout
+                tramp trashed ultra-scroll vdiff-magit verilog-mode vertico
+                visual-regexp-steroids wallpaper web-server which-key whisper
+                yasnippet-snippets))
  '(package-vc-selected-packages
    '((phscroll :vc-backend Git :url "https://github.com/misohena/phscroll")
      (lambda-line :url "https://codeberg.org/Lambda-Emacs/lambda-line" :branch

@@ -31,11 +31,10 @@
 (global-prettify-symbols-mode 1)
 
 ;;** highlight various things in code
-;; highlights defined Emacs Lisp symbols in source code.
-(use-package highlight-defined
-  :hook
-  (emacs-lisp-mode . highlight-defined-mode)
-  (help-mode . highlight-defined-mode))
+;; Emacs 31: scope-aware highlighting of elisp symbols by role
+;; (function/macro/special form, local vs special variable, feature,
+;; face, ...).  Replaces highlight-defined.
+(setopt elisp-fontify-semantically t)
 
 (use-package highlight-quoted
   :hook
