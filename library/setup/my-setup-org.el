@@ -654,14 +654,24 @@ region between the current heading and the next one, if any."
   (find-file (concat org-directory "drafts.org")))
 
 (defun my-org-change-todo-region ()
-  "Toggle TODO states in the current region or tree of an org file. This function
-is interactive and allows users to switch TODO states for all entries in either
-the current region, if a region is selected, or the current tree."
+  "Set one TODO state on every entry in the region, or the current tree.
+In an agenda buffer, act on the agenda lines in the region, or on
+the current line."
   (interactive)
-  (let ((scope (if mark-active 'region 'tree))
-        (state (org-fast-todo-selection))
+  (let ((state (org-fast-todo-selection))
         (org-enforce-todo-dependencies nil))
-    (org-map-entries (lambda () (org-todo state)) nil scope)))
+    (if (derived-mode-p 'org-agenda-mode)
+        (let ((beg (if (use-region-p) (region-beginning) (line-beginning-position)))
+              (end (if (use-region-p) (region-end) (line-end-position))))
+          (deactivate-mark)
+          (save-excursion
+            (goto-char beg)
+            (while (< (point) end)
+              (when (org-get-at-bol 'org-marker)
+                (org-agenda-todo state))
+              (forward-line 1))))
+      (org-map-entries (lambda () (org-todo state)) nil
+                       (if (use-region-p) 'region 'tree)))))
 
 ;;  Hooks
 (defun my-org-mode-hooks ()
