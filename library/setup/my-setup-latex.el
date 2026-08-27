@@ -263,12 +263,6 @@ With no real content, leave point at an empty \\item ready to type."
   ;; (setq reftex-ref-style-default-list '("Default" "AMSMath" "Cleveref"))
   (setq reftex-use-multiple-selection-buffers t))
 
-;;** latex-change-env
-(use-package latex-change-env
-  :after latex
-  :bind (:map LaTeX-mode-map ("C-c r" . latex-change-env)))
-
-
 ;;** consult-reftex
 (use-package consult-reftex
   :vc (:url "https://github.com/karthink/consult-reftex" :branch "main" :rev :newest)

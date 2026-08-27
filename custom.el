@@ -23,9 +23,9 @@
                 grab-mac-link helpful highlight-defined highlight-quoted
                 homebrew hungry-delete imenu-list inheritenv javelin jinx
                 jq-mode json-snatcher keyfreq kind-icon lambda-line
-                lambda-themes latex-change-env less-css-mode link-hint lua-mode
-                marginalia markdown-table-wrap markdown-ts-mode mcp md-ts-mode
-                meow mixed-pitch move-text mu4e-column-faces mu4e-query mwim
+                lambda-themes less-css-mode link-hint lua-mode marginalia
+                markdown-table-wrap markdown-ts-mode mcp md-ts-mode meow
+                mixed-pitch move-text mu4e-column-faces mu4e-query mwim
                 nerd-icons-completion nerd-icons-corfu nerd-icons-dired nov
                 ob-applescript olivetti org org-appear org-autolist
                 org-bookmark-heading org-contacts org-download org-modern
