@@ -27,13 +27,13 @@
                 markdown-ts-mode mcp md-ts-mode meow mixed-pitch move-text
                 mu4e-column-faces mu4e-query mwim nerd-icons-completion
                 nerd-icons-corfu nerd-icons-dired nov olivetti org org-appear
-                org-autolist org-bookmark-heading org-contacts org-download
-                org-modern org-mru-clock org-msg org-pomodoro org-ql org-roam
-                org-sticky-header org-timeblock org-transclusion org-web-tools
-                origami ox-pandoc pdf-tools peg phscroll popper popwin prism
-                puni ragmacs rainbow-delimiters reveal-in-osx-finder
-                revert-buffer-all rg semext slack substitute svg-tag-mode
-                tabspaces taxy-magit-section timeout tramp trashed ultra-scroll
+                org-autolist org-contacts org-download org-modern org-mru-clock
+                org-msg org-pomodoro org-ql org-roam org-sticky-header
+                org-timeblock org-transclusion org-web-tools origami ox-pandoc
+                pdf-tools peg phscroll popper popwin prism puni ragmacs
+                rainbow-delimiters reveal-in-osx-finder revert-buffer-all rg
+                semext slack substitute svg-tag-mode tabspaces
+                taxy-magit-section timeout tramp trashed ultra-scroll
                 vdiff-magit verilog-mode vertico visual-regexp-steroids
                 wallpaper web-server which-key whisper yasnippet-snippets))
  '(package-vc-selected-packages

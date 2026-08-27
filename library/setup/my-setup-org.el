@@ -710,11 +710,6 @@ the current region, if a region is selected, or the current tree."
    :background "#f5f5dc"))
 
 
-;;** org-bookmark-heading
-;;Use the standard Emacs bookmark commands, C-x r m, etc, to mark org headings
-(use-package org-bookmark-heading
-  :defer t)
-
 ;;** org-sticky-header
 (use-package org-sticky-header
   :hook (org-mode . org-sticky-header-mode)
