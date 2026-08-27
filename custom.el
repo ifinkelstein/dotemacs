@@ -36,7 +36,7 @@
                 substitute svg-tag-mode tabspaces taxy-magit-section timeout
                 tramp trashed ultra-scroll vdiff vdiff-magit verilog-mode
                 vertico visual-regexp visual-regexp-steroids wallpaper
-                web-server wgrep which-key whisper yasnippet yasnippet-snippets))
+                web-server wgrep whisper yasnippet yasnippet-snippets))
  '(package-vc-selected-packages
    '((phscroll :vc-backend Git :url "https://github.com/misohena/phscroll")
      (lambda-line :url "https://codeberg.org/Lambda-Emacs/lambda-line" :branch
