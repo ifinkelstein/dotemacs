@@ -4,9 +4,11 @@
 
 ;;* Prettify and rice code
 ;;** prism to color programming blocks
+;; Not hooked into emacs-lisp-mode: its depth colours override the
+;; role-based faces from `elisp-fontify-semantically'.  M-x prism-mode
+;; to toggle on demand.
 (use-package prism
-  :hook
-  (emacs-lisp-mode . prism-mode)
+  :commands (prism-mode prism-whitespace-mode)
   :config
   (prism-set-colors :num 16
     :desaturations (cl-loop for i from 0 below 16
