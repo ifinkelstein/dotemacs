@@ -63,7 +63,8 @@
   :ensure nil
   :after vertico
   :custom
-  (vertico-multiform-categories '((embark-keybinding grid)))
+  (vertico-multiform-categories
+   '((embark-keybinding grid (vertico-grid-min-columns . 4))))
   :config
   (vertico-multiform-mode 1))
 
