@@ -653,10 +653,25 @@ region between the current heading and the next one, if any."
   (interactive)
   (find-file (concat org-directory "drafts.org")))
 
+(defun my-org--heading-has-children-p ()
+  "Non-nil if the heading at point has subheadings."
+  (save-excursion (org-goto-first-child)))
+
+(defun my-org--todo-scope (markers)
+  "Ask whether to include subtrees when any heading in MARKERS has children.
+Return the `org-map-entries' scope: `tree' or nil (heading only)."
+  (if (and (seq-some (lambda (m) (org-with-point-at m
+                                   (my-org--heading-has-children-p)))
+                     markers)
+           (y-or-n-p "Change subheadings too? "))
+      'tree
+    nil))
+
 (defun my-org-change-todo-region ()
-  "Set one TODO state on every entry in the region, or the current tree.
-In an agenda buffer, do the same for the tree behind each agenda
-line in the region (or the current line), then refresh the agenda."
+  "Set one TODO state on every entry in the region, or on the current heading.
+When a heading has subheadings, ask whether to change them as well.
+In an agenda buffer, act on the headings behind the agenda lines in
+the region (or the current line), then refresh the agenda."
   (interactive)
   (let ((state (org-fast-todo-selection))
         (org-enforce-todo-dependencies nil))
@@ -671,12 +686,20 @@ line in the region (or the current line), then refresh the agenda."
               (when-let* ((m (org-get-at-bol 'org-hd-marker)))
                 (push m markers))
               (forward-line 1)))
-          (dolist (m (nreverse markers))
-            (org-with-point-at m
-              (org-map-entries (lambda () (org-todo state)) nil 'tree)))
+          (setq markers (nreverse markers))
+          (let ((scope (my-org--todo-scope markers)))
+            (dolist (m markers)
+              (org-with-point-at m
+                (if scope
+                    (org-map-entries (lambda () (org-todo state)) nil scope)
+                  (org-todo state)))))
           (org-agenda-redo))
-      (org-map-entries (lambda () (org-todo state)) nil
-                       (if (use-region-p) 'region 'tree)))))
+      (cond
+       ((use-region-p)
+        (org-map-entries (lambda () (org-todo state)) nil 'region))
+       ((my-org--todo-scope (list (point-marker)))
+        (org-map-entries (lambda () (org-todo state)) nil 'tree))
+       (t (org-todo state))))))
 
 ;;  Hooks
 (defun my-org-mode-hooks ()
