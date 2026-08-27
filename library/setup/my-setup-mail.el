@@ -91,165 +91,45 @@
   ;;** Sleep/Wake Recovery for mu4e
   ;;
   ;; PROBLEM: On a laptop, macOS sleep/wake breaks mu4e in several
-  ;; sneaky ways that are hard to notice:
+  ;; sneaky ways:
   ;;
-  ;;   1. STUCK TIMERS — Emacs repeating timers store an absolute
-  ;;      fire-time.  When the laptop sleeps for hours, the timer
-  ;;      fires into the void during the wake transition.  Its
-  ;;      `triggered' flag gets set to t, but the rescheduling logic
-  ;;      in `timer-event-handler' fails silently.  Result: the timer
-  ;;      sits in `timer-list' with a fire-time in the past and
-  ;;      `triggered' = t, so it never fires again.  mbsync stops
-  ;;      running and you don't notice for hours.
+  ;;   1. STUCK TIMER — the repeating update timer's absolute fire-time
+  ;;      ends up in the past after a long sleep and it never fires
+  ;;      again; mbsync silently stops running.
+  ;;   2. STALE MBSYNC — mbsync was mid-sync when sleep hit; the OS
+  ;;      kills it but Emacs may not run the sentinel, so
+  ;;      `mu4e--update-buffer' still looks live and every later
+  ;;      `mu4e-update-mail-and-index' says "already running".
+  ;;   3. NETWORK NOT READY — Wi-Fi needs a few seconds after wake; an
+  ;;      immediate mbsync fails on DNS.
+  ;;   4. MU SERVER DEATH — the mu subprocess occasionally dies during
+  ;;      sleep, leaving mu4e a hollow shell.
   ;;
-  ;;   2. STALE MBSYNC PROCESS — If mbsync was mid-sync when sleep
-  ;;      hit, the process gets killed by the OS.  But Emacs might
-  ;;      not run the process sentinel (race condition), so
-  ;;      `mu4e--update-buffer' still looks "live" to Emacs.  The
-  ;;      guard in `mu4e-update-mail-and-index' sees this and says
-  ;;      "Update process is already running", blocking ALL future
-  ;;      syncs.  This is the sneakiest failure — everything looks
-  ;;      fine, the timer fires, but mbsync never actually runs.
+  ;; SOLUTION (Emacs 31+): `system-sleep' delivers real pre-sleep /
+  ;; post-wake events from macOS, so no heartbeat or focus-change
+  ;; guessing is needed.
   ;;
-  ;;   3. NETWORK NOT READY — Wi-Fi takes a few seconds to reconnect
-  ;;      after wake.  If mbsync fires immediately, it fails with a
-  ;;      DNS or connection error and the sync is silently skipped.
+  ;;   pre-sleep : kill a running mbsync so Emacs sees it exit (2).
+  ;;   post-wake : schedule `my-mu4e-sleep-wake-recover' a few seconds
+  ;;               later.  It cleans a stale update process (2), resets
+  ;;               the update timer (1), restarts the mu server if it
+  ;;               died (4), then waits for the network without blocking
+  ;;               and triggers a sync (3).
   ;;
-  ;;   4. MU SERVER DEATH — The mu subprocess can occasionally die
-  ;;      during sleep.  Without it, mu4e can't index or search.
-  ;;
-  ;; SOLUTION: Two-layer detection + single recovery orchestrator.
-  ;;
-  ;;   Detection Layer 1: TIME-GAP HEARTBEAT
-  ;;     A cheap timer writes a timestamp every 60 seconds.  Any code
-  ;;     can compare `current-time' to this timestamp — if the gap is
-  ;;     much larger than 60s, the machine was asleep.  This is fully
-  ;;     portable (no macOS APIs) and catches sleep even if you don't
-  ;;     touch Emacs immediately after wake.
-  ;;
-  ;;   Detection Layer 2: FOCUS CHANGE
-  ;;     `after-focus-change-function' fires when Emacs regains focus
-  ;;     (e.g. you switch to it after waking the laptop).  This gives
-  ;;     faster response than waiting for the heartbeat, but only
-  ;;     triggers if you actually focus Emacs.
-  ;;
-  ;;   Recovery: MY-MU4E-SLEEP-WAKE-RECOVER
-  ;;     A single orchestrator function that, on wake detection:
-  ;;       1. Kills any stale mbsync process / update buffer
-  ;;       2. Resets the mu4e update timer
-  ;;       3. Waits briefly for network (with timeout)
-  ;;       4. Checks mu server health, restarts if needed
-  ;;       5. Triggers an immediate mail sync
-  ;;     This is idempotent — safe to call multiple times (the
-  ;;     debounce guard prevents double-firing from both detection
-  ;;     layers within the same wake event).
+  ;; Hook functions must not signal (a signal halts the remaining hook
+  ;; functions), so the real work runs from a timer and every step is
+  ;; wrapped in `condition-case'.
 
-  ;; ---- Heartbeat: detect time gaps from sleep ----
+  (require 'system-sleep)
 
-  (defvar my-mu4e--heartbeat-time (current-time)
-    "Timestamp of the last heartbeat tick.
-Updated every `my-mu4e--heartbeat-interval' seconds by a timer.
-If `current-time' minus this value is much larger than the
-interval, the machine was probably asleep.")
+  (defvar my-mu4e--wake-timer nil
+    "Pending recovery timer scheduled by the last post-wake event.")
 
-  (defvar my-mu4e--heartbeat-interval 60
-    "Seconds between heartbeat ticks.
-Kept short so we detect sleep quickly.  The timer itself is
-trivially cheap (just writes a timestamp).")
+  (defvar my-mu4e--network-timer nil
+    "Pending network-wait timer, so a new wake can cancel an old wait.")
 
-  (defvar my-mu4e--sleep-threshold 90
-    "Seconds of heartbeat gap that counts as a sleep event.
-Should be comfortably larger than `my-mu4e--heartbeat-interval'
-to avoid false positives from Emacs being busy with GC or a
-long-running command.  90s means: if more than 90 seconds elapsed
-since the last heartbeat, we assume the machine slept.")
-
-  (defvar my-mu4e--last-recovery-time nil
-    "Timestamp of the last sleep/wake recovery.
-Used as a debounce guard: if we recovered less than 30 seconds
-ago, skip the recovery.  This prevents double-firing when both
-the heartbeat and focus-change detect the same wake event.")
-
-  (defvar my-mu4e--network-wait-seconds 8
-    "Seconds to wait for network after a detected wake event.
-Wi-Fi typically reconnects within 3-5 seconds on macOS.  We poll
-every 2 seconds up to this limit.  If network never comes back
-\(e.g. airplane mode), we give up and let the next timer tick
-retry naturally.")
-
-  (defun my-mu4e--heartbeat-tick ()
-    "Record the current time; detect sleep if gap is too large.
-Called every `my-mu4e--heartbeat-interval' seconds by a repeating
-timer.  If the gap between now and the last tick exceeds
-`my-mu4e--sleep-threshold', call the recovery orchestrator."
-    (let ((now (current-time))
-          (gap (float-time (time-subtract (current-time)
-                                          my-mu4e--heartbeat-time))))
-      (setq my-mu4e--heartbeat-time now)
-      ;; If the gap is suspiciously large, we probably slept.
-      (when (> gap my-mu4e--sleep-threshold)
-        (mu4e-message "Heartbeat gap %.0fs (threshold %ds) — recovering from sleep"
-                      gap my-mu4e--sleep-threshold)
-        (my-mu4e-sleep-wake-recover))))
-
-  ;; Start the heartbeat timer.  `run-at-time' with a repeat arg
-  ;; creates a repeating timer.  We deliberately use a short first
-  ;; delay (10s) so the heartbeat is established quickly after init.
-  ;; Guard: cancel any existing heartbeat timer first so config
-  ;; reloads don't accumulate duplicate timers.
-  (defvar my-mu4e--heartbeat-timer nil
-    "The heartbeat timer object, kept so we can cancel on reload.")
-  (when (timerp my-mu4e--heartbeat-timer)
-    (cancel-timer my-mu4e--heartbeat-timer))
-  (setq my-mu4e--heartbeat-timer
-        (run-at-time 10 my-mu4e--heartbeat-interval #'my-mu4e--heartbeat-tick))
-
-  ;; ---- Focus-change: faster detection when user returns ----
-
-  (defun my-mu4e--on-focus-change ()
-    "Check for sleep/wake when Emacs gains focus.
-Compares current time to `my-mu4e--heartbeat-time'.  If the gap
-exceeds `my-mu4e--sleep-threshold', trigger recovery.
-
-This is the fast path: the user wakes the laptop and switches to
-Emacs, so we recover before the next heartbeat tick."
-    ;; Only act when a frame is focused (not on every focus-out too).
-    (when (seq-some #'frame-focus-state (frame-list))
-      (let ((gap (float-time (time-subtract (current-time)
-                                            my-mu4e--heartbeat-time))))
-        (when (> gap my-mu4e--sleep-threshold)
-          (my-mu4e-sleep-wake-recover)))))
-
-  (when (boundp 'after-focus-change-function)
-    (add-function :after after-focus-change-function
-                  #'my-mu4e--on-focus-change))
-
-  ;; ---- Network readiness check ----
-
-  (defun my-mu4e--network-available-p ()
-    "Return non-nil if the network appears to be up.
-Uses a single ICMP ping to Cloudflare DNS (1.1.1.1) with a 2
-second timeout (macOS -W is in milliseconds → 2000).  Returns nil
-if the ping fails (no network) or if `ping' is not found."
-    (zerop (call-process "ping" nil nil nil "-c1" "-W2000" "1.1.1.1")))
-
-  (defun my-mu4e--wait-for-network ()
-    "Block until network is available, up to `my-mu4e--network-wait-seconds'.
-Polls every 2 seconds.  Returns non-nil if network came up,
-nil if we timed out.
-
-WHY BLOCK?  This runs right after wake, typically from a timer or
-focus hook — not during interactive editing.  The brief pause
-\(at most 8s) is acceptable to ensure mbsync doesn't fail.  If
-blocking bothers you, reduce `my-mu4e--network-wait-seconds'."
-    (let ((deadline (+ (float-time) my-mu4e--network-wait-seconds)))
-      (catch 'done
-        (while (< (float-time) deadline)
-          (when (my-mu4e--network-available-p)
-            (throw 'done t))
-          (sleep-for 2))
-        ;; Timed out.
-        nil)))
+  (defvar my-mu4e--network-attempts 10
+    "How many times to probe the network after wake, 3s apart.")
 
   ;; ---- Stamp update-process start time ----
 
@@ -262,126 +142,115 @@ blocking bothers you, reduce `my-mu4e--network-wait-seconds'."
 
   (advice-add 'mu4e-update-mail-and-index :after #'my-mu4e--stamp-update-process)
 
-  ;; ---- Stale process cleanup ----
+  ;; ---- Recovery steps ----
 
   (defun my-mu4e--kill-stale-update-process ()
-    "Kill a stale mbsync process left over from before sleep.
-
-HOW THIS HAPPENS: mbsync was running when the laptop slept.  The
-OS killed the process, but Emacs never got the signal (or the
-sentinel raced).  `mu4e--update-buffer' still has a process
-object that looks alive to `process-live-p' even though the
-underlying PID is gone.
-
-The guard in `mu4e-update-mail-and-index' checks:
-  (process-live-p (get-buffer-process mu4e--update-buffer))
-and if this returns non-nil, it prints \"already running\" and
-refuses to start a new sync.
-
-FIX: Check if the buffer exists and its process is dead (or the
-process object is stale).  If so, kill the buffer so the guard
-no longer blocks.
-
-Returns non-nil if a stale process was cleaned up."
+    "Kill a stale or stuck mbsync process left over from before sleep.
+The guard in `mu4e-update-mail-and-index' refuses to start a sync
+while `mu4e--update-buffer' has a live-looking process.  Kill the
+buffer if its process is gone, dead, or has been running for more
+than 10 minutes (normal mbsync finishes in well under one).
+Return non-nil if something was cleaned up."
     (when (buffer-live-p mu4e--update-buffer)
       (let* ((proc (get-buffer-process mu4e--update-buffer))
-             (stale (or (null proc)                  ; buffer exists but no process
-                        (not (process-live-p proc))  ; process object is dead
-                        ;; Belt-and-suspenders: if the process has been
-                        ;; "running" for > 10 minutes, it's definitely stuck.
-                        ;; Normal mbsync finishes in 30-60 seconds.
+             (stale (or (null proc)
+                        (not (process-live-p proc))
                         (and (eq (process-status proc) 'run)
                              (let ((start (process-get proc 'my-start-time)))
                                (and start
-                                    (> (float-time
-                                        (time-subtract (current-time) start))
-                                       600)))))))
+                                    (> (float-time (time-since start)) 600)))))))
         (when stale
           (mu4e-message "Cleaning up stale mu4e update process")
           (when (and proc (process-live-p proc))
-            (kill-process proc))             ; kill the zombie
-          (kill-buffer mu4e--update-buffer)  ; remove the blocking buffer
+            (kill-process proc))
+          (kill-buffer mu4e--update-buffer)
           t))))
 
-  ;; ---- Timer reset ----
-
   (defun my-mu4e--reset-update-timer ()
-    "Cancel and recreate the mu4e update timer.
-
-WHY: After sleep, the timer's absolute fire-time is in the past,
-and its `triggered' flag is stuck at t.  Emacs won't fire it
-again.  Cancelling and recreating gives it a fresh fire-time
-relative to now."
-    (when (and (bound-and-true-p mu4e--update-timer)
-               (timerp mu4e--update-timer))
+    "Cancel and recreate the mu4e update timer with a fresh fire-time."
+    (when (timerp mu4e--update-timer)
       (cancel-timer mu4e--update-timer)
       (setq mu4e--update-timer nil))
-    ;; Recreate only if mu4e is running and has an update interval.
-    (when (and (bound-and-true-p mu4e-update-interval)
-               (mu4e-running-p))
+    (when (and mu4e-update-interval (mu4e-running-p))
       (setq mu4e--update-timer
             (run-at-time mu4e-update-interval mu4e-update-interval
                          #'mu4e--refresh-timer))))
 
-  ;; ---- mu server health check ----
-
   (defun my-mu4e--ensure-server ()
-    "Ensure the mu server subprocess is alive.  Restart if dead.
-
-The mu server is a long-running subprocess that handles indexing,
-searching, and moving messages.  If it died during sleep, mu4e
-is a hollow shell — headers and search silently fail.
-
-Returns non-nil if the server had to be restarted."
+    "Restart the mu server if it died.  Return non-nil if restarted."
     (unless (mu4e-running-p)
       (mu4e-message "mu server is dead — restarting")
       (mu4e 'background)
       t))
 
-  ;; ---- The orchestrator ----
+  (defun my-mu4e--when-network-up (fn &optional attempts)
+    "Call FN once the network is reachable, probing up to ATTEMPTS times.
+Probes with a single ICMP ping to 1.1.1.1 (2s timeout) run
+asynchronously, so Emacs never blocks.  If `ping' is missing,
+assume the network is up.  Gives up silently after ATTEMPTS
+\(default `my-mu4e--network-attempts') probes 3s apart."
+    (let ((attempts (or attempts my-mu4e--network-attempts)))
+      (when (timerp my-mu4e--network-timer)
+        (cancel-timer my-mu4e--network-timer)
+        (setq my-mu4e--network-timer nil))
+      (cond
+       ((<= attempts 0)
+        (mu4e-message "Network not available after wake — skipping immediate sync"))
+       ((not (executable-find "ping"))
+        (funcall fn))
+       (t
+        (make-process
+         :name "my-mu4e-ping" :noquery t :buffer nil
+         :command '("ping" "-c1" "-W2000" "1.1.1.1")
+         :sentinel
+         (lambda (proc _msg)
+           (when (memq (process-status proc) '(exit signal))
+             (if (and (eq (process-status proc) 'exit)
+                      (zerop (process-exit-status proc)))
+                 (funcall fn)
+               (setq my-mu4e--network-timer
+                     (run-at-time 3 nil #'my-mu4e--when-network-up
+                                  fn (1- attempts)))))))))))
+
+  ;; ---- Orchestrator ----
 
   (defun my-mu4e-sleep-wake-recover ()
-    "Single entry point for recovering mu4e after a sleep/wake cycle.
+    "Recover mu4e after a sleep/wake cycle.
+Steps run independently; a failure in one is logged and the rest
+still run.  Safe to call by hand (M-x) at any time."
+    (interactive)
+    (mu4e-message "Wake detected — running mu4e recovery…")
+    (dolist (step '(my-mu4e--kill-stale-update-process
+                    my-mu4e--reset-update-timer
+                    my-mu4e--ensure-server))
+      (condition-case err
+          (funcall step)
+        (error (message "mu4e wake recovery: %s failed: %s" step err))))
+    (my-mu4e--when-network-up
+     (lambda ()
+       (condition-case err
+           (progn
+             (mu4e-message "Network up — triggering immediate sync")
+             (mu4e-update-mail-and-index t))
+         (error (message "mu4e wake recovery: sync failed: %s" err))))))
 
-Called by both the heartbeat timer (Layer 1) and the focus-change
-hook (Layer 2).  A debounce guard prevents double-firing within
-30 seconds — this matters because both layers will often detect
-the same wake event.
+  ;; ---- system-sleep hook ----
 
-Recovery steps (in order):
-  1. Kill stale mbsync process — unblocks future syncs
-  2. Reset the update timer — unsticks the repeating timer
-  3. Wait for network — gives Wi-Fi time to reconnect
-  4. Ensure mu server — restart the indexer if it died
-  5. Trigger immediate sync — fetch mail NOW, don't wait 5 min
+  (defun my-mu4e--on-sleep-event (event)
+    "Handle a `system-sleep' EVENT for mu4e.  Never signals."
+    (condition-case err
+        (pcase (sleep-event-state event)
+          ('pre-sleep
+           ;; Let Emacs see mbsync exit instead of the OS killing it.
+           (mu4e-kill-update-mail))
+          ('post-wake
+           (when (timerp my-mu4e--wake-timer)
+             (cancel-timer my-mu4e--wake-timer))
+           (setq my-mu4e--wake-timer
+                 (run-at-time 3 nil #'my-mu4e-sleep-wake-recover))))
+      (error (message "mu4e sleep hook error: %s" err))))
 
-Each step is independent and logged.  If one fails, the others
-still run.  The whole thing is idempotent."
-    ;; Debounce: skip if we recovered very recently.
-    (unless (and my-mu4e--last-recovery-time
-                 (< (float-time (time-subtract (current-time)
-                                               my-mu4e--last-recovery-time))
-                    30))
-      (setq my-mu4e--last-recovery-time (current-time))
-
-      (mu4e-message "Sleep/wake detected — running recovery…")
-
-      ;; Step 1: Kill stale mbsync process.
-      (my-mu4e--kill-stale-update-process)
-
-      ;; Step 2: Reset the update timer so it fires on schedule again.
-      (my-mu4e--reset-update-timer)
-
-      ;; Step 3: Wait for network (blocks briefly).
-      (if (my-mu4e--wait-for-network)
-          (progn
-            ;; Step 4: Make sure the mu server is alive.
-            (my-mu4e--ensure-server)
-            ;; Step 5: Sync immediately (in background).
-            (mu4e-message "Network up — triggering immediate sync")
-            (run-at-time 2 nil #'mu4e-update-mail-and-index t))
-        (mu4e-message "Network not available — skipping immediate sync"))))
-
+  (add-hook 'system-sleep-event-functions #'my-mu4e--on-sleep-event)
 
   ;;** Add SVG tags
   (with-eval-after-load 'svg-tag-mode
