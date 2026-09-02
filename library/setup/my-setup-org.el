@@ -94,8 +94,10 @@
   (org-log-done 'time)
   (org-log-into-drawer t)
   (org-log-state-notes-insert-after-drawers nil)
-  (org-log-redeadline nil) ;; don't log the time a task was rescheduled/redeadlined.
-  (org-log-reschedule nil)
+  ;; Log date changes: each line in the drawer is one slip, so a milestone that
+  ;; has moved three times says so.
+  (org-log-redeadline 'time)
+  (org-log-reschedule 'time)
 
   ;; Movement
   (org-return-follows-link t) ;; make RET follow links
@@ -496,18 +498,81 @@ Within those groups, sort by date and priority."
 ;;** TODO Keywords and tags
 ;; tags, in alphabetical order
 ;; note: emoji tags not supported yet
-(setq org-tag-alist '(("admin" . ?a)
-                      ("class" . ?c)
-                      ("email" . ?e)
-                      ("errands" . ?r) 
+;; admin, class, errands and email were defined but never used in any org file,
+;; so they are gone.  What is left is either in use or newly load-bearing.
+(setq org-tag-alist '(("decide" . ?d) ;; I owe the next move, and it is a judgment call
+                      ("hot" . ?h) ;; a project getting mornings this month; cap 3
+                      ("park" . ?k) ;; transient: marked for `my-org-park-tagged'
+                      ("project" . ?p) ;; this heading is a project, not a container
                       ("service" . ?u) ;; university and other service
                       ("today" . ?t)
                       ("tomorrow" . ?T)
                       ("writing" . ?w)))
+
+;; `project' marks one heading, so it must not cascade.  `hot' must cascade, so
+;; that tasks under a hot project show up in the hot view; leave it inheriting.
+(setq org-tags-exclude-from-inheritance '("project"))
+
+;; A project with no NEXT anywhere under it is stuck.  The previous definition
+;; keyed on LEVEL=2, which caught containers like Career > Coaching and missed
+;; real projects nested deeper.
+(setq org-stuck-projects '("+project/-DONE-CANCELLED" ("NEXT") nil ""))
 ;; useful for adding multiple tags to an entry
 (setq org-fast-tag-selection-single-key nil)
+;; WAITING means one thing: a named person owes me something.  The `!' stamps
+;; the date the ball left my court; SCHEDULED on the same entry is the nudge date.
 (customize-set-variable 'org-todo-keywords
-                        '((sequence "TODO(t)" "WAITING(w)" "NEXT(n)" "|" "DONE(d)" "CANCELLED(c)")))
+                        '((sequence "TODO(t)" "WAITING(w!)" "NEXT(n)" "|" "DONE(d)" "CANCELLED(c)")))
+
+;;** Log hot/cold flips
+;; Org logs state changes, clocks, and date changes, but not tags.
+;; `org-after-tags-change-hook' fires on every tag change but says nothing about
+;; what changed, so snapshot the tags first and diff inside the hook.
+
+(defvar my-org-logged-tags '("hot")
+  "Tags whose addition and removal are recorded in the entry log drawer.")
+
+(defvar my-org--tags-before nil
+  "Tags of the entry at point, captured before `org-set-tags' runs.")
+
+(defun my-org--capture-tags (&rest _)
+  "Record the current entry's tags in `my-org--tags-before'."
+  (setq my-org--tags-before
+        (and (derived-mode-p 'org-mode)
+             (org-at-heading-p)
+             (org-get-tags nil t))))
+
+(defun my-org--log-line (text)
+  "Insert TEXT and an inactive timestamp into the entry's log drawer."
+  (save-excursion
+    (org-back-to-heading t)
+    (let ((indent (if org-adapt-indentation
+                      (make-string (1+ (org-current-level)) ?\s)
+                    "")))
+      (goto-char (org-log-beginning t))
+      (insert indent "- " text " "
+              (format-time-string "[%Y-%m-%d %a %H:%M]") "\n"))))
+
+(defun my-org-log-tag-change ()
+  "Log any change to a tag in `my-org-logged-tags' for the entry at point."
+  (when (derived-mode-p 'org-mode)
+    (let ((before my-org--tags-before)
+          (after (org-get-tags nil t)))
+      (dolist (tag my-org-logged-tags)
+        (let ((was (member tag before))
+              (is (member tag after)))
+          (cond
+           ((and is (not was))
+            (my-org--log-line (format "Tag \"%s\" added" tag)))
+           ((and was (not is))
+            (my-org--log-line (format "Tag \"%s\" removed" tag)))))))
+    (setq my-org--tags-before nil)))
+
+;; Advise the low-level setter, not `org-set-tags-command': `org-set-tags' is
+;; what runs the hook, so this also covers the agenda and programmatic calls.
+;; Hand-editing the tag line in the buffer does not fire it; use C-c C-q.
+(advice-add 'org-set-tags :before #'my-org--capture-tags)
+(add-hook 'org-after-tags-change-hook #'my-org-log-tag-change)
 
 
 ;;** Org Inline Tasks
@@ -557,6 +622,80 @@ Within those groups, sort by date and priority."
   (org-refile-use-outline-path 'file)
   (org-outline-path-complete-in-steps nil)
   (org-refile-allow-creating-parent-nodes 'confirm))
+
+;;** Park entries, preserving their outline path
+;; Refile drops ancestry: an entry under Career > Coaching lands flat, because
+;; nothing in `org-refile' reads the source path, and
+;; `org-refile-allow-creating-parent-nodes' only ever creates one level (see
+;; `org-refile-get-location', which splits on the last slash and requires the
+;; parent to exist already).  `org-refile-new-child' does know how to append a
+;; child at the right level and hand back a refile location, so the only piece
+;; missing is find-or-create for a multi-level path.
+
+(defvar my-org-park-file (expand-file-name "someday.org" org-directory)
+  "File that parked entries are moved into.")
+
+(defvar my-org-park-root "Parked from GTD"
+  "Top-level heading in `my-org-park-file' under which paths are recreated.")
+
+(defun my-org--ensure-olp (file olp)
+  "Return a refile location for outline path OLP in FILE.
+Levels of OLP that do not exist yet are created with `org-refile-new-child'."
+  (let ((buffer (find-file-noselect file))
+        (path nil)
+        ;; A nil position tells `org-refile-new-child' to append at top level.
+        (target (list "" file "" nil)))
+    (dolist (head olp target)
+      (setq path (append path (list head)))
+      (setq target
+            (or (with-current-buffer buffer
+                  (org-with-wide-buffer
+                   (when-let* ((m (ignore-errors
+                                    (org-find-olp path 'this-buffer))))
+                     (list (string-join path "/") file "" (marker-position m)))))
+                (org-refile-new-child target head))))))
+
+(defun my-org-park-tagged (tag)
+  "Move every entry tagged TAG into `my-org-park-file', preserving its path.
+TAG is removed on the way, and the original outline path is recorded in the
+GTD_PATH property so the move can be undone.  Returns the number moved."
+  (interactive "sTag to park: ")
+  (let ((markers nil)
+        (n 0))
+    ;; Match the tag only where it is set locally.  With inheritance on, a
+    ;; tagged parent would also match its children and the subtree would be
+    ;; moved in pieces instead of whole.  Skip anything whose ancestor is also
+    ;; tagged, for the same reason: the ancestor carries it along.
+    (let ((org-use-tag-inheritance nil))
+      (org-map-entries
+       (lambda ()
+         (unless (save-excursion
+                   (let (found)
+                     (while (and (not found) (org-up-heading-safe))
+                       (when (member tag (org-get-tags nil t))
+                         (setq found t)))
+                     found))
+           (push (point-marker) markers)))
+       (concat "+" tag) 'agenda))
+    (dolist (m (nreverse markers))
+      (org-with-point-at m
+        (let* ((olp (org-get-outline-path))
+               (target (my-org--ensure-olp
+                        my-org-park-file (cons my-org-park-root olp))))
+          (org-entry-put (point) "GTD_PATH"
+                         (string-join
+                          (append olp (list (org-get-heading t t t t))) "/"))
+          ;; Strip TAG from the whole subtree, not just this heading: a
+          ;; descendant that kept it would be parked again on the next run.
+          (save-excursion
+            (org-map-entries
+             (lambda () (org-set-tags (remove tag (org-get-tags nil t))))
+             nil 'tree))
+          (goto-char m)
+          (org-refile nil nil target)
+          (setq n (1+ n)))))
+    (message "Parked %d entries" n)
+    n))
 
 ;;** Open Files in Default Application
 ;;Open files in their default applications (ms word being the prime example)
@@ -765,8 +904,84 @@ the region (or the current line), then refresh the agenda."
   ;; (setq org-super-agenda-groups nil)
   (org-super-agenda-mode))
 ;;*** settings for org-super-agenda
+;;*** age of an entry, for the triage prefix
+(defun my-org--entry-date ()
+  "Return the recorded creation date of the entry at point, or nil.
+Reads CREATED or DATE_CAPTURED.  Property lookup is case-insensitive, so
+both :CREATED: and :Created: are found."
+  (when-let* ((text (or (org-entry-get (point) "CREATED")
+                        (org-entry-get (point) "DATE_CAPTURED")))
+              ((string-match
+                "\\([0-9]\\{4\\}\\)-\\([0-9]\\{2\\}\\)-\\([0-9]\\{2\\}\\)" text)))
+    (encode-time 0 0 0
+                 (string-to-number (match-string 3 text))
+                 (string-to-number (match-string 2 text))
+                 (string-to-number (match-string 1 text)))))
+
+(defun my-org-agenda-age ()
+  "Return the age of the entry at point as a short fixed-width string.
+Intended for the `%(...)' escape in `org-agenda-prefix-format'."
+  (if-let* ((time (my-org--entry-date))
+            (days (/ (float-time (time-subtract nil time)) 86400)))
+      (cond ((< days 60)  (format "%3dd" (round days)))
+            ((< days 730) (format "%3dm" (round (/ days 30.4))))
+            (t            (format "%3dy" (round (/ days 365.25)))))
+    "  -"))
+
 (setq org-agenda-custom-commands
-      (quote (("f" "Focused"
+      (quote (;; Walk the WAITING backlog, grouped by parent so a whole branch can
+              ;; be judged at once, with an age column because age is the signal.
+              ;; Tag :park: to move it out (`my-org-park-tagged'), :decide: if the
+              ;; next move is yours, or give it a SCHEDULED date to make it a real
+              ;; nudge.  Set tags from the agenda with `:'.
+              ;; The project portfolio.  `project' does not inherit, so these
+              ;; blocks list projects themselves, not the tasks under them.
+              ("p" "Project portfolio"
+               ((tags "project+hot/-DONE-CANCELLED"
+                      ((org-agenda-overriding-header "Hot (cap 3)")))
+                (stuck ""
+                       ((org-agenda-overriding-header "Stuck: no NEXT anywhere under it")))
+                (tags "project-hot/-DONE-CANCELLED"
+                      ((org-agenda-overriding-header "Cold")
+                       (org-agenda-prefix-format
+                        '((tags . " %i %(my-org-agenda-age)  "))))))
+               ((org-agenda-dim-blocked-tasks nil)
+                (org-agenda-tags-column -100)
+                ;; gtd.org only: a project parked in someday.org keeps its tag,
+                ;; but it is no longer part of the portfolio.
+                (org-agenda-files (list (expand-file-name "gtd.org" org-directory)))))
+
+              ("w" "WAITING triage"
+               ((tags-todo "park|decide"
+                           ((org-agenda-overriding-header "Triaged this pass")
+                            (org-use-tag-inheritance nil)))
+                (todo "WAITING"
+                      ((org-agenda-overriding-header "")
+                       (org-use-tag-inheritance nil)
+                       (org-agenda-prefix-format
+                        '((todo . " %i %(my-org-agenda-age)  ")))
+                       (org-super-agenda-groups
+                        '((:discard (:tag ("park" "decide")))
+                          (:name "Has a nudge date already" :scheduled t)
+                          (:auto-parent t))))))
+               ((org-agenda-dim-blocked-tasks nil)
+                (org-agenda-tags-column -100)))
+
+              ;; Decisions I owe, the two or three projects getting mornings, and
+              ;; the nudges whose check-back date has arrived.  WAITING items stay
+              ;; hidden until their SCHEDULED day, so this list is short by design.
+              ("h" "Hot"
+               ((tags-todo "decide"
+                           ((org-agenda-overriding-header "Decisions I owe")))
+                (tags-todo "hot"
+                           ((org-agenda-overriding-header "Hot projects")
+                            (org-use-tag-inheritance t)
+                            (org-agenda-show-inherited-tags 'always)))
+                (todo "WAITING"
+                      ((org-agenda-overriding-header "Nudges due")
+                       (org-agenda-todo-ignore-scheduled 'future)))))
+
+              ("f" "Focused"
                ((alltodo "" ((org-use-tag-inheritance t)
                              (org-agenda-dim-blocked-tasks nil) ;; speeds up agenda generation
                              (org-agenda-show-inherited-tags 'always) ;; makes sure org-super-agenda can search tags
