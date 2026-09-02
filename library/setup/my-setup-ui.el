@@ -235,11 +235,22 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
 (set-face-attribute 'mode-line-active nil
                     :foreground "black" :background "goldenrod" :box '(:line-width 1 :color
                                                                                    "black"))
+;; Buffer position as a nyan cat.  lambda-line renders its position segment
+;; with `format-mode-line', so the (:eval ...) construct goes straight in.
+(use-package nyan-mode
+  :custom
+  (nyan-bar-length 16)
+  (nyan-animate-nyancat t)
+  (nyan-wavy-trail t)
+  :config
+  (nyan-mode 1))
+
 ;; minimal and cute
 ;; Official repo moved to Codeberg (2026-05); PR #25 fix is merged upstream
 (use-package lambda-line
   :vc (:url "https://codeberg.org/Lambda-Emacs/lambda-line" :branch "main")
   :custom
+  (lambda-line-position-format '("%l:%c " (:eval (nyan-create))))
   (lambda-line-abbrev t)
   (lambda-line-position 'top)
   (lambda-line-hspace "  ")
