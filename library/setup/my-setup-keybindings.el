@@ -38,6 +38,10 @@
   (add-to-list 'meow-mode-state-list '(org-capture-mode . insert))
   (add-to-list 'meow-mode-state-list '(mu4e-compose-mode . insert))
   (add-to-list 'meow-mode-state-list '(mu4e-main-mode . insert))
+  ;; org-timeblock buffers are read-only special-mode views whose single-key
+  ;; commands (n p f b i m ...) meow normal state would otherwise shadow.
+  (add-to-list 'meow-mode-state-list '(org-timeblock-mode . insert))
+  (add-to-list 'meow-mode-state-list '(org-timeblock-list-mode . insert))
   (add-to-list 'meow-mode-state-list '(mu4e-view-mode . motion))
   (add-to-list 'meow-mode-state-list '(edebug-mode . insert))
   (add-to-list 'meow-mode-state-list '(ghostel-mode . insert))
