@@ -565,8 +565,10 @@
     ]
    ["Config"
     ("f" "Toggle Split" window-layout-transpose)
-    ("u" "Undo Config" winner-undo)
-    ("U" "Redo Config" winner-redo)
+    ;; :transient t keeps the menu open so repeated u/U run back to back,
+    ;; which winner-undo needs to walk further back and winner-redo requires.
+    ("u" "Undo Config" winner-undo :transient t)
+    ("U" "Redo Config" winner-redo :transient t)
     ("x" "Exchange Buffer in Window" my-window-exchange-buffer)
     ] ])
 
