@@ -577,40 +577,44 @@ sessions can run at once (in different windows or tabs)."
     (inheritenv (ghostel-exec buffer my-codex-program))
     buffer))
 
-;;* pi-coding-agent
+;;* pilish (pi coding agent)
 (use-package md-ts-mode :ensure t :defer t)
 (use-package markdown-table-wrap :ensure t :defer t)
 
-(use-package pi-coding-agent
-  ;; Using local repo with image paste support (yank-media)
-  :load-path "~/projects/elisp/pi-coding-agent"
+(use-package pilish
+  ;; Upstream checkout (dnouri/pi-coding-agent); the package was renamed
+  ;; pi-coding-agent -> pilish in v3.0.0.
+  :load-path "~/projects/elisp/pilish"
 
-  :bind (:map pi-coding-agent-input-mode-map
-         ("<s-return>" . pi-coding-agent-send)
+  :bind (:map pilish-input-mode-map
+         ("<s-return>" . pilish-send)
          ("C-c C-l" . org-insert-link-global)
          ("C-." . jinx-correct))
 
-  :commands (pi-coding-agent)
+  :commands (pilish)
 
   :custom
-  (pi-coding-agent-input-window-height 10)
-  (pi-coding-agent-tool-preview-lines 10)
-  (pi-coding-agent-bash-preview-lines 5)
-  (pi-coding-agent-context-warning-threshold 70)
-  (pi-coding-agent-context-error-threshold 90)
-  (pi-coding-agent-visit-file-other-window t)
+  (pilish-input-window-height 10)
+  (pilish-tool-preview-lines 10)
+  (pilish-bash-preview-lines 5)
+  (pilish-context-warning-threshold 70)
+  (pilish-context-error-threshold 90)
+  (pilish-visit-file-other-window t)
 
   :config
-  ;; Register pi-coding-agent faces as fixed-pitch for mixed-pitch-mode.
+  ;; Register pilish faces as fixed-pitch for mixed-pitch-mode.
   ;; The chat buffer derives from gfm-mode which gets mixed-pitch-mode;
   ;; tool output and commands should stay monospaced.
   (with-eval-after-load 'mixed-pitch
-    (dolist (face '(pi-coding-agent-tool-command
-                    pi-coding-agent-tool-output
-                    pi-coding-agent-tool-error
-                    pi-coding-agent-tool-name
-                    pi-coding-agent-collapsed-indicator
-                    pi-coding-agent-separator))
+    (dolist (face '(pilish-tool-command
+                    pilish-tool-output
+                    pilish-tool-name
+                    pilish-tool-block
+                    pilish-tool-block-error
+                    pilish-collapsed-indicator
+                    pilish-diff-line-added
+                    pilish-diff-line-removed
+                    pilish-timestamp))
       (add-to-list 'mixed-pitch-fixed-pitch-faces face))))
 
 ;;* provide
