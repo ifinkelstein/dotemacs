@@ -167,6 +167,11 @@ Works with exactly two windows in any split direction."
 ;; the terminal title (a live Claude session is "*ghostel: <session title>*",
 ;; not "*claude:...*").
 
+(defvar ghostel-identity)
+(declare-function ghostel-buffer-list "ghostel")
+(declare-function ghostel-paste-string "ghostel" (string))
+(declare-function ghostel-send-string "ghostel" (string))
+
 (defvar my-agent-split-preference '(claude codex shell)
   "Kinds of terminal session to reuse, most preferred first.
 Also the order the right window cycles through on repeat calls.")
@@ -179,10 +184,14 @@ The current file's directory, or `default-directory' in a non-file buffer."
                    default-directory)))
 
 (defun my-agent--session-kind (buffer)
-  "Classify ghostel BUFFER as `claude', `codex' or `shell'."
-  (let ((cmd (if-let* ((proc (get-buffer-process buffer)))
-                 (string-join (process-command proc) " ")
-               "")))
+  "Classify ghostel BUFFER as `claude', `codex' or `shell'.
+Reads the exec'd program from `ghostel-identity'; with the native PTY
+there is no Emacs process object to inspect."
+  (let ((cmd (string-join
+              (or (alist-get 'command (buffer-local-value 'ghostel-identity buffer))
+                  (and-let* ((proc (get-buffer-process buffer)))
+                    (process-command proc)))
+              " ")))
     (cond ((string-match-p "\\bclaude\\b" cmd) 'claude)
           ((string-match-p "\\bcodex\\b" cmd) 'codex)
           (t 'shell))))
@@ -191,11 +200,9 @@ The current file's directory, or `default-directory' in a non-file buffer."
   "Live ghostel buffers running in DIR, ordered by `my-agent-split-preference'."
   (let ((bufs (seq-filter
                (lambda (buf)
-                 (and (eq (buffer-local-value 'major-mode buf) 'ghostel-mode)
-                      (process-live-p (get-buffer-process buf))
-                      (string= dir (file-truename
-                                    (buffer-local-value 'default-directory buf)))))
-               (buffer-list))))
+                 (string= dir (file-truename
+                               (buffer-local-value 'default-directory buf))))
+               (and (fboundp 'ghostel-buffer-list) (ghostel-buffer-list)))))
     (mapcan (lambda (kind)
               (seq-filter (lambda (buf) (eq kind (my-agent--session-kind buf)))
                           bufs))
@@ -237,6 +244,92 @@ Claude Code session."
              (next (nth (if pos (mod (1+ pos) (length sessions)) 0) sessions)))
         (set-window-buffer right next)))
     (select-window right)))
+
+;;** Agent Edit DWIM
+;; Hand the sentence/paragraph/region at point to the live Claude Code or
+;; Codex session next door, with a one-line instruction typed at the
+;; minibuffer.  The agent gets the file, line range, quoted text and a
+;; standing brief: edit the file in place when asked to rewrite, otherwise
+;; act on the text (fact-check, explain, verify) and report.
+
+(defvar my-agent-edit-brief
+  "The instruction applies to the quoted passage.  If it asks for a \
+rewrite, edit the file in place: change only that passage unless a \
+correct edit needs more, keep markup, citations and labels intact, and \
+match the surrounding voice.  If it asks a question or for a check \
+(fact-check a claim, verify a citation, explain), do that and reply \
+briefly; edit only if the instruction implies a fix.  Do not reflow or \
+reformat unrelated text."
+  "Standing instructions appended to every `my-agent-edit-dwim' request.")
+
+(defvar my-agent-edit-history nil
+  "Minibuffer history for `my-agent-edit-dwim' instructions.")
+
+(defun my-agent--edit-target (dir)
+  "Agent buffer to send to: one visible in this frame, else one running in DIR.
+Only `claude' and `codex' sessions qualify.  Among visible ones a session
+in DIR wins; otherwise any visible agent does, since the agent for a
+project is often started at the repo root rather than the file's folder."
+  (let* ((agent-p (lambda (buf)
+                    (and (eq (buffer-local-value 'major-mode buf) 'ghostel-mode)
+                         (memq (my-agent--session-kind buf) '(claude codex)))))
+         (visible (seq-filter agent-p (mapcar #'window-buffer (window-list nil 'no-mini))))
+         (in-dir (lambda (buf)
+                   (string= dir (file-truename
+                                 (buffer-local-value 'default-directory buf))))))
+    (or (seq-find in-dir visible)
+        (car visible)
+        (seq-find agent-p (my-agent--sessions dir))
+        (user-error "No Claude Code or Codex session visible or running in %s"
+                    (abbreviate-file-name dir)))))
+
+(defun my-agent--edit-bounds (paragraph)
+  "Bounds of the text to act on: region, else sentence, else PARAGRAPH."
+  (cond ((use-region-p) (cons (region-beginning) (region-end)))
+        ((bounds-of-thing-at-point (if paragraph 'paragraph 'sentence)))
+        (t (user-error "Nothing at point to act on"))))
+
+(defun my-agent-edit-dwim (&optional paragraph)
+  "Send the region (else sentence at point) with an instruction to the agent.
+With prefix arg PARAGRAPH and no region, use the paragraph at point.
+
+The target is the Claude Code or Codex ghostel session visible in this
+frame, else one running in this file's directory.  The request names the
+file and line range, quotes the text, adds the instruction typed at the
+prompt, and closes with `my-agent-edit-brief'.  It is submitted at once;
+point stays here."
+  (interactive "P")
+  (unless buffer-file-name
+    (user-error "Buffer is not visiting a file"))
+  (pcase-let* ((`(,beg . ,end) (my-agent--edit-bounds paragraph))
+               (text (string-trim (buffer-substring-no-properties beg end)))
+               (line1 (line-number-at-pos beg t))
+               (line2 (line-number-at-pos (max beg (1- end)) t))
+               (target (my-agent--edit-target (my-agent--directory)))
+               (instruction (string-trim
+                             (read-string
+                              (format "Agent (%s), %s: "
+                                      (my-agent--session-kind target)
+                                      (if (use-region-p) "region" "sentence"))
+                              nil 'my-agent-edit-history))))
+    (when (string-empty-p instruction)
+      (user-error "Empty instruction"))
+    (when (buffer-modified-p)
+      (save-buffer))
+    (let ((request
+           (format "In %s, line%s:\n\n\"\"\"\n%s\n\"\"\"\n\nInstruction: %s\n\n%s"
+                   (file-relative-name buffer-file-name
+                                       (buffer-local-value 'default-directory target))
+                   (if (= line1 line2) (format " %d" line1) (format "s %d-%d" line1 line2))
+                   text instruction my-agent-edit-brief)))
+      (with-current-buffer target
+        (ghostel-paste-string request)
+        (sit-for 0.1)
+        (ghostel-send-string "\r"))
+      (unless (get-buffer-window target)
+        (display-buffer target))
+      (deactivate-mark)
+      (message "Sent to %s" (buffer-name target)))))
 
 ;;* Buffer Functions
 (defun my-narrow-or-widen-dwim (p)
