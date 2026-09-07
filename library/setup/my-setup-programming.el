@@ -79,8 +79,8 @@
           eval-expression-minibuffer-setup) . puni-mode))
 
 (use-package embrace
-  :bind (("s-e" . embrace-add)
-         ("s-E" . embrace-delete))
+  ;; s-e is `my-agent-edit-dwim'; use `embrace-commander' from a menu instead.
+  :bind (("s-E" . embrace-delete))
   :hook ((org-mode . embrace-org-mode-hook) ;; defined in embrace.el
          (markdown-mode . embrace-markdown-mode-hook) ;; defined below
 	     (emacs-lisp-mode . embrace-emacs-lisp-mode-hook)

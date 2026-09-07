@@ -16,6 +16,9 @@
 (keymap-global-unset "s-k")
 (keymap-global-set "s-K" 'kill-current-buffer)
 
+;; region/sentence at point -> instruction -> live Claude Code/Codex window
+(keymap-global-set "s-e" 'my-agent-edit-dwim)
+
 
 ;;** Personal Leader Key
 (defvar my-leader-map (make-sparse-keymap)
@@ -225,7 +228,8 @@
     ("s" "Send Region" my-claude-code-send-region-with-prompt)
     ("t" "Toggle Window" claude-code-toggle)
     ("m" "Claude Menu" claude-code-transient)
-    ("S" "Split with Agent" my-split-with-agent)]
+    ("S" "Split with Agent" my-split-with-agent)
+    ("e" "Edit at point via agent" my-agent-edit-dwim)]
    ["Codex"
     ("x" "Codex here" my-codex)]
    ["Assistants"
@@ -339,7 +343,8 @@
    ["Mark/Fill"
     ("n" "Narrow/Widen" my-narrow-or-widen-dwim)
     ("b" "Mark Inside Env" my-LaTeX-mark-inside-environment)
-    ("q" "Fill Environment" LaTeX-fill-environment)]
+    ("q" "Fill Environment" LaTeX-fill-environment)
+    ("x" "Edit via agent" my-agent-edit-dwim)]
    ["Sections"
     ("s" "Insert Section" LaTeX-section)
     ("S" "Mark Section" LaTeX-mark-section)
