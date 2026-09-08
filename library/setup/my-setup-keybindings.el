@@ -354,9 +354,8 @@
     ("N" "Move Down" outline-move-subtree-down)
     ("h" "Mark Subtree" outline-mark-subtree)]
    ["Folding"
-    ("z" "Fold dwim" TeX-fold-dwim)
-    ("f" "Fold buffer" TeX-fold-buffer)
-    ("F" "Unfold buffer" TeX-fold-clearout-buffer)
+    ("z" "Fold dwim (at point)" TeX-fold-dwim)
+    ("F" "Fold dwim (region/buffer)" my-TeX-fold-dwim)
     ("o" "Cycle heading" outline-cycle)
     ("O" "Cycle buffer" outline-cycle-buffer)]])
 
