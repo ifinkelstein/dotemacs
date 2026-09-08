@@ -356,6 +356,40 @@ Adapted by the er/mark-LaTeX-inside-environment function"
     (skip-syntax-backward " ")
     (exchange-point-and-mark)))
 
+;;** Fold buffer/region dwim
+(declare-function TeX-fold-buffer "tex-fold")
+(declare-function TeX-fold-region "tex-fold")
+(declare-function TeX-fold-clearout-buffer "tex-fold")
+(declare-function TeX-fold-clearout-region "tex-fold")
+
+(defun my-TeX-folded-p (start end)
+  "Return non-nil if any TeX-fold overlay exists between START and END."
+  (seq-some (lambda (ov) (eq (overlay-get ov 'category) 'TeX-fold))
+            (overlays-in start end)))
+
+(defun my-TeX-fold-dwim ()
+  "Toggle folding of the active region, or of the whole buffer.
+With a non-empty active region, fold it, or unfold it if it already
+contains folds.  Otherwise do the same for the entire buffer."
+  (interactive)
+  (let* ((region (and (region-active-p)
+                      (/= (region-beginning) (region-end))
+                      (cons (region-beginning) (region-end))))
+         (start (if region (car region) (point-min)))
+         (end (if region (cdr region) (point-max))))
+    (cond
+     ((my-TeX-folded-p start end)
+      (if region
+          (TeX-fold-clearout-region start end)
+        (TeX-fold-clearout-buffer))
+      (message "Unfolded %s" (if region "region" "buffer")))
+     (region
+      (TeX-fold-region start end)
+      (message "Folded region"))
+     (t
+      (TeX-fold-buffer)
+      (message "Folded buffer")))))
+
 ;;* Embark: LaTeX macro argument targets
 ;; Extensible embark integration for LaTeX macros like \input{}, \include{},
 ;; \includegraphics{}, etc. Uses AUCTeX primitives for robust parsing.
