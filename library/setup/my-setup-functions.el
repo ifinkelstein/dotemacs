@@ -246,14 +246,17 @@ Claude Code session."
     (select-window right)))
 
 ;;** Agent Edit DWIM
-;; Hand the sentence/paragraph/region at point to the live Claude Code or
-;; Codex session next door, with a one-line instruction typed at the
-;; minibuffer.  The agent gets the file, line range, quoted text and a
-;; standing brief: edit the file in place when asked to rewrite, otherwise
-;; act on the text (fact-check, explain, verify) and report.
+;; Hand the section/sentence/paragraph/region at point, or the mu4e
+;; message at point, to the live Claude Code or Codex session next door,
+;; with a one-line instruction typed at the minibuffer.  The agent gets
+;; the file, line range, quoted text and a standing brief: edit the file
+;; in place when asked to rewrite, otherwise act on the text (fact-check,
+;; explain, verify) and report.  For mail it gets the maildir path and
+;; headers and reads the message itself.
 
 (defvar my-agent-edit-brief
-  "The instruction applies to the quoted passage.  If it asks for a \
+  "The instruction applies to the quoted passage, or to the whole section \
+at the lines given when only its heading is quoted.  If it asks for a \
 rewrite, edit the file in place: change only that passage unless a \
 correct edit needs more, keep markup, citations and labels intact, and \
 match the surrounding voice.  If it asks a question or for a check \
@@ -283,53 +286,255 @@ project is often started at the repo root rather than the file's folder."
         (user-error "No Claude Code or Codex session visible or running in %s"
                     (abbreviate-file-name dir)))))
 
-(defun my-agent--edit-bounds (paragraph)
-  "Bounds of the text to act on: region, else sentence, else PARAGRAPH."
-  (cond ((use-region-p) (cons (region-beginning) (region-end)))
-        ((bounds-of-thing-at-point (if paragraph 'paragraph 'sentence)))
-        (t (user-error "Nothing at point to act on"))))
+(defun my-agent--heading-regexp ()
+  "Regexp for lines that start a section, or nil outside Org and LaTeX.
+In LaTeX only the sectioning commands count: AUCTeX's `outline-regexp'
+also matches \\begin{document}, \\end{document} and the `TeX-outline-extra'
+comment markers, whose subtrees can run to the end of the file."
+  (cond ((derived-mode-p 'org-mode) outline-regexp)
+        ((derived-mode-p 'LaTeX-mode 'latex-mode)
+         "[ \t]*\\\\\\(?:part\\|chapter\\|\\(?:sub\\)*section\\|\\(?:sub\\)?paragraph\\)\\b")))
 
-(defun my-agent-edit-dwim (&optional paragraph)
-  "Send the region (else sentence at point) with an instruction to the agent.
-With prefix arg PARAGRAPH and no region, use the paragraph at point.
+(defun my-agent--on-heading-p ()
+  "Non-nil when point is on a line matching `my-agent--heading-regexp'."
+  (when-let* ((regexp (my-agent--heading-regexp)))
+    (save-excursion
+      (forward-line 0)
+      (looking-at regexp))))
 
-The target is the Claude Code or Codex ghostel session visible in this
-frame, else one running in this file's directory.  The request names the
-file and line range, quotes the text, adds the instruction typed at the
-prompt, and closes with `my-agent-edit-brief'.  It is submitted at once;
-point stays here."
-  (interactive "P")
+(defun my-agent--edit-unit (arg)
+  "Unit of text to act on for prefix ARG.
+The active region wins; then, on an Org or LaTeX heading line, the
+section; else the paragraph with ARG and the sentence without."
+  (cond ((use-region-p) 'region)
+        ((my-agent--on-heading-p) 'section)
+        (arg 'paragraph)
+        (t 'sentence)))
+
+(defun my-agent--section-bounds ()
+  "Bounds of the heading on this line and its subtree.
+The subtree ends before the next heading of the same or a higher level,
+or before \\end{document} in the last LaTeX section."
+  (let ((outline-regexp (my-agent--heading-regexp)))
+    (save-excursion
+      (forward-line 0)
+      (let ((beg (point))
+            (end (progn (outline-end-of-subtree) (point))))
+        (goto-char beg)
+        (cons beg (if (re-search-forward "^[ \t]*\\\\end *{document}" end t)
+                      (match-beginning 0)
+                    end))))))
+
+(defun my-agent--edit-bounds (unit)
+  "Bounds of UNIT: `region', `section', `sentence' or `paragraph'."
+  (pcase unit
+    ('region (cons (region-beginning) (region-end)))
+    ('section (my-agent--section-bounds))
+    (_ (or (bounds-of-thing-at-point unit)
+           (user-error "No %s at point" unit)))))
+
+(defun my-agent--read-instruction (target unit)
+  "Read a non-empty instruction for TARGET about UNIT from the minibuffer."
+  (let ((instruction (string-trim
+                      (read-string
+                       (format "Agent (%s), %s: " (my-agent--session-kind target) unit)
+                       nil 'my-agent-edit-history))))
+    (when (string-empty-p instruction)
+      (user-error "Empty instruction"))
+    instruction))
+
+(defun my-agent--send (target request)
+  "Submit REQUEST to the ghostel buffer TARGET and make sure it is shown."
+  (with-current-buffer target
+    (ghostel-paste-string request)
+    (sit-for 0.1)
+    (ghostel-send-string "\r"))
+  (unless (get-buffer-window target)
+    (display-buffer target))
+  (deactivate-mark)
+  (message "Sent to %s" (buffer-name target)))
+
+(defun my-agent--text-request (target arg)
+  "Request about the text at point in this file buffer, for TARGET.
+ARG is the raw prefix argument, interpreted by `my-agent--edit-unit'."
   (unless buffer-file-name
     (user-error "Buffer is not visiting a file"))
-  (pcase-let* ((`(,beg . ,end) (my-agent--edit-bounds paragraph))
+  (pcase-let* ((unit (my-agent--edit-unit arg))
+               (`(,beg . ,end) (my-agent--edit-bounds unit))
                (text (string-trim (buffer-substring-no-properties beg end)))
                (line1 (line-number-at-pos beg t))
                (line2 (line-number-at-pos (max beg (1- end)) t))
-               (target (my-agent--edit-target (my-agent--directory)))
-               (instruction (string-trim
-                             (read-string
-                              (format "Agent (%s), %s: "
-                                      (my-agent--session-kind target)
-                                      (if (use-region-p) "region" "sentence"))
-                              nil 'my-agent-edit-history))))
-    (when (string-empty-p instruction)
-      (user-error "Empty instruction"))
+               (instruction (my-agent--read-instruction target unit)))
     (when (buffer-modified-p)
       (save-buffer))
-    (let ((request
-           (format "In %s, line%s:\n\n\"\"\"\n%s\n\"\"\"\n\nInstruction: %s\n\n%s"
-                   (file-relative-name buffer-file-name
-                                       (buffer-local-value 'default-directory target))
-                   (if (= line1 line2) (format " %d" line1) (format "s %d-%d" line1 line2))
-                   text instruction my-agent-edit-brief)))
-      (with-current-buffer target
-        (ghostel-paste-string request)
-        (sit-for 0.1)
-        (ghostel-send-string "\r"))
-      (unless (get-buffer-window target)
-        (display-buffer target))
-      (deactivate-mark)
-      (message "Sent to %s" (buffer-name target)))))
+    (format "In %s, line%s%s:\n\n\"\"\"\n%s\n\"\"\"\n\nInstruction: %s\n\n%s"
+            (file-relative-name buffer-file-name
+                                (buffer-local-value 'default-directory target))
+            (if (= line1 line2) (format " %d" line1) (format "s %d-%d" line1 line2))
+            (if (eq unit 'section) ", the section headed" "")
+            (if (eq unit 'section) (car (split-string text "\n")) text)
+            instruction my-agent-edit-brief)))
+
+(defvar my-agent-mail-brief
+  "Act on the message above.  If the instruction asks for a reply or a \
+forward, use the draft-email skill: save the draft to drafts.org with \
+In-Reply-To (or Forward) set to the Message-Id given, in Ilya's voice, \
+and do not send anything.  If it asks a question, a summary or a check, \
+answer briefly here.  Attachments are already saved at the paths listed; \
+the Source line is the raw message for anything else (mu view, mu \
+extract).  Do not move, edit or delete anything in the maildir."
+  "Standing instructions appended to every mail request from `my-agent-edit-dwim'.")
+
+(defvar my-agent-mail-attachment-dir
+  (expand-file-name "mu4e-agent/" (bound-and-true-p my-cache-dir))
+  "Directory under which mail attachments are saved for the agent.
+Each message gets a subdirectory named after its Message-Id.")
+
+(defvar my-agent-mail-attachment-max (* 25 1024 1024)
+  "Largest attachment, in bytes, saved for the agent.")
+
+(defvar my-agent-mail-body-max-lines 150
+  "Lines of message body quoted in a request before truncating.")
+
+(declare-function mu4e-message-at-point "mu4e-message" (&optional noerror))
+(declare-function mu4e-message-field "mu4e-message" (msg field))
+(declare-function mu4e-contact-full "mu4e-contacts" (contact))
+(eval-when-compile (require 'mm-decode)) ; for the mm-handle-* accessors
+(declare-function mm-dissect-buffer "mm-decode" (&optional no-strict-mime loose-mime from))
+(declare-function mm-display-inline "mm-decode" (handle))
+(declare-function mm-handle-filename "mm-decode" (handle))
+(declare-function mm-save-part-to-file "mm-decode" (handle file))
+(declare-function mm-destroy-parts "mm-decode" (handles))
+(defvar shr-width)
+(defvar shr-inhibit-images)
+(defvar mm-inline-text-html-with-images)
+
+(defun my-agent--mm-leaves (handle)
+  "Flatten the MIME HANDLE tree from `mm-dissect-buffer' into leaf parts."
+  (if (stringp (car handle))
+      (mapcan #'my-agent--mm-leaves (cdr handle))
+    (list handle)))
+
+(defun my-agent--mm-render (part)
+  "Plain text of the text/plain or text/html PART, rendered as mu4e would."
+  (with-temp-buffer
+    (let ((shr-width 80)
+          (shr-inhibit-images t)
+          (mm-inline-text-html-with-images nil))
+      (mm-display-inline part))
+    (string-trim
+     (replace-regexp-in-string
+      "\n\\{3,\\}" "\n\n"
+      (replace-regexp-in-string
+       "[ \t]+$" "" (buffer-substring-no-properties (point-min) (point-max)))))))
+
+(defun my-agent--mail-parts (path msgid)
+  "Render the message file PATH into (BODY . ATTACHMENTS).
+BODY is the text of the first text/plain part, else the first text/html
+part rendered with shr.  ATTACHMENTS are the named, non-inline-image parts
+saved under `my-agent-mail-attachment-dir'/MSGID, as a list of file names;
+parts over `my-agent-mail-attachment-max' bytes are skipped."
+  (require 'mm-decode)
+  (with-temp-buffer
+    (set-buffer-multibyte nil)
+    (insert-file-contents-literally path)
+    (let* ((handles (mm-dissect-buffer t))
+           (leaves (my-agent--mm-leaves handles))
+           (text-p (lambda (type)
+                     (lambda (part)
+                       (and (equal (mm-handle-media-type part) type)
+                            (not (mm-handle-filename part))))))
+           (body-part (or (seq-find (funcall text-p "text/plain") leaves)
+                          (seq-find (funcall text-p "text/html") leaves)))
+           (dir (expand-file-name
+                 (replace-regexp-in-string "[^[:alnum:]._-]" "_" msgid)
+                 my-agent-mail-attachment-dir))
+           (files nil))
+      (unwind-protect
+          (progn
+            (dolist (part leaves)
+              (let ((name (mm-handle-filename part)))
+                (when (and name
+                           (not (eq part body-part))
+                           (not (and (string-prefix-p "image/" (mm-handle-media-type part))
+                                     (equal (car (mm-handle-disposition part)) "inline")))
+                           (<= (buffer-size (mm-handle-buffer part))
+                               my-agent-mail-attachment-max))
+                  (make-directory dir t)
+                  (let ((file (expand-file-name (file-name-nondirectory name) dir)))
+                    (mm-save-part-to-file part file)
+                    (push file files)))))
+            (cons (if body-part (my-agent--mm-render body-part) "[no text body]")
+                  (nreverse files)))
+        (mm-destroy-parts handles)))))
+
+(defun my-agent--truncate-lines (text max)
+  "TEXT cut to its first MAX lines, with a note on how many were dropped."
+  (let ((lines (split-string text "\n")))
+    (if (<= (length lines) max)
+        text
+      (format "%s\n[... %d more lines; see Source]"
+              (string-join (seq-take lines max) "\n")
+              (- (length lines) max)))))
+
+(defun my-agent--mail-request (target)
+  "Request about the mu4e message at point, for TARGET.
+Works in the headers view and the message view.  The request carries the
+envelope, the rendered body, the saved attachments and the maildir path;
+in the message view an active region is quoted as the passage the
+instruction applies to."
+  (pcase-let* ((msg (mu4e-message-at-point))
+               (region (and (use-region-p)
+                            (string-trim (buffer-substring-no-properties
+                                          (region-beginning) (region-end)))))
+               (instruction (my-agent--read-instruction
+                             target (if region "message region" "message")))
+               (path (mu4e-message-field msg :path))
+               (msgid (mu4e-message-field msg :message-id))
+               (`(,body . ,files) (my-agent--mail-parts path msgid))
+               (contacts (lambda (field)
+                           (let ((cs (mu4e-message-field msg field)))
+                             (and cs (mapconcat #'mu4e-contact-full cs ", "))))))
+    (concat
+     (format "Email\nFrom: %s\nTo: %s\n" (funcall contacts :from) (funcall contacts :to))
+     (and-let* ((cc (funcall contacts :cc))) (format "Cc: %s\n" cc))
+     (format "Date: %s\nSubject: %s\nMessage-Id: <%s>\n\n"
+             (format-time-string "%F %R" (mu4e-message-field msg :date))
+             (mu4e-message-field msg :subject) msgid)
+     (my-agent--truncate-lines body my-agent-mail-body-max-lines)
+     "\n\n"
+     (and files
+          (format "Attachments:\n%s\n\n"
+                  (mapconcat (lambda (f)
+                               (format "- %s (%s)" f
+                                       (file-size-human-readable
+                                        (file-attribute-size (file-attributes f)))))
+                             files "\n")))
+     (format "Source: %s\n\n" path)
+     (and region
+          (format "The instruction applies to this passage:\n\n\"\"\"\n%s\n\"\"\"\n\n" region))
+     (format "Instruction: %s\n\n%s" instruction my-agent-mail-brief))))
+
+(defun my-agent-edit-dwim (&optional arg)
+  "Send the thing at point with an instruction to the agent.
+In a file buffer the thing is the region if active, else the section
+when point is on an Org or LaTeX heading line, else the sentence, or the
+paragraph with prefix ARG (see `my-agent--edit-unit').  In a mu4e
+headers or message view it is the message at point: envelope, rendered
+body, saved attachments and maildir path (see `my-agent--mail-request').
+
+The target is the Claude Code or Codex ghostel session visible in this
+frame, else one running in this file's directory.  The request names the
+file and line range, quotes the text (only the heading line for a
+section, since the agent reads the file anyway), adds the instruction
+typed at the prompt, and closes with the standing brief.  It is
+submitted at once; point stays here."
+  (interactive "P")
+  (let ((target (my-agent--edit-target (my-agent--directory))))
+    (my-agent--send target
+                    (if (derived-mode-p 'mu4e-headers-mode 'mu4e-view-mode)
+                        (my-agent--mail-request target)
+                      (my-agent--text-request target arg)))))
 
 ;;* Buffer Functions
 (defun my-narrow-or-widen-dwim (p)
