@@ -583,15 +583,25 @@
   ["Workspace Operations"
    ["Activity"
     ("A" "Resume" activities-resume)
+    ("R" "Resume (reset)" my-activities-resume-reset)
+    ("w" "Switch (active)" activities-switch)
     ("B" "Switch buffer" activities-switch-buffer)
-    ("D" "Define" activities-define)
-    ("G" "Revert" activities-revert)
-    ("K" "Kill" activities-kill)
-    ("L" "List" activities-list)
-    ("N" "New activities" activities-new)
+    ("D" "Define current" activities-define)
+    ("N" "New" activities-new)
+    ("G" "Revert current" activities-revert)
     ("S" "Suspend current" (lambda ()
                              (interactive)
                              (activities-suspend (activities-current))))
+    ]
+   ["Manage activities"
+    ("L" "List" activities-list)
+    ("f" "Find (name or buffer)" my-activities-find)
+    ("b" "Show buffers" my-activities-show-buffers)
+    ("M" "Rename" activities-rename)
+    ("K" "Kill" activities-kill)
+    ("X" "Discard" my-activities-discard-many)
+    ("x" "Discard stale" my-activities-discard-stale)
+    ("v" "Save all" activities-save-all)
     ]
    ["Tabs"
     ("c" "Close" tab-close)
@@ -613,7 +623,6 @@
     ("3" "Notes" my-open-notes-in-workspace)
     ("5" "Terminal" my-open-terminal-in-workspace)
     ]])
-
 
 ;;* Which Key
 (use-package which-key
