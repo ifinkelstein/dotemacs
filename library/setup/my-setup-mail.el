@@ -41,6 +41,31 @@
   ;; https://github.com/djcb/mu/issues/2662
   (setq rfc2047-quote-decoded-words-containing-tspecials t)
 
+  ;; Keep the current split when quitting the headers buffer.
+  ;; `mu4e~headers-quit-buffer' calls `quit-window', and
+  ;; `quit-restore-window' resizes the window back to the absolute
+  ;; width it had when headers was first shown (stored as the 4th
+  ;; element of the quit-restore "quad").  After a frame shrink (e.g.
+  ;; external monitor -> laptop), `balance-windows', or a manual
+  ;; resize, that stale width squeezes the neighbouring window: seen
+  ;; as main 105 cols / other window 17 cols on a 124-col frame.
+  ;; Dropping the stored size makes quit restore the buffer only.
+  (defun my-mu4e--drop-quit-restore-size (window)
+    "Remove the stored window size from WINDOW's quit-restore parameters."
+    (dolist (param '(quit-restore quit-restore-prev))
+      (let ((qr (window-parameter window param)))
+        (when (and (consp qr)
+                   (consp (nth 1 qr))
+                   (integerp (nth 3 (nth 1 qr))))
+          (set-window-parameter
+           window param
+           (append (list (car qr) (butlast (nth 1 qr) (- (length (nth 1 qr)) 3)))
+                   (nthcdr 2 qr)))))))
+
+  (define-advice mu4e~headers-quit-buffer (:before () keep-split)
+    "Stop `quit-window' from snapping headers back to a stale width."
+    (my-mu4e--drop-quit-restore-size (selected-window)))
+
   ;; Fix encoding errors when viewing emails with mismatched/undeclared charsets
   ;; Prefer UTF-8 for MIME decoding, and provide sensible fallbacks
   (setq mm-coding-system-priorities '(utf-8 utf-8-auto))
