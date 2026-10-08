@@ -1120,10 +1120,8 @@ Pass ARGS through to ORIG-FUN, then redraw icons."
   :custom
   (org-heading-mail-scheduled-file "~/Work/org/drafts.org"))
 
-(defun my-org-heading-send-dwim ()
-  "Send org heading as email or Slack message.
-Dispatches based on heading fields: Channel -> Slack, To/In-Reply-To -> email."
-  (interactive)
+(defun my--org-heading-send-kind ()
+  "Return `slack' or `email' for the heading at point, based on its fields."
   (save-excursion
     (org-back-to-heading t)
     (let* ((end (org-entry-end-position))
@@ -1137,9 +1135,55 @@ Dispatches based on heading fields: Channel -> Slack, To/In-Reply-To -> email."
       (cond
        ((and slack-p email-p)
         (user-error "Heading has both Channel and To/In-Reply-To fields"))
-       (slack-p (org-heading-slack-send))
-       (email-p (org-heading-mail-send))
+       (slack-p 'slack)
+       (email-p 'email)
        (t (user-error "Heading has no Channel (Slack) or To/In-Reply-To (email) field"))))))
+
+(defun my-org-heading-send-dwim ()
+  "Send org heading as email or Slack message.
+Dispatches based on heading fields: Channel -> Slack, To/In-Reply-To -> email."
+  (interactive)
+  (pcase (my--org-heading-send-kind)
+    ('slack (org-heading-slack-send))
+    ('email (org-heading-mail-send))))
+
+(defun my-org-heading-send-now (&optional skip-confirm)
+  "Send org heading as Slack or email, all the way to sent.
+Slack goes through `org-heading-slack-send' as usual.  Email is composed
+with `org-heading-mail-send', then sent from the compose buffer after a
+confirmation.  Declining leaves the draft open.  With prefix arg
+SKIP-CONFIRM, send without asking."
+  (interactive "P")
+  (pcase (my--org-heading-send-kind)
+    ('slack (org-heading-slack-send skip-confirm))
+    ('email
+     (let (send-fn)
+       (setq send-fn
+             (lambda ()
+               (remove-hook 'org-msg-edit-mode-hook send-fn)
+               (let ((buf (current-buffer)))
+                 ;; Deferred like org-heading-mail's own setup: the
+                 ;; compose buffer isn't fully initialized inside the hook.
+                 (run-at-time
+                  0 nil
+                  (lambda ()
+                    (when (buffer-live-p buf)
+                      (with-current-buffer buf
+                        (org-msg-goto-body)
+                        (save-buffer)
+                        (when (or skip-confirm
+                                  (y-or-n-p (format "Send email to %s? "
+                                                    (message-fetch-field "To"))))
+                          (org-msg-ctrl-c-ctrl-c)))))))))
+       ;; Depth 90 so the populate hook installed by org-heading-mail runs first.
+       (add-hook 'org-msg-edit-mode-hook send-fn 90)
+       ;; The post-send scheduled-draft check would prompt over ours.
+       (condition-case err
+           (let ((org-heading-mail-scheduled-check-after-send nil))
+             (org-heading-mail-send))
+         ((error quit)
+          (remove-hook 'org-msg-edit-mode-hook send-fn)
+          (signal (car err) (cdr err))))))))
 
 ;; TODO: test my-org-msg-llm-draft
 (defun my-mail-llm-expand ()
