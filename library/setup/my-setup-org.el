@@ -267,13 +267,7 @@
   (calendar-week-start-day 1)) ;; Start week on Monday
   ;; use-package org-agenda
 
-;; ;;*** org-mode helper functions
-;; ;; Agenda Jump to Dashboard
-(defun my-jump-to-org-dashboard ()
-  (interactive)
-  (require 'org)
-  (org-agenda nil "d"))
-
+;;*** org-mode helper functions
 ;; Agenda Refresh
 ;; automatically refresh the agenda after adding a task
 (defun my-org-agenda-refresh ()
@@ -707,19 +701,6 @@ the next one, if any."
             (e (or (outline-next-heading) (point-max))))
         (kill-region b e)))))
 
-(defun my-org-copy-text-under-heading ()
-  "Copy the text under the current org-mode heading.
-The function moves the point to the next heading and copies the
-region between the current heading and the next one, if any."
-  (interactive)
-  (save-excursion
-    (org-back-to-heading)
-    (forward-line)
-    (unless (= (point) (point-max))
-      (let ((b (point))
-            (e (or (outline-next-heading) (point-max))))
-        (copy-region-as-kill b e)))))
-
 ;;** Org Emphasis Functions
 ;; Adapted from https://emacs.stackexchange.com/a/14586
 ;; See https://emacstil.com/til/2021/11/29/org-emphasize-dwim/
@@ -752,11 +733,6 @@ region between the current heading and the next one, if any."
     (mark-word)))
 
 ;;  Goto Org Files
-(defun my-goto-org-files ()
-  "goto org-files directory"
-  (interactive)
-  (let ((default-directory org-directory))
-    (call-interactively 'find-file)))
 (defun my-goto-inbox.org ()
   "goto org-inbox"
   (interactive)
