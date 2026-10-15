@@ -56,27 +56,14 @@
       (make-directory auto-save-files-dir t)))
   (setq create-lockfiles nil)
   :config
-  (defun my-full-auto-save ()
-    "Save all file-visiting buffers silently.
-Skip buffers whose file changed on disk (let auto-revert handle those)."
-    (interactive)
-    (dolist (buf (buffer-list))
-      (with-current-buffer buf
-        (when (and (buffer-file-name) (buffer-modified-p)
-                   ;; Only save if file on disk hasn't changed behind our back.
-                   ;; When it has, auto-revert-mode will pick up the new version.
-                   (verify-visited-file-modtime buf))
-          (condition-case err
-              (basic-save-buffer)
-            (error
-             (message "Auto-save failed for %s: %s"
-                      (buffer-name buf) (error-message-string err))))))))
-
   ;; Auto-chmod files with shebang lines on save
   (add-hook 'after-save-hook #'executable-make-buffer-file-executable-if-script-p)
 
-  ;; Save all buffers after idle time
-  (run-with-idle-timer 5 t #'my-full-auto-save))
+  ;; Save file-visiting buffers after `auto-save-visited-interval' (5 s) idle.
+  ;; Skip files changed on disk behind our back: auto-revert picks those up,
+  ;; and saving them would prompt.
+  (setq auto-save-visited-predicate #'verify-visited-file-modtime)
+  (auto-save-visited-mode 1))
 
 ;; how many spaces after a period?
 (use-package emacs
