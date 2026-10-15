@@ -56,12 +56,6 @@
         (consult-ripgrep my-emacs-dir)
       (message "Please install `rg' first."))))
 
-;; Load init file
-(defun my-load-init-file ()
-  "Load the base init file."
-  (interactive)
-  (load-file (concat user-emacs-directory "init.el")))
-
 ;;* Built-in Functions
 ;; These are useful built-in functions, but you have to enable them
 (put 'erase-buffer 'disabled nil)
@@ -103,17 +97,6 @@
   (select-frame-set-input-focus (selected-frame)))
 
 ;;* Window Functions
-;; Exchange Windows
-;; Swap buffers in windows and leave the cursor in the original window. Courtesy of
-;; Mike Zamansky's video.
-;; http://cestlaz.github.io/posts/using-emacs-36-touch-of-elisp/#.WX5Wg0czpcx
-
-(defun my-window-exchange-buffer ()
-  "Swap buffer in windows and leave focus in original window"
-  (interactive)
-  (ace-swap-window)
-  (aw-flip-window))
-
 ;; Focus Window Split
 ;; Easy split and move functions
 (defun my-split-window-right-and-focus ()
@@ -150,14 +133,6 @@ Works with exactly two windows in any split direction."
                   (t              0.333))) ; ~2/3 → 1/3
          (delta (- (round (* target total)) current)))
     (window-resize nil delta horiz)))
-
-;; Jump to Minibuffer Window
-(defun my-goto-minibuffer-window ()
-  "locate point to minibuffer window if it is active."
-  (interactive)
-  (if (active-minibuffer-window)
-      (select-window (active-minibuffer-window))
-    (error "Minibuffer is not active")))
 
 ;;** Split With Agent Terminal
 ;; Left: the current text buffer.  Right: a terminal session running in that
@@ -572,34 +547,6 @@ With prefix NO-SUBSECTIONS, exclude nested subsections."
     (LaTeX-mark-section no-subsections)
     (narrow-to-region (region-beginning) (region-end))))
 
-;; Blank Buffer New Frame
-;; Make a blank buffer when opening a new frame. From
-;; https://stackoverflow.com/a/25792276.
-
-(defun my-new-buffer-new-frame ()
-  "Create a new frame with a new empty buffer."
-  (interactive)
-  (let ((buffer (generate-new-buffer "untitled")))
-    (set-buffer-major-mode buffer)
-    (display-buffer buffer '(display-buffer-pop-up-frame . nil))))
-
-
-;; Create new buffer
-(defun my-create-new-buffer ()
-  "Create a new buffer in the default major mode."
-  (interactive)
-  (let ((buffer (generate-new-buffer "*new*")))
-    (set-window-buffer nil buffer)
-    (with-current-buffer buffer
-      (funcall (default-value 'major-mode)))))
-
-;; Clipboard to/from Buffer
-;; http://stackoverflow.com/a/10216338/4869
-(defun my-copy-whole-buffer-to-clipboard ()
-  "Copy entire buffer to clipboard"
-  (interactive)
-  (clipboard-kill-ring-save (point-min) (point-max)))
-
 (defun my-copy-buffer-file-name (&optional basename)
   "Copy the current buffer's file name to the clipboard.
 By default copy the absolute path.  With a prefix arg BASENAME,
@@ -717,17 +664,6 @@ duplex, color, 300 dpi); see scansnap -h for the underlying tool."
       (my-move-region-to-dest start end 'point-min)
     (message "No region selected")))
 
-;; Fill Paragraph
-(defun my-fill-paragraph ()
-  "if in an org buffer use org-fill-paragraph; else use fill-paragraph"
-  (interactive)
-  (if (derived-mode-p 'org-mode)
-      (call-interactively #'org-fill-paragraph)
-    (call-interactively #'fill-paragraph)))
-
-(global-set-key [remap fill-paragraph]
-                #'my-fill-paragraph)
-
 ;; Unfill Paragraph
 ;; Stefan Monnier <foo at acm.org>. It is the opposite of fill-paragraph
 (defun my-unfill-paragraph (&optional region)
@@ -792,17 +728,6 @@ duplex, color, 300 dpi); see scansnap -h for the underlying tool."
  #'set-point-before-yanking-if-in-text-mode)
 ;; http://lists.gnu.org/archive/html/help-gnu-emacs/2007-05/msg00975.html
 
-
-;; Jump to sexp
-(defun my-forward-or-backward-sexp (&optional arg)
-  "Go to the matching parenthesis character if one is adjacent to point."
-  (interactive "^p")
-  (cond ((looking-at "\\s(") (forward-sexp arg))
-        ((looking-back "\\s)" 1) (backward-sexp arg))
-        ;; Now, try to succeed from inside of a bracket
-        ((looking-at "\\s)") (forward-char) (backward-sexp arg))
-        ((looking-back "\\s(" 1) (backward-char) (forward-sexp arg))))
-
 ;;* Scratch Buffer Functions
 
 ;;** New scratch buffer with derived mode
@@ -855,17 +780,6 @@ duplex, color, 300 dpi); see scansnap -h for the underlying tool."
 (add-hook 'kill-emacs-hook 'my--save-persistent-scratch)
 ;; Save scratch buffer every 5 minutes (300 seconds)
 (run-with-idle-timer 300 t 'my--save-persistent-scratch)
-
-;;* UI Functions
-;; Toggle markup
-(defun my-toggle-display-markup ()
-  "Toggle the display of markup in markdown and org modes"
-  (interactive)
-  (if (eq major-mode 'org-mode)
-      (org-toggle-link-display)
-    (if (bound-and-true-p markdown-hide-markup)
-        (markdown-toggle-markup-hiding 0)
-      (markdown-toggle-markup-hiding))))
 
 ;;* Tab functions
 (defun my-move-tab-to ()
@@ -1030,17 +944,6 @@ appropriate.  In tables, insert a new row or end the table."
 (defun org-goto-interactive ()
   (interactive)
   (org-goto 'outline))
-
-;;* Programming functions
-;;** Lisp Helper Functions
-;; Evaluates the current form by searching backward for its beginning.
-(defun my-eval-current-form ()
-  "Evaluate the current Lisp form by moving backward to its start and executing it."
-  (interactive)
-  (save-excursion
-    (search-backward-regexp "(defun\\|(use-pack\\|(transient-\\|(set")
-    (forward-list)
-    (call-interactively 'eval-last-sexp)))
 
 ;;* Download helpers
 ;; I use this function to download MP3s for kids from youtube

@@ -234,7 +234,6 @@
     ("A" "Ibuffer" ibuffer)
     ("a" "Bufler List" bufler-list)
     ("b" "Bufler Switch" bufler-switch-buffer)
-    ("c" "Copy Buffer to Clipboard" my-copy-whole-buffer-to-clipboard)
     ("d" "Kill Buffer & Window" kill-buffer-and-window)
     ("E" "Erase Buffer" erase-buffer)
     ("f" "Reveal in Finder" reveal-in-osx-finder)
@@ -245,8 +244,6 @@
     ("k" "Kill This Buffer" kill-current-buffer)
     ("K" "Kill Other Buffers" crux-kill-other-buffers)
     ("m" "Global Mark" consult-global-mark)
-    ("n" "Create New Buffer" my-create-new-buffer)
-    ("N" "New Buffer in New Frame" my-new-buffer-new-frame)
     ("o" "Clone Indirect Buffer" clone-indirect-buffer-other-window)]
    ["Projects"
     ("p" "Project Buffer" consult-project-buffer)
@@ -269,7 +266,6 @@
    ("d" "Goto emacs-dir" my-goto-emacs-dir)
    ("f" "Find emacs file" my-find-emacs-file)
    ("i" "Goto init.el" my-goto-init.el)
-   ("I" "Load init file" my-load-init-file)
    ("s" "Search emacs files" my-search-emacs-files)])
 
 
@@ -278,9 +274,7 @@
   "My transient menu for evaluation commands."
   ["Evaluation Commands"
    ["Eval Buffer/Form"
-    ("b" "Eval Buffer" eval-buffer)
-    ("c" "Eval Current Form" my-eval-current-form)
-    ]
+    ("b" "Eval Buffer" eval-buffer)]
    ["Eval Expression/Region"
     ("e" "Eval Last Sexp" eval-last-sexp)
     ("f" "Eval Defun" eval-defun)]])
@@ -450,7 +444,6 @@
     ("F" "Affe Find" affe-find)
     ("H" "Affe Find in Home" (lambda () (interactive) (affe-find "~")))
     ("h" "Org Heading" consult-org-heading)
-    ("j" "Forward/Backward Sexp" my-forward-or-backward-sexp)
     ("k" "Yank Pop" consult-yank-pop)
     ("L" "Locate" consult-locate)
     ("r" "Query Replace" vr/query-replace)
@@ -467,7 +460,6 @@
     ("e" "Empty Lines" toggle-indicate-empty-lines)
     ("l" "Line Spacing" my-toggle-line-spacing)
     ("n" "Line Numbers" display-line-numbers-mode)
-    ("m" "Display Markup" my-toggle-display-markup)
     ("t" "Load Theme" consult-theme)]
    ["Editing"
     ("p" "Puni Global" puni-global-mode)
@@ -522,9 +514,7 @@
     ;; :transient t keeps the menu open so repeated u/U run back to back,
     ;; which winner-undo needs to walk further back and winner-redo requires.
     ("u" "Undo Config" winner-undo :transient t)
-    ("U" "Redo Config" winner-redo :transient t)
-    ("x" "Exchange Buffer in Window" my-window-exchange-buffer)
-    ] ])
+    ("U" "Redo Config" winner-redo :transient t)]])
 
 
 ;;*** Workspace Keybindings
