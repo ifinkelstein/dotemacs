@@ -37,6 +37,8 @@
               ("R" . my-mu4e-compose-reply-ask-wide))
 
   :config
+  ;; M-x only, deliberately unbound: marks all visible unread as read.
+  (autoload 'mu4e-headers-flag-all-read "mu4e-contrib" nil t)
   ;; Fix a problem with some escape characters
   ;; https://github.com/djcb/mu/issues/2662
   (setq rfc2047-quote-decoded-words-containing-tspecials t)
