@@ -29,16 +29,10 @@
               ("="  . pdf-view-fit-page-to-window)
               ("r"  . pdf-view-revert-buffer)
               ("o"  . pdf-links-action-perform)
-              ("O"  . pdf-outline)
-              ("!"  . my-pdf-no-filter))
+              ("O"  . pdf-outline))
   :config
   ;; initialise
   (pdf-tools-install-noverify)
-
-  (defun my-pdf-no-filter ()
-    "View pdf without colour filter."
-    (interactive)
-    (pdf-view-midnight-minor-mode -1))
 
   ;; tex hook
   ;; see https://github.com/politza/pdf-tools#auto-revert
@@ -47,14 +41,7 @@
   (add-hook 'pdf-isearch-minor-mode-hook
             (lambda ()
               (when (fboundp 'ctrlf-local-mode)
-                (ctrlf-local-mode -1))))
-  (add-hook 'pdf-view-mode-hook 'pdf-tools-enable-minor-modes)
-  (add-hook 'pdf-view-mode-hook (lambda ()
-                                  (blink-cursor-mode -1)
-                                  (line-number-mode -1)
-                                  (display-line-numbers-mode -1)
-                                  (column-number-mode -1)
-                                  (auto-revert-mode -1))))
+                (ctrlf-local-mode -1)))))
 
 
 (provide 'my-setup-pdf)
