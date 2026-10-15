@@ -87,43 +87,42 @@
   (revert-without-query '(".*")) ;; disable revert query
   (global-auto-revert-non-file-buffers t))
 
-;; * Popper (Pop-up Buffers)
-(use-package popper
-  :hook (after-init . popper-mode)
-  :bind (("M-`"   . popper-toggle)
-         ("C-`"   . popper-cycle)
-         ("C-M-`" . popper-toggle-type))
-  :custom
-  (popper-window-height 20)
-  (popper-display-control t)
-  ;; set display to top -- if user prefers they can set this to `bottom'
-  (popper-display-function #'popper-select-popup-at-top)
-  ;; group by project.el project root, with fall back to default-directory
-  (popper-group-function #'popper-group-by-directory)
-  ;; Set popper buffers
-  (popper-reference-buffers
-   '("Output\\*$"
-     "\\*Async Shell Command\\*"
-     help-mode
-     compilation-mode))
-  :init
-  ;; For echo area hints
-  (popper-echo-mode +1)
-  :config
-  ;; Display functions for popup buffers at top, where they are easy to read.
-  ;; This is just a slight modification of the existing functions.
-  (defun popper-select-popup-at-top (buffer &optional _alist)
-    "Display and switch to popup-buffer BUFFER at the top of the screen."
-    (let ((window (popper-display-popup-at-top buffer)))
-      (select-window window)))
+;; * Pop-up buffers
+;; Show output/help/compilation buffers in a selected side window at the top,
+;; where they are easy to read; M-` hides or restores it.
+(defvar my-popup-buffer-condition
+  '(or "Output\\*$"
+       "\\*Async Shell Command\\*"
+       (major-mode . help-mode)
+       (major-mode . compilation-mode))
+  "`buffer-match-p' condition for buffers shown as top pop-ups.")
 
-  (defun popper-display-popup-at-top (buffer &optional _alist)
-    "Display popup-buffer BUFFER at the top of the screen."
-    (display-buffer-in-side-window
-     buffer
-     `((window-height . ,popper-window-height)
-       (side . top)
-       (slot . 1)))))
+(defun my-display-popup-at-top (buffer alist)
+  "Display BUFFER in a top side window per ALIST and select it."
+  (when-let* ((window (display-buffer-in-side-window buffer alist)))
+    (select-window window)))
+
+(add-to-list 'display-buffer-alist
+             `(,my-popup-buffer-condition
+               (my-display-popup-at-top)
+               (side . top)
+               (slot . 1)
+               (window-height . 20)))
+
+(defun my-popup-toggle ()
+  "Hide or restore the side windows of the selected frame.
+With no side windows to restore, show the most recent pop-up buffer."
+  (interactive)
+  (if (or (window-with-parameter 'window-side)
+          (frame-parameter nil 'window-state))
+      (window-toggle-side-windows)
+    (if-let* ((buffer (seq-find (lambda (b)
+                                  (buffer-match-p my-popup-buffer-condition b))
+                                (buffer-list))))
+        (display-buffer buffer)
+      (user-error "No pop-up buffers"))))
+
+(keymap-global-set "M-`" #'my-popup-toggle)
 
 ;; * Xwidget Browser
 (use-package xwidget
