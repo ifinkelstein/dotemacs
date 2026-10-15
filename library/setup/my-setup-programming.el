@@ -154,8 +154,9 @@
               ("C-c ! l" . flymake-show-buffer-diagnostics)))
 
 ;;** Tree-sitter
-;; Configure grammar sources and install them if missing.
-;; Remap classic major modes to their tree-sitter equivalents.
+;; Install missing grammars on demand and remap classic major modes to their
+;; tree-sitter equivalents.  Each ts-mode registers its own pinned grammar
+;; recipe in `treesit-language-source-alist'.
 (use-package treesit
   :ensure nil
   :when (treesit-available-p)
@@ -164,29 +165,6 @@
   ;; Auto-install missing grammars on demand (Emacs 31+)
   (treesit-auto-install-grammar 'always)
   :config
-  ;; Grammar sources — each entry is (LANG . (URL [REVISION [SOURCE-DIR]])
-  (setopt treesit-language-source-alist
-          '((python     "https://github.com/tree-sitter/tree-sitter-python")
-            (elisp      "https://github.com/Wilfred/tree-sitter-elisp")
-            (bash       "https://github.com/tree-sitter/tree-sitter-bash")
-            (org        "https://github.com/milisims/tree-sitter-org")
-            (markdown   "https://github.com/tree-sitter-grammars/tree-sitter-markdown"
-                        nil "tree-sitter-markdown/src")
-            (markdown-inline "https://github.com/tree-sitter-grammars/tree-sitter-markdown"
-                             nil "tree-sitter-markdown-inline/src")
-            (dockerfile "https://github.com/camdencheek/tree-sitter-dockerfile")
-            (yaml       "https://github.com/tree-sitter-grammars/tree-sitter-yaml")
-            (toml       "https://github.com/tree-sitter/tree-sitter-toml")
-            (json       "https://github.com/tree-sitter/tree-sitter-json")
-            ;; NOTE: latex grammar requires `tree-sitter generate' before
-            ;; compile (no parser.c in repo).  The dylib was manually built
-            ;; and placed in tree-sitter/.  If it goes missing, run:
-            ;;   cd /tmp && git clone https://github.com/latex-lsp/tree-sitter-latex
-            ;;   cd tree-sitter-latex && npx tree-sitter generate
-            ;;   cc -shared -fPIC -o libtree-sitter-latex.dylib src/parser.c src/scanner.c -Isrc -Os
-            ;;   cp libtree-sitter-latex.dylib ~/.config/.emacs/tree-sitter/
-            (latex      "https://github.com/latex-lsp/tree-sitter-latex")))
-
   ;; Opt selected tree-sitter modes in; the setter installs the remaps from
   ;; `treesit-major-mode-remap-alist'.
   (setopt treesit-enabled-modes
