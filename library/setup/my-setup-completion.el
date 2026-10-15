@@ -313,15 +313,6 @@ Borrowed from: https://github.com/oantolin/embark/wiki/Additional-Actions"
   ;; Enable corfu history
   (corfu-history-mode 1)
 
-  ;; Enable Corfu completion for commands like M-: (eval-expression) or M-!
-  ;; (shell-command)
-  (defun corfu-enable-in-minibuffer ()
-    "Enable Corfu in the minibuffer if `completion-at-point' is bound."
-    (when (where-is-internal #'completion-at-point (list (current-local-map)))
-      ;; (setq-local corfu-auto nil) Enable/disable auto completion
-      (corfu-mode 1)))
-  (add-hook 'minibuffer-setup-hook #'corfu-enable-in-minibuffer)
-
   ;; Avoid press RET twice in shell
   ;; https://github.com/minad/corfu#completing-in-the-eshell-or-shell
   (defun corfu-send-shell (&rest _)
