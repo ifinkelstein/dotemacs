@@ -81,10 +81,9 @@ Get it from:  <http://hasseg.org/trash/>"
 
 ;;* Security Keychain
 ;; See https://www.reddit.com/r/emacs/comments/ew75ib/emacs_mu4e_and_mbsync_setup_for_fastmail_on_macos/fg23tcj?utm_source=share&utm_medium=web2x&context=3
-(when sys-mac
-  (with-eval-after-load 'auth-source
-    (add-to-list 'auth-sources 'macos-keychain-internet)
-    (add-to-list 'auth-sources 'macos-keychain-generic)))
+(with-eval-after-load 'auth-source
+  (add-to-list 'auth-sources 'macos-keychain-internet)
+  (add-to-list 'auth-sources 'macos-keychain-generic))
 
 ;;* Provide my-setup-macos
 (provide 'my-setup-macos)
