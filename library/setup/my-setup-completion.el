@@ -262,16 +262,6 @@ Borrowed from: https://github.com/oantolin/embark/wiki/Additional-Actions"
   (interactive)
   (consult-line (thing-at-point 'symbol)))
 
-;;** Consult Dir
-;; Consult-dir allows you to easily select and switch between "active" directories.
-(use-package consult-dir
-  :commands (consult-dir
-             consult-dir-jump-file)
-  :bind (("C-x C-d" . consult-dir)
-         :map vertico-map
-         ("C-x C-d" . consult-dir)
-         ("C-x C-j" . consult-dir-jump-file)))
-
 ;;* In-Buffer Completion with corfu
 ;; Corfu
 (use-package corfu
