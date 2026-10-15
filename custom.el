@@ -11,25 +11,24 @@
      "5ec088e25ddfcfe37b6ae7712c9cb37fd283ea5df7ac609d007cafa27dab6c64" default))
  '(package-selected-packages
    '(ace-window activities affe aggressive-indent async auctex avy avy-zap bufler
-                burly cape claude-code consult consult-dir consult-notes
-                consult-reftex corfu crux ctrlf diff-hl dired-narrow
-                dired-ranger dired-recent diredfl dwim-shell-command easy-kill
-                easy-kill-extras eat elfeed elfeed-goodies elisp-def elisp-refs
-                emacs-everywhere embark embark-consult embrace emms
-                exec-path-from-shell expreg fancy-dabbrev fix-word ghostel
-                goggles goto-chg grab-mac-link helpful highlight-quoted hl-todo
-                homebrew htmlize hungry-delete imenu-list inheritenv jinx
-                keyfreq kind-icon lambda-line lambda-themes link-hint magit
-                marginalia markdown-mode markdown-table-wrap md-ts-mode meow
-                mixed-pitch move-text mu4e-column-faces mu4e-query nerd-icons
-                nerd-icons-completion nerd-icons-dired nyan-mode olivetti
-                orderless org org-appear org-autolist org-contacts org-download
-                org-modern org-mru-clock org-msg org-pomodoro org-ql org-roam
-                org-sticky-header org-super-agenda org-timeblock
-                org-transclusion org-web-tools origami ox-pandoc pdf-tools
-                popper popwin prism puni rainbow-delimiters reveal-in-osx-finder
-                substitute tabspaces trashed ultra-scroll vdiff vdiff-magit
-                vertico visual-regexp visual-regexp-steroids whisper yasnippet
+                burly cape claude-code consult consult-dir consult-reftex corfu
+                crux ctrlf diff-hl dired-narrow dired-ranger dired-recent
+                diredfl dwim-shell-command easy-kill easy-kill-extras eat elfeed
+                elfeed-goodies elisp-def elisp-refs emacs-everywhere embark
+                embark-consult embrace emms exec-path-from-shell expreg
+                fancy-dabbrev fix-word ghostel goggles goto-chg grab-mac-link
+                helpful highlight-quoted hl-todo homebrew htmlize hungry-delete
+                imenu-list inheritenv jinx keyfreq kind-icon lambda-line
+                lambda-themes link-hint magit marginalia markdown-mode
+                markdown-table-wrap md-ts-mode meow mixed-pitch move-text
+                mu4e-column-faces mu4e-query nerd-icons nerd-icons-completion
+                nerd-icons-dired nyan-mode olivetti orderless org org-appear
+                org-autolist org-contacts org-download org-modern org-mru-clock
+                org-msg org-ql org-roam org-sticky-header org-super-agenda
+                org-timeblock org-transclusion ox-pandoc pdf-tools popper popwin
+                prism puni rainbow-delimiters reveal-in-osx-finder substitute
+                tabspaces trashed ultra-scroll vdiff vdiff-magit vertico
+                visual-regexp visual-regexp-steroids whisper yasnippet
                 yasnippet-snippets))
  '(package-vc-selected-packages
    '((lambda-line :url "https://codeberg.org/Lambda-Emacs/lambda-line" :branch
