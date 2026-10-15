@@ -31,8 +31,7 @@
   ;; Follow symlinks
   (find-file-visit-truename t)
   ;; backups
-  (make-backup-files t)               ; backup of a file the first time it is saved.
-  (backup-by-copying t)               ; don't clobber symlinks
+  (backup-by-copying t)              ; don't clobber symlinks
   (version-control t)                 ; version numbers for backup files
   (delete-old-versions t)             ; delete excess backup files silently
   (kept-old-versions 2)               ; oldest versions to keep when a new numbered backup is made
@@ -84,8 +83,6 @@
   :ensure nil
   :hook (after-init . global-visual-line-mode)
   :custom
-  ;; move via visual lines
-  (line-move-visual t)
   ;; reduce mark ring
   (global-mark-ring-max 256)
   (mark-ring-max 256)
@@ -151,7 +148,6 @@
   (put 'kill-ring 'history-length 100)
   ;; save kill ring between sessions
   (add-to-list 'savehist-additional-variables 'kill-ring)
-  (add-to-list 'savehist-additional-variables 'mark-ring)
   (add-to-list 'savehist-additional-variables 'search-ring)
   (add-to-list 'savehist-additional-variables 'regexp-search-ring)
 
@@ -354,7 +350,6 @@ Filter-args advice for `lambda-line-compose'."
   ;; Unless another file/buffer is designated, start from workspace scratch buffer
   (tab-bar-new-tab-choice "*scratch*")
   (tab-bar-select-tab-modifiers '(super))
-  (tab-bar-close-tab-select 'recent)
   (tab-bar-new-tab-to 'rightmost)
   (tab-bar-close-last-tab-choice 'tab-bar-mode-disable)
   (tab-bar-tab-name-format-function #'my--tab-bar-tab-name-format)
