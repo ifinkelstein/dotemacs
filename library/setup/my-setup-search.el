@@ -3,11 +3,6 @@
 (message "Setting up search settings...")
 
 ;;* Search
-;;** Ripgrep
-;; Ripgrep is a replacement for both grep like (search one file) and ag like
-;; (search many files) tools. It's fast and versatile and written in Rust.
-(use-package rg :commands rg)
-
 ;;** re-builder
 ;; Use string syntax in re-builder so regexps look like normal Emacs
 ;; regexps (no double-escaping)
