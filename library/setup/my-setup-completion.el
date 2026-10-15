@@ -90,10 +90,6 @@
   (vertico-quick2 "neiom"))
 
 ;; A few more useful configurations...
-;; Add prompt indicator to `completing-read-multiple'.
-;; We display [CRM<separator>], e.g., [CRM,] if the separator is a comma.
-(setopt crm-prompt "[CRM] %p")
-
 ;; Grow and shrink minibuffer
 (setq resize-mini-windows t)
 
