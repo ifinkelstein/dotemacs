@@ -61,15 +61,15 @@
           (select-window (cadr dired-windows))
         (user-error "No other Dired window to cycle to"))))
 
-  (when sys-mac
-    ;; Suppress the warning: `ls does not support --dired'.
-    (setq dired-use-ls-dired nil))
   ;; Use GNU ls as `gls' from `coreutils' when available (needed on macOS for
   ;; --group-directories-first); fall back to the system ls otherwise.
   (if (executable-find "gls")
       (setq insert-directory-program "gls"
             dired-listing-switches "-laFGh1v --group-directories-first")
-    (setq dired-listing-switches "-laFGh1v")))
+    (setq dired-listing-switches "-laFGh1v")
+    (when sys-mac
+      ;; BSD ls: suppress the warning `ls does not support --dired'.
+      (setq dired-use-ls-dired nil))))
 
 
 ;;** Dired Helper Functions
@@ -94,8 +94,8 @@
 (defun my-dired--operate-marked-files-add-date (operation)
   "Apply OPERATION to each marked file, adding today's date to its name.
 OPERATION is a function of two args (OLD-NAME NEW-NAME), e.g.
-`rename-file' or `copy-file'. Only runs in Dired/Dirvish buffers."
-  (if (or (eq major-mode 'dired-mode) (eq major-mode 'dirvish-mode))
+`rename-file' or `copy-file'. Only runs in Dired buffers."
+  (if (derived-mode-p 'dired-mode)
       (dolist (file (dired-get-marked-files))
         (let* ((file-dir (file-name-directory file))
                (file-name (file-name-nondirectory file))
