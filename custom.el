@@ -24,12 +24,12 @@
                 mu4e-column-faces mu4e-query nerd-icons nerd-icons-completion
                 nerd-icons-dired nyan-mode olivetti orderless org org-appear
                 org-autolist org-contacts org-download org-modern org-mru-clock
-                org-msg org-ql org-roam org-sticky-header org-super-agenda
-                org-timeblock org-transclusion ox-pandoc pdf-tools plz popwin
-                prism puni rainbow-delimiters reveal-in-osx-finder substitute
-                tabspaces trashed ultra-scroll vdiff vdiff-magit vertico
-                visual-regexp visual-regexp-steroids whisper yasnippet
-                yasnippet-snippets))
+                org-msg org-pomodoro org-ql org-roam org-sticky-header
+                org-super-agenda org-timeblock org-transclusion ox-pandoc
+                pdf-tools plz popwin prism puni rainbow-delimiters
+                reveal-in-osx-finder substitute tabspaces trashed ultra-scroll
+                vdiff vdiff-magit vertico visual-regexp visual-regexp-steroids
+                whisper yasnippet yasnippet-snippets))
  '(package-vc-selected-packages
    '((lambda-line :url "https://codeberg.org/Lambda-Emacs/lambda-line" :branch
                   "main")
