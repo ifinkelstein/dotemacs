@@ -13,26 +13,26 @@
    '(ace-window activities affe aggressive-indent async auctex avy avy-zap bufler
                 burly cape casual claude-code consult consult-dir consult-notes
                 consult-reftex consult-todo corfu crux ctrlf deadgrep diff-hl
-                dired-hacks dired-narrow dired-preview dired-ranger dired-recent
-                diredfl dogears dwim-shell-command easy-kill easy-kill-extras
-                eat elfeed elfeed-goodies elfeed-org elisp-def elisp-refs
-                emacs-everywhere embark embark-consult embrace emms
-                exec-path-from-shell expreg fancy-dabbrev fix-word ghostel
-                goggles goto-chg grab-mac-link helpful highlight-quoted hl-todo
-                homebrew htmlize hungry-delete imenu-list inheritenv javelin
-                jinx keyfreq kind-icon lambda-line lambda-themes link-hint magit
-                marginalia markdown-mode markdown-table-wrap md-ts-mode meow
-                mixed-pitch move-text mu4e-column-faces mu4e-query mwim
-                nerd-icons nerd-icons-completion nerd-icons-corfu
-                nerd-icons-dired nyan-mode olivetti orderless org org-appear
-                org-autolist org-contacts org-download org-modern org-mru-clock
-                org-msg org-pomodoro org-ql org-roam org-sticky-header
-                org-super-agenda org-timeblock org-transclusion org-web-tools
-                origami ox-pandoc pdf-tools popper popwin prism puni
-                rainbow-delimiters reveal-in-osx-finder rg substitute
-                svg-tag-mode tabspaces trashed ultra-scroll vdiff vdiff-magit
-                vertico visual-regexp visual-regexp-steroids wgrep whisper
-                yasnippet yasnippet-snippets))
+                dired-narrow dired-preview dired-ranger dired-recent diredfl
+                dogears dwim-shell-command easy-kill easy-kill-extras eat elfeed
+                elfeed-goodies elfeed-org elisp-def elisp-refs emacs-everywhere
+                embark embark-consult embrace emms exec-path-from-shell expreg
+                fancy-dabbrev fix-word ghostel goggles goto-chg grab-mac-link
+                helpful highlight-quoted hl-todo homebrew htmlize hungry-delete
+                imenu-list inheritenv javelin jinx keyfreq kind-icon lambda-line
+                lambda-themes link-hint magit marginalia markdown-mode
+                markdown-table-wrap md-ts-mode meow mixed-pitch move-text
+                mu4e-column-faces mu4e-query mwim nerd-icons
+                nerd-icons-completion nerd-icons-corfu nerd-icons-dired
+                nyan-mode olivetti orderless org org-appear org-autolist
+                org-contacts org-download org-modern org-mru-clock org-msg
+                org-pomodoro org-ql org-roam org-sticky-header org-super-agenda
+                org-timeblock org-transclusion org-web-tools origami ox-pandoc
+                pdf-tools popper popwin prism puni rainbow-delimiters
+                reveal-in-osx-finder rg substitute svg-tag-mode tabspaces
+                trashed ultra-scroll vdiff vdiff-magit vertico visual-regexp
+                visual-regexp-steroids wgrep whisper yasnippet
+                yasnippet-snippets))
  '(package-vc-selected-packages
    '((lambda-line :url "https://codeberg.org/Lambda-Emacs/lambda-line" :branch
                   "main")
@@ -40,7 +40,6 @@
      (mu4e-query :url "https://github.com/mickeynp/mu4e-query")
      (consult-reftex :url "https://github.com/karthink/consult-reftex" :branch
                      "main")
-     (dired-hacks :url "https://github.com/Fuco1/dired-hacks")
      (lambda-themes :url "https://github.com/Lambda-Emacs/lambda-themes" :branch
                     "main")) t)
  '(safe-local-variable-values
