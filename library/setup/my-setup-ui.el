@@ -440,11 +440,6 @@ of the tab bar."
                            ("todo"  . "#A020F0")
 	                       ("TODO"  . "#A020F0"))))
 
-(use-package consult-todo
-  :commands (consult-todo)
-  :after (hl-todo consult))
-
-
 
 ;;;;; Highlight Cursor Line with Pulse
 ;; From https://karthinks.com/software/batteries-included-with-emacs/
