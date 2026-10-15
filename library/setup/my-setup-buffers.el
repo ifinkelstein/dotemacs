@@ -50,7 +50,7 @@
           occur-context-menu
           context-menu-region
           context-menu-undo
-          context-menu-dictionary)))
+          dictionary-context-menu)))
 
 ;; Prevent ffap from pinging hostnames (avoids multi-second hangs
 ;; when point is on something that looks like a hostname)
