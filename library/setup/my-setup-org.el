@@ -773,13 +773,6 @@ region between the current heading and the next one, if any."
   (interactive)
   (find-file (concat org-directory "inbox.org")))
 
-;; Reschedule
-(defun my-org-reschedule ()
-  "Re-schedule an org item by first clering the scheduled field and then interactively prompting for a new date/time."
-  (interactive)
-  (org-schedule '(4)) ;; remove any scheduled items
-  (org-schedule 0)) ;; schedule
-
 (defun my-goto-gtd.org ()
   (interactive)
   (find-file (concat org-directory "gtd.org")))
