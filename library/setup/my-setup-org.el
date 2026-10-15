@@ -1202,7 +1202,8 @@ Intended for the `%(...)' escape in `org-agenda-prefix-format'."
                   ":"
                   (expand-file-name "my-org-export-themes/latex-mimore/" my-library-dir))))
 
-(setq org-babel-python-command "python")
+;; macOS ships no bare `python', only `python3'.
+(setq org-babel-python-command "python3")
 
 (use-package ob-python
   :ensure nil
