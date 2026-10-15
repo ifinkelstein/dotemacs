@@ -7,32 +7,30 @@
 (use-package mu4e
   :ensure nil
   :load-path "/opt/homebrew/share/emacs/site-lisp/mu/mu4e"
-  :commands (mu4e mu4e-compose-new mu4e-update-mail-and-index)
+  :commands (mu4e mu4e-compose-new mu4e-update-mail-and-index
+                  mu4e-transient-menu)
   ;; Change keybindings to look more like elfeed
   ;; in headers view, "r" for read messages, "u" for unread messages
   :bind (:map mu4e-view-mode-map
               ("w" . mu4e-copy-thing-at-point) ; "c" is taken by mu4e-search-minor-mode-map (mu4e-search-query)
               ("f" . link-hint-open-link)
-              ;; Quickly switch between plain text and HTML mime type.
-              ("K" . my-mu4e-copy-message-to-kill-ring)
               ("r" . mu4e-headers-mark-for-read)
               ("u" . mu4e-headers-mark-for-unread)
               ("!" . mu4e-headers-mark-for-refile)
               ("?" . mu4e-headers-mark-for-unmark)
               ("L" . org-store-link)
-              ("M-o" . my-transient-email)
+              ("M-o" . mu4e-transient-menu)
 
               :map mu4e-headers-mode-map
               ("r" . mu4e-headers-mark-for-read)
               ("u" . mu4e-headers-mark-for-unread)
               ("!" . mu4e-headers-mark-for-refile)
               ("?" . mu4e-headers-mark-for-unmark)
-              ("K" . my-mu4e-copy-message-to-kill-ring)
               ("L" . org-store-link)
-              ("M-o" . my-transient-email)
+              ("M-o" . mu4e-transient-menu)
               :map mu4e-main-mode-map
               ("u" . mu4e-update-index )
-              ("M-o" . my-transient-email)
+              ("M-o" . mu4e-transient-menu)
               :map mu4e-compose-minor-mode-map
               ("R" . my-mu4e-compose-reply-ask-wide))
 
@@ -52,45 +50,26 @@
   ;; resize, that stale width squeezes the neighbouring window: seen
   ;; as main 105 cols / other window 17 cols on a 124-col frame.
   ;; Dropping the stored size makes quit restore the buffer only.
+  ;; Same mutation window.el itself uses for this (Bug#78835).
   (defun my-mu4e--drop-quit-restore-size (window)
     "Remove the stored window size from WINDOW's quit-restore parameters."
     (dolist (param '(quit-restore quit-restore-prev))
-      (let ((qr (window-parameter window param)))
-        (when (and (consp qr)
-                   (consp (nth 1 qr))
-                   (integerp (nth 3 (nth 1 qr))))
-          (set-window-parameter
-           window param
-           (append (list (car qr) (butlast (nth 1 qr) (- (length (nth 1 qr)) 3)))
-                   (nthcdr 2 qr)))))))
+      (when-let* ((quad (nth 1 (window-parameter window param)))
+                  ((consp quad))
+                  ((integerp (nth 3 quad))))
+        (setf (nth 3 quad) nil))))
 
   (define-advice mu4e~headers-quit-buffer (:before () keep-split)
     "Stop `quit-window' from snapping headers back to a stale width."
     (my-mu4e--drop-quit-restore-size (selected-window)))
 
-  ;; Fix encoding errors when viewing emails with mismatched/undeclared charsets
-  ;; Prefer UTF-8 for MIME decoding, and provide sensible fallbacks
-  (setq mm-coding-system-priorities '(utf-8 utf-8-auto))
-  (setq mm-default-coding-system 'utf-8)
-  ;; Override declared charsets → utf-8 during MIME decoding.
-  ;; Only override charsets that are routinely mislabeled; do NOT
-  ;; override iso-8859-1/15 — genuine Latin-1 emails (e.g. "María")
-  ;; contain bytes like 0xED that are invalid UTF-8, causing
-  ;; "unknown encoding" errors on reply.
-  (setq mm-charset-override-alist '((us-ascii . utf-8)
-                                    (gb2312   . utf-8)
-                                    (gbk      . utf-8)))
-
-  ;; Ensure Emacs decodes Windows-1252 (cp1252) correctly in mu4e.
-  ;; Outlook sends email in Windows-1252 whose 0x80–0x9F bytes (smart
-  ;; quotes, en-dashes, ellipses) are valid glyphs but fall in the C1
-  ;; control range of ISO-8859-1.  Without these two lines Emacs may
-  ;; fall back to latin-1 and render them as garbage.
-  (prefer-coding-system 'utf-8)
-  (set-coding-system-priority 'utf-8 'cp1252)
-
-  ;; Finding the binary (installed w/homebrew)
-  (setq mu4e-mu-binary (executable-find "mu"))
+  ;; Charsets.  Emacs' default overrides already decode Outlook's
+  ;; "iso-8859-1" as its windows-1252 superset (smart quotes, dashes)
+  ;; and GB2312 as GBK; add UTF-8 mail mislabeled as us-ascii.
+  (with-eval-after-load 'mm-util
+    (add-to-list 'mm-charset-override-alist '(us-ascii . utf-8)))
+  ;; Encode outgoing mail as UTF-8 when it isn't plain ASCII.
+  (setq mm-coding-system-priorities '(utf-8))
 
   ;; (mu4e-toggle-logging) ;;turn on for error logging buffer
 
@@ -112,39 +91,29 @@
   ;; dreaded "UID is N beyond highest assigned" error.
   ;; See this link for more info: https://stackoverflow.com/a/43461973
   (setq mu4e-change-filenames-when-moving t)
+  ;; Trash = a plain move to the trash folder.  With the Maildir T flag,
+  ;; mbsync's `Expunge Both' deletes the message on the server at once
+  ;; instead of leaving it in the server's (recoverable) trash.
+  (setq mu4e-trash-without-flag t)
   ;; Refresh mail using mbsync every 5 minutes
   (setq mu4e-update-interval (* 5 60))
 
   ;;** Sleep/Wake Recovery for mu4e
   ;;
-  ;; PROBLEM: On a laptop, macOS sleep/wake breaks mu4e in several
-  ;; sneaky ways:
+  ;; macOS sleep breaks an in-flight sync: mbsync's connection is dead
+  ;; after wake but the process lives on, so every later
+  ;; `mu4e-update-mail-and-index' says "already running".  And Wi-Fi
+  ;; needs a few seconds after wake, so an immediate sync fails on DNS.
+  ;; `system-sleep' (Emacs 31) delivers real pre-sleep/post-wake events:
   ;;
-  ;;   1. STUCK TIMER — the repeating update timer's absolute fire-time
-  ;;      ends up in the past after a long sleep and it never fires
-  ;;      again; mbsync silently stops running.
-  ;;   2. HUNG MBSYNC — mbsync was mid-sync when sleep hit and its
-  ;;      connection is dead after wake; while the process lives,
-  ;;      every `mu4e-update-mail-and-index' says "already running".
-  ;;   3. NETWORK NOT READY — Wi-Fi needs a few seconds after wake; an
-  ;;      immediate mbsync fails on DNS.
-  ;;   4. MU SERVER DEATH — the mu subprocess occasionally dies during
-  ;;      sleep, leaving mu4e a hollow shell.
+  ;;   pre-sleep : kill a running mbsync so Emacs sees it exit.
+  ;;   post-wake : a few seconds later, kill any leftover mbsync, wait
+  ;;               for the network without blocking, then sync.
   ;;
-  ;; SOLUTION (Emacs 31+): `system-sleep' delivers real pre-sleep /
-  ;; post-wake events from macOS, so no heartbeat or focus-change
-  ;; guessing is needed.
-  ;;
-  ;;   pre-sleep : kill a running mbsync so Emacs sees it exit (2).
-  ;;   post-wake : schedule `my-mu4e-sleep-wake-recover' a few seconds
-  ;;               later.  It kills any leftover update process (2),
-  ;;               resets the update timer (1), restarts the mu server
-  ;;               if it died (4), then waits for the network without
-  ;;               blocking and triggers a sync (3).
-  ;;
-  ;; Hook functions must not signal (a signal halts the remaining hook
-  ;; functions), so the real work runs from a timer and every step is
-  ;; wrapped in `condition-case'.
+  ;; The repeating update timer needs no help (timer.el catches up
+  ;; after a clock jump), and mu4e restarts a dead mu server on its
+  ;; next request.  Hook functions must not signal (that halts the
+  ;; remaining hook functions), so the work runs from a timer.
 
   (require 'system-sleep)
 
@@ -156,25 +125,6 @@
 
   (defvar my-mu4e--network-attempts 10
     "How many times to probe the network after wake, 3s apart.")
-
-  ;; ---- Recovery steps ----
-
-  (defun my-mu4e--reset-update-timer ()
-    "Cancel and recreate the mu4e update timer with a fresh fire-time."
-    (when (timerp mu4e--update-timer)
-      (cancel-timer mu4e--update-timer)
-      (setq mu4e--update-timer nil))
-    (when (and mu4e-update-interval (mu4e-running-p))
-      (setq mu4e--update-timer
-            (run-at-time mu4e-update-interval mu4e-update-interval
-                         #'mu4e--refresh-timer))))
-
-  (defun my-mu4e--ensure-server ()
-    "Restart the mu server if it died.  Return non-nil if restarted."
-    (unless (mu4e-running-p)
-      (mu4e-message "mu server is dead — restarting")
-      (mu4e 'background)
-      t))
 
   (defun my-mu4e--when-network-up (fn &optional attempts)
     "Call FN once the network is reachable, probing up to ATTEMPTS times.
@@ -205,31 +155,21 @@ assume the network is up.  Gives up silently after ATTEMPTS
                      (run-at-time 3 nil #'my-mu4e--when-network-up
                                   fn (1- attempts)))))))))))
 
-  ;; ---- Orchestrator ----
-
   (defun my-mu4e-sleep-wake-recover ()
-    "Recover mu4e after a sleep/wake cycle.
-Steps run independently; a failure in one is logged and the rest
-still run.  Safe to call by hand (M-x) at any time."
+    "Kill a hung mbsync and sync once the network is up.
+Does nothing unless mu4e's periodic update is active, so a wake
+never restarts mu4e after you quit it.  Safe to call by hand."
     (interactive)
-    (mu4e-message "Wake detected — running mu4e recovery…")
-    ;; mu4e's own guard ignores a dead update process, so only a live
-    ;; (hung) one from before sleep needs killing.
-    (dolist (step '(mu4e-kill-update-mail
-                    my-mu4e--reset-update-timer
-                    my-mu4e--ensure-server))
-      (condition-case err
-          (funcall step)
-        (error (message "mu4e wake recovery: %s failed: %s" step err))))
-    (my-mu4e--when-network-up
-     (lambda ()
-       (condition-case err
-           (progn
-             (mu4e-message "Network up — triggering immediate sync")
-             (mu4e-update-mail-and-index t))
-         (error (message "mu4e wake recovery: sync failed: %s" err))))))
-
-  ;; ---- system-sleep hook ----
+    ;; `mu4e--stop' cancels and clears the timer; a dead mu server
+    ;; leaves it alone, and the sync below restarts the server.
+    (when (timerp mu4e--update-timer)
+      (mu4e-message "Wake detected — syncing once the network is up")
+      (mu4e-kill-update-mail)
+      (my-mu4e--when-network-up
+       (lambda ()
+         (condition-case err
+             (mu4e-update-mail-and-index t)
+           (error (message "mu4e wake recovery: sync failed: %s" err)))))))
 
   (defun my-mu4e--on-sleep-event (event)
     "Handle a `system-sleep' EVENT for mu4e.  Never signals."
@@ -264,26 +204,16 @@ still run.  Safe to call by hand (M-x) at any time."
 
   (defun my-mu4e-capture-mail-todo (_msg)
     "Capture the message at point as a TODO with an org-link to it."
-    (org-store-link nil t)
     (org-capture nil "M"))
 
   ;;* mu4e actions (headers & view)
   ;; Shortcut key is the first character of the action name.
   ;;   a → add contact          e → export pdf
-  ;;   g → gcal add             o → org link
   ;;   r → retag message        R → Remove all tags
   ;;   t → todo from email      v → view in browser
   ;;   y → yank path            z → search for sender
-  (defun my-mu4e-action-gcal-add (msg)
-    "Add a calendar event from MSG via `gcal-add'.
-`gcal-add' is context-aware: it pulls the message at point in mu4e
-buffers, so MSG is only used to ensure a message is present."
-    (require 'gcal-add)
-    (gcal-add))
   (dolist (action '(("add contact"       . mu4e-action-add-org-contact)
                     ("export pdf"         . my-mu4e-export-message-to-pdf)
-                    ("gcal add"           . my-mu4e-action-gcal-add)
-                    ("org link"           . org-store-link)
                     ("retag message"      . mu4e-action-retag-message)
                     ("Remove all tags"    . my-mu4e-remove-all-tags)
                     ("todo from email"   . my-mu4e-capture-mail-todo)
@@ -336,17 +266,22 @@ buffers, so MSG is only used to ensure a message is present."
   ;; Use setf/alist-get (not add-to-list) so config reloads don't stack duplicate
   ;; entries.  The two marks must use distinct keys (tag/untag) -- assq lookup in
   ;; mark execution returns the first match, so a shared key shadows the other.
+  ;; :ask-target runs once per batch, so marking many messages asks once.
   (setf (alist-get 'tag mu4e-marks)
         '(:char       "g"
           :prompt     "gtag"
-          :ask-target nil
-          :action     (lambda (docid msg target)
+          :ask-target (lambda ()
+                        (string-join (completing-read-multiple
+                                      "Tags (tag, +add, -remove): "
+                                      mu4e-action-tags-completion-list)
+                                     ","))
+          :action     (lambda (_docid msg target)
                         (mu4e-action-retag-message msg target))))
 
   (setf (alist-get 'untag mu4e-marks)
         '(:char       "G"
           :prompt     "Guntag"
-          :action     (lambda (docid msg target)
+          :action     (lambda (_docid msg _target)
                         (my-mu4e-remove-all-tags msg))))
 
   ;; org-contacts file for "add contact" action
@@ -373,9 +308,7 @@ buffers, so MSG is only used to ensure a message is present."
               ;; Check spelling
               (jinx-mode 1)
               (olivetti-mode 1)
-              (olivetti-set-width 0.8)
-              (auto-fill-mode -1)
-              (hl-line-mode -1)))
+              (olivetti-set-width 0.8)))
 
   ;; Use mu4e system-wide
   (setq mail-user-agent 'mu4e-user-agent)
@@ -390,48 +323,31 @@ buffers, so MSG is only used to ensure a message is present."
 
   ;; Don't keep message compose buffers around after sending:
   (setq message-kill-buffer-on-exit t)
-  ;;; Make sure plain text mails flow correctly for recipients
-  (setq mu4e-compose-format-flowed t)
 
   ;; where reply should be positioned
   (setopt message-cite-reply-position 'above)
 
-  ;; strip off signatures when replying to message (not sure what this does)
-  (setopt message-cite-function #'message-cite-original-without-signature)
-
   ;; TODO: remove mime part buttons. Appears impossible for now
   ;; https://github.com/djcb/mu/issues/2639
 
-  ;; Possible fix for outlook client reading problems in inline messages
-  ;; https://www.djcbsoftware.nl/code/mu/mu4e/Writing-messages.html#How-can-I-avoid-Outlook-display-issues_003f
-  (setq  message-citation-line-format "On %Y-%m-%d at %R %Z, %f wrote...")
-
-  ;; Filtering function to remove annoying composition auto-completes
-  ;; https://emacs.stackexchange.com/questions/47789/how-to-remove-email-address-from-local-database-in-mu4e
+  ;; Drop junk from address completion: addresses in
+  ;; `my-mu4e-suppressed-addresses' (private.el) plus no-reply and
+  ;; similar patterns.  Replaces mu4e's default filter, which only
+  ;; dropped "reply".
   ;; https://www.djcbsoftware.nl/code/mu/mu4e/Contact-functions.html
-  (defun my-mu4e-contact-filter (addr)
-    "Remove annoying completions from the email autocomplete.
-Checks `my-mu4e-suppressed-addresses' (private.el) and generic patterns."
-    (cond
-     ;; Suppress specific addresses from private.el
-     ((seq-some (lambda (a) (string-match-p (regexp-quote a) addr))
-                my-mu4e-suppressed-addresses)
-      nil)
-     ;; Generic patterns
-     ((string-match-p "no-reply" addr) nil)
-     ((string-match-p "noreply" addr) nil)
-     ((string-match-p "@finkelsteinlab" addr) nil)
-     ((string-match-p "@fortelabs" addr) nil)
-     ((string-match-p "via Canvas" addr) nil)
-     (t addr)))
-
-  (setq mu4e-contact-process-function 'my-mu4e-contact-filter)
+  (let ((junk (regexp-opt (append my-mu4e-suppressed-addresses
+                                  '("reply" "@finkelsteinlab" "@fortelabs"
+                                    "via Canvas")))))
+    (setq mu4e-contact-process-function
+          (lambda (addr) (unless (string-match-p junk addr) addr))))
 
   ;;tweak the composition window to include CC and BCC
   (defun my-mu4e-add-cc-bcc ()
     "Add empty Cc: and Bcc: headers."
     (interactive)
-    (save-excursion (message-add-header "Cc: \nBcc: \n")))
+    ;; One header per argument: `message-add-header' skips a whole
+    ;; string when its first header (Cc on wide replies) exists.
+    (save-excursion (message-add-header "Cc: \n" "Bcc: \n")))
 
   (defun my-swap-email-from-field ()
     "Swap the From header to the primary email address.
@@ -473,20 +389,21 @@ Uses `my-email-primary-name' and `my-email-primary-address' from private.el."
                (mu4e-drafts-folder  . ,(plist-get account :drafts))
                (mu4e-sent-folder    . ,(plist-get account :sent))
                (mu4e-refile-folder  . ,(plist-get account :refile))
-               (mu4e-trash-folder   . ,(plist-get account :trash))
-               (smtpmail-smtp-user  . ,(plist-get account :smtp-user))))))
+               (mu4e-trash-folder   . ,(plist-get account :trash))))))
 
   ;; Non-PII shared/lab accounts kept in this tracked file; personal
   ;; accounts live in `my-mu4e-context-accounts' (private.el).  The
   ;; hisserlab app password is in the macOS Keychain, not here.
+  ;; Mail is always sent as the Lab address (`my-swap-email-from-field'),
+  ;; so drafts and sent copies go to Lab.  All Mail isn't synced:
+  ;; refiling removes the message from INBOX on Gmail (= archive).
   (defvar my-mu4e-extra-context-accounts
     '((:name "Hisser"
        :maildir-prefix "/Hisser"
        :email "hisserlab@gmail.com"
        :full-name "Hisser Lab"
-       :smtp-user "hisserlab@gmail.com"
-       :drafts "/Hisser/[Gmail]/Drafts"
-       :sent "/Hisser/[Gmail]/Sent Mail"
+       :drafts "/Lab/Drafts"
+       :sent "/Lab/[Gmail]/Sent Mail"
        :refile "/Hisser/[Gmail]/All Mail"
        :trash "/Hisser/[Gmail]/Trash"))
     "Shared account definitions (no PII) merged into `mu4e-contexts'.")
@@ -496,7 +413,7 @@ Uses `my-email-primary-name' and `my-email-primary-address' from private.el."
                 (append my-mu4e-context-accounts
                         my-mu4e-extra-context-accounts)))
 
-  ;; Ask for context if none is set
+  ;; Use the first context when none matches; don't ask
   (setq mu4e-context-policy 'pick-first)
   (setq mu4e-compose-context-policy 'pick-first)
 
@@ -556,9 +473,7 @@ Uses `my-email-primary-name' and `my-email-primary-address' from private.el."
           ("/Lab/Inbox/@SaneNews"   . ?n)
           ("/Lab/Inbox/@SaneBlackHole"   . ?b)))
 
-;;;; Better Marking (w/Icons & SVG Tags)
-;;;;; Unicode icons for marking
-  ;; --- Nicer actions display using unicode tags -----------------------------------
+;;;; Header flag icons
   (setq mu4e-headers-unread-mark    '("u" . "📩 "))
   (setq mu4e-headers-draft-mark     '("D" . "🚧 "))
   (setq mu4e-headers-flagged-mark   '("F" . "🚩 "))
@@ -592,45 +507,6 @@ was not sent by me."
       (when (zerop (call-process mu4e-mu-binary nil t nil "view" path))
         (string-trim (buffer-string)))))
 
-  (defun my-mu4e--format-contacts (contacts)
-    "Format mu4e CONTACTS plist list as \"Name <email>, ...\"."
-    (mapconcat (lambda (c)
-                 (let ((name (plist-get c :name))
-                       (email (plist-get c :email)))
-                   (if name (format "%s <%s>" name email) email)))
-               contacts ", "))
-
-  (defun my-mu4e-copy-message-to-kill-ring ()
-    "Copy the current mu4e message (headers + body) to the kill ring.
-Works in both `mu4e-headers-mode' and `mu4e-view-mode'.
-Formats the message as structured text suitable for pasting into
-Claude Code or other LLM contexts."
-    (interactive)
-    (let* ((msg (or (mu4e-message-at-point)
-                    (user-error "No message at point")))
-           (from (my-mu4e--format-contacts (mu4e-message-field msg :from)))
-           (to (my-mu4e--format-contacts (mu4e-message-field msg :to)))
-           (subject (or (mu4e-message-field msg :subject) "(no subject)"))
-           (date (format-time-string "%Y-%m-%d %a %H:%M"
-                                     (mu4e-message-field msg :date)))
-           (msgid (mu4e-message-field msg :message-id))
-           (body (when-let* ((path (mu4e-message-field msg :path))
-                             ((file-exists-p path)))
-                   (condition-case err
-                       (my-mu4e--extract-body path)
-                     (error
-                      (message "Body extraction failed: %s" err)
-                      nil))))
-           (text (concat "From: " from "\n"
-                         "To: " to "\n"
-                         "Subject: " subject "\n"
-                         "Date: " date "\n"
-                         (when msgid (concat "Message-ID: " msgid "\n"))
-                         "\n"
-                         (or body "(body not available)"))))
-      (kill-new text)
-      (message "Copied: %s" (truncate-string-to-width subject 60 nil nil t))))
-
   ;;** Export message to PDF (Gmail-print style, via lualatex)
   (defvar my-mu4e-pdf-font "Helvetica Neue"
     "Main font for message PDF export.  Must be visible to fontspec.")
@@ -640,7 +516,9 @@ Claude Code or other LLM contexts."
 Nil means use `mu4e-attachment-dir'.")
 
   (defun my-mu4e-pdf--escape (str)
-    "Escape LaTeX special characters in STR."
+    "Escape LaTeX special characters in STR.
+Also drop CR and the control characters LuaTeX treats as invalid,
+which would abort the export under -halt-on-error."
     (replace-regexp-in-string
      "[\\{}$&#^_%~]"
      (lambda (m)
@@ -649,7 +527,8 @@ Nil means use `mu4e-attachment-dir'.")
          ("^"  "\\textasciicircum{}")
          ("~"  "\\textasciitilde{}")
          (_    (concat "\\" m))))
-     (replace-regexp-in-string "\r" "" str)
+     (replace-regexp-in-string
+      (rx (any "\r" (0 . 8) ?\v (#x0e . #x1f) #x7f)) "" str)
      t t))
 
   (defun my-mu4e-pdf--strip-header-block (text)
@@ -664,7 +543,7 @@ line, TEXT is all headers and the result is empty."
     "Return the plain-text body of MSG.
 Tries `mu view' on the message file first; for HTML-only messages
 that yields nothing, so fall back to the rendered text of the
-current `mu4e-view-mode' buffer when it is showing MSG."
+current `mu4e-view-mode' buffer."
     (let* ((path (mu4e-message-field msg :path))
            (raw (and path (file-exists-p path)
                      (my-mu4e--extract-body path)))
@@ -704,9 +583,9 @@ current `mu4e-view-mode' buffer when it is showing MSG."
                        (or (plist-get from :name) (plist-get from :email) "Unknown")))
            (from-email (my-mu4e-pdf--escape (or (plist-get from :email) "")))
            (to (my-mu4e-pdf--escape
-                (my-mu4e--format-contacts (mu4e-message-field msg :to))))
+                (mapconcat #'mu4e-contact-full (mu4e-message-field msg :to) ", ")))
            (cc (my-mu4e-pdf--escape
-                (my-mu4e--format-contacts (mu4e-message-field msg :cc))))
+                (mapconcat #'mu4e-contact-full (mu4e-message-field msg :cc) ", ")))
            (date (format-time-string "%a, %b %-d, %Y at %-I:%M %p"
                                      (mu4e-message-field msg :date)))
            (account (my-mu4e-pdf--escape
@@ -776,9 +655,7 @@ when compilation finishes.  Compilation runs asynchronously."
                     dir))
            (tmpdir (make-temp-file "mu4e-pdf-" t))
            (texfile (expand-file-name "message.tex" tmpdir))
-           (buf-name " *mu4e-pdf-lualatex*")
-           (buf (progn (when (get-buffer buf-name) (kill-buffer buf-name))
-                       (get-buffer-create buf-name))))
+           (buf (generate-new-buffer " *mu4e-pdf-lualatex*")))
       (make-directory dir t)
       (with-temp-file texfile (insert (my-mu4e-pdf--tex msg body)))
       (message "Exporting message to PDF…")
@@ -810,6 +687,23 @@ Free input is accepted when nothing matches."
            (email (string-trim contact ".*<" ">*")))
       (message "Copied %s to the clipboard" email)
       (kill-new email)))
+
+  ;;** Menu (M-o, leader M): mu4e's own transient, opening mail in the
+  ;; "Email" workspace, plus a few extras.
+  (transient-replace-suffix 'mu4e-transient-menu "M"
+    '("M" "Main screen" my-open-email-in-workspace))
+  (transient-replace-suffix 'mu4e-transient-menu "C"
+    '("C" "New message" (lambda ()
+                          (interactive)
+                          (my-open-email-in-workspace)
+                          (mu4e-compose-new))))
+  (transient-replace-suffix 'mu4e-transient-menu "R"
+    '("R" "Reply" my-mu4e-compose-reply-ask-wide :if mu4e-message-p))
+  (unless (ignore-errors (transient-get-suffix 'mu4e-transient-menu "e"))
+    (transient-append-suffix 'mu4e-transient-menu '(0 -1)
+      ["Extras"
+       ("e" "Email to kill ring" my-email-to-kill-ring)
+       ("H" "Send org heading" org-heading-send-dwim)]))
   ) ;; use-package mu4e
 ;;** End Mu4e
 
@@ -817,8 +711,11 @@ Free input is accepted when nothing matches."
 ;; Top-level add-hook so first dired doesn't pull in the whole mail stack.
 ;; https://www.djcbsoftware.nl/code/mu/mu4e/Dired.html
 (add-hook 'dired-mode-hook #'turn-on-gnus-dired-mode)
+;; Attaching with no draft open starts a new message; make it mu4e's
+;; (the default `gnus-user-agent' starts Gnus).
+(setq gnus-dired-mail-mode 'mu4e-user-agent)
 
-;;* mu4e-goodies (AI chat + spam check)
+;;* mu4e-goodies (Claude Code chat about a message)
 (use-package mu4e-goodies
   :load-path "~/projects/elisp/mu4e-goodies"
   :after mu4e
@@ -842,14 +739,6 @@ Free input is accepted when nothing matches."
   ;; Global mode, so it covers forwards too: those come out as
   ;; text+html with the original attached as message/rfc822.
   (org-msg-mode)
-
-  ;; org-msg-edit-mode-map shares org-mode-map's ESC prefix keymap by
-  ;; reference — give it its own so :bind M-o doesn't collide.  This must
-  ;; run in :config (not :init): org-msg-edit-mode-map is void until the
-  ;; package loads, so an :init with-eval-after-load 'org errors at startup.
-  (let ((esc-map (make-sparse-keymap)))
-    (set-keymap-parent esc-map (lookup-key org-mode-map [?\e]))
-    (define-key org-msg-edit-mode-map [?\e] esc-map))
 
   ;; rapid navigation between composition fields
   (transient-define-prefix my-transient-email-compose ()
@@ -878,11 +767,10 @@ Free input is accepted when nothing matches."
       ("ew" "🔥" (lambda () (interactive) (insert "🔥")))]
      [("eR" "recent" emoji-recent)
       ("eS" "search" emoji-search)]
-     [("l" "llm expand" my-mail-llm-expand)]
      ])
-  ;; Inject quick-insert contacts from private.el (chained after "l" suffix)
+  ;; Inject quick-insert contacts from private.el (chained after "eS")
   (when (bound-and-true-p my-email-quick-contacts)
-    (let ((prev-key "l"))
+    (let ((prev-key "eS"))
       (dolist (entry my-email-quick-contacts)
         (let ((key   (nth 0 entry))
               (label (nth 1 entry))
@@ -891,24 +779,11 @@ Free input is accepted when nothing matches."
             `(,key ,label (lambda () (interactive) (insert ,email))))
           (setq prev-key key)))))
 
-  ;; org-msg's text and HTML exports display their temporary export
-  ;; buffers before killing them, disturbing the window layout (#169).
-  ;; Preview and send both build parts here, so export without display.
-  (define-advice org-msg-build-alternatives (:around (fn &rest args) no-display)
-    (let ((org-export-show-temporary-export-buffer nil))
-      (apply fn args)))
-
   (setq org-msg-options "html-postamble:nil H:5 num:nil ^:{} toc:nil author:nil email:nil \\n:t"
 	    org-msg-startup "hidestars indent inlineimages"
-	    org-msg-greeting-fmt nil
-	    org-msg-recipient-names nil
-	    org-msg-greeting-name-limit 3
 	    org-msg-default-alternatives '((new		        . (text html))
 				                       (reply-to-html	. (text html))
-				                       (reply-to-text	. (text html)))
-        ;; nil to avoid "Args out of range" errors when replying to
-        ;; emails with unusual HTML citation formatting
-        org-msg-convert-citation nil)
+				                       (reply-to-text	. (text html))))
   ;; org-msg checks for attachments via a regex search for keywords.
   ;; `regexp-unmatchable' never matches, disabling that nag.
   (setq org-msg-attached-file-reference regexp-unmatchable)
@@ -947,16 +822,14 @@ Uses `nerd-icons-icon-for-file' to pick an appropriate icon per filename."
       (widen)
       (remove-overlays (point-min) (point-max) 'attachment-icon t)))
 
-  (defun my-mu4e-reset-attachment-icons (orig-fun &rest args)
-    "Around advice to refresh attachment icons after ORIG-FUN runs.
-Pass ARGS through to ORIG-FUN, then redraw icons."
-    (apply orig-fun args)
+  (defun my-mu4e-reset-attachment-icons (&rest _)
+    "Redraw attachment icons after org-msg attaches or deletes a file."
     (my-mu4e-remove-attachment-icons)
     (my-mu4e-add-attachment-icons))
 
-  (advice-add 'org-msg-attach-attach :around #'my-mu4e-reset-attachment-icons)
-  (advice-add 'org-msg-dired-attach :around #'my-mu4e-reset-attachment-icons)
-  (advice-add 'org-msg-attach-delete :around #'my-mu4e-reset-attachment-icons)
+  ;; Dired attaching goes through `org-msg-attach-attach' too.
+  (advice-add 'org-msg-attach-attach :after #'my-mu4e-reset-attachment-icons)
+  (advice-add 'org-msg-attach-delete :after #'my-mu4e-reset-attachment-icons)
   ) ;; org-msg
 
 ;;* Org Heading to Email/Slack (org-heading-send)
@@ -965,152 +838,13 @@ Pass ARGS through to ORIG-FUN, then redraw icons."
 ;; inside the mail backend, so loading this never pulls the mail stack.
 (use-package org-heading-send
   :load-path "~/projects/elisp/org-heading-send"
-  :commands (org-heading-mail-send
+  :commands (org-heading-send-dwim
+             org-heading-send-now
+             org-heading-mail-send
              org-heading-mail-check-scheduled
              org-heading-slack-send)
   :custom
   (org-heading-mail-scheduled-file "~/Work/org/drafts.org"))
-
-(defun my--org-heading-send-kind ()
-  "Return `slack' or `email' for the heading at point, based on its fields."
-  (save-excursion
-    (org-back-to-heading t)
-    (let* ((end (org-entry-end-position))
-           (text (buffer-substring-no-properties (point) end))
-           (slack-p (or (string-match-p "^\\*+ Channel$" text)
-                        (string-match-p "^Channel:" text)))
-           (email-p (or (string-match-p "^\\*+ To$" text)
-                        (string-match-p "^To:" text)
-                        (string-match-p "^\\*+ Reply-To$" text)
-                        (string-match-p "^In-Reply-To:" text))))
-      (cond
-       ((and slack-p email-p)
-        (user-error "Heading has both Channel and To/In-Reply-To fields"))
-       (slack-p 'slack)
-       (email-p 'email)
-       (t (user-error "Heading has no Channel (Slack) or To/In-Reply-To (email) field"))))))
-
-(defun my-org-heading-send-dwim ()
-  "Send org heading as email or Slack message.
-Dispatches based on heading fields: Channel -> Slack, To/In-Reply-To -> email."
-  (interactive)
-  (pcase (my--org-heading-send-kind)
-    ('slack (org-heading-slack-send))
-    ('email (org-heading-mail-send))))
-
-(defun my-org-heading-send-now (&optional skip-confirm)
-  "Send org heading as Slack or email, all the way to sent.
-Slack goes through `org-heading-slack-send' as usual.  Email is composed
-with `org-heading-mail-send', then sent from the compose buffer after a
-confirmation.  Declining leaves the draft open.  With prefix arg
-SKIP-CONFIRM, send without asking."
-  (interactive "P")
-  (pcase (my--org-heading-send-kind)
-    ('slack (org-heading-slack-send skip-confirm))
-    ('email
-     (let (send-fn)
-       (setq send-fn
-             (lambda ()
-               (remove-hook 'org-msg-edit-mode-hook send-fn)
-               (let ((buf (current-buffer)))
-                 ;; Deferred like org-heading-mail's own setup: the
-                 ;; compose buffer isn't fully initialized inside the hook.
-                 (run-at-time
-                  0 nil
-                  (lambda ()
-                    (when (buffer-live-p buf)
-                      (with-current-buffer buf
-                        (org-msg-goto-body)
-                        (save-buffer)
-                        (when (or skip-confirm
-                                  (y-or-n-p (format "Send email to %s? "
-                                                    (message-fetch-field "To"))))
-                          (org-msg-ctrl-c-ctrl-c)))))))))
-       ;; Depth 90 so the populate hook installed by org-heading-mail runs first.
-       (add-hook 'org-msg-edit-mode-hook send-fn 90)
-       ;; The post-send scheduled-draft check would prompt over ours.
-       (condition-case err
-           (let ((org-heading-mail-scheduled-check-after-send nil))
-             (org-heading-mail-send))
-         ((error quit)
-          (remove-hook 'org-msg-edit-mode-hook send-fn)
-          (signal (car err) (cdr err))))))))
-
-;; TODO: test my-org-msg-llm-draft
-(defun my-mail-llm-expand ()
-  "Find @tn directive in org-msg buffer and use LLM to draft email.
-
-Place cursor anywhere in the buffer. The function searches for a line
-starting with @tn followed by instructions. It sends those instructions
-along with the entire email as context to the LLM, then replaces the
-@tn line with the generated response.
-
-Example usage in an org-msg reply buffer:
-  @tn politely decline, too busy. commend her son."
-  (interactive)
-  (unless (derived-mode-p 'org-msg-edit-mode)
-    (user-error "Not in an org-msg-edit-mode buffer"))
-  (save-excursion
-    (goto-char (point-min))
-    (unless (re-search-forward "^@tn\\s-+\\(.+\\)$" nil t)
-      (user-error "No @tn directive found"))
-    (let* ((instructions (match-string 1))
-           (llm-line-beg (match-beginning 0))
-           (llm-line-end (match-end 0))
-           (email-content (buffer-substring-no-properties (point-min) (point-max))))
-      (message "[org-msg-llm] Instructions: %s" instructions)
-      (message "[org-msg-llm] Sending to LLM...")
-      (let ((target-buffer (current-buffer))
-            (insert-pos llm-line-beg))
-        (gptel-request
-            (concat
-             "You are drafting an email response. Follow these instructions:\n"
-             instructions
-             "\n\nSign off with:\nKind regards,\n" my-email-primary-name
-             "\n\nHere is the email context (headers and any quoted reply):\n"
-             email-content)
-          :system "You are a helpful executive assistant drafting emails. Use short, concise, professional, positive tone. Use simple sentences only. Avoid hyphenated or compound sentences. Output only the email body text, no headers or metadata. Use org-mode formatting if needed."
-          :callback
-          (lambda (response info)
-            (if (not response)
-                (message "[org-msg-llm] Failed: %s" (plist-get info :status))
-              (with-current-buffer target-buffer
-                (save-excursion
-                  ;; Delete the @tn line only on success
-                  (goto-char llm-line-beg)
-                  (delete-region llm-line-beg llm-line-end)
-                  ;; Insert response at same position
-                  (insert response)))
-              (message "[org-msg-llm] Draft inserted:\n%s" response))))))))
-
-(defun my-mail-check-tn-directive ()
-  "Check if @tn directive is still present; ask to confirm sending.
-This prevents accidentally sending an email with an unexpanded @tn
-directive that was meant to be processed by the LLM."
-  (when (derived-mode-p 'org-msg-edit-mode)
-    (save-excursion
-      (goto-char (point-min))
-      (when (re-search-forward "^@tn\\s-+" nil t)
-        (unless (y-or-n-p "@tn directive found (not processed by LLM). Send anyway? ")
-          (user-error "Aborted: @tn directive still present"))))))
-
-(add-hook 'message-send-hook #'my-mail-check-tn-directive)
-
-(defun my-mail-sanitize-to-utf8 ()
-  "Recode stray raw bytes in the message body to UTF-8 before sending.
-Interprets eight-bit bytes as Latin-1, which covers the common case
-of quoted Latin-1 text (e.g. \"María\") surviving into the compose
-buffer as raw bytes."
-  (save-excursion
-    (message-goto-body)
-    (while (re-search-forward "[[:nonascii:]]" nil t)
-      (let ((ch (char-before)))
-        (when (eq (char-charset ch) 'eight-bit)
-          (let ((byte (multibyte-char-to-unibyte ch)))
-            (delete-char -1)
-            (insert (decode-coding-string (unibyte-string byte) 'latin-1))))))))
-
-(add-hook 'message-send-hook #'my-mail-sanitize-to-utf8)
 
 ;;* Colors for header view
 (use-package mu4e-column-faces
@@ -1122,31 +856,7 @@ buffer as raw bytes."
   :config
   (mu4e-column-faces-mode))
 
-(use-package mail-triage
-  :ensure nil
-  :load-path "~/projects/elisp/mail-triage"
-  ;; :after chaining never fired in the daemon, so the package (and its
-  ;; mu4e action registration) never loaded.  Defer on the autoloaded
-  ;; entry points instead, and drive setup/config from a mu4e after-load
-  ;; hook so `mail-triage-setup' registers its mu4e actions once mu4e is up.
-  ;; `M-x mail-triage' remains reachable via the autoload.
-  :commands (mail-triage mail-triage-setup)
-  :bind (:map mail-triage-mode-map
-         ("M-o" . mail-triage-menu))
-  :init
-  (with-eval-after-load 'mu4e
-    (require 'mail-triage)
-    (setq mail-triage-llm-backend "Gemini"
-          mail-triage-llm-model 'gemini-3-flash-preview
-          mail-triage-user-description my-email-user-description)
-    (mail-triage-setup)
-    (add-hook 'mail-triage-mode-hook
-              (lambda ()
-                (face-remap-set-base 'magit-section-heading
-                                     :inherit 'default
-                                     :foreground "#727d97")))))
-
-;;* gcal-add (calendar events from mu4e messages, context-aware)
+;;* gcal-add (calendar events from text, context-aware; M-x only)
 (use-package gcal-add
   :load-path "~/projects/elisp/gcal-add"
   :commands (gcal-add))

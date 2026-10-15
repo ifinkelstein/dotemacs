@@ -169,8 +169,8 @@
      ;; ("<" . (org-agenda-set-restriction-lock 'subtree))
      ;; (">" . (org-agenda-remove-restriction-lock))  
      ("o" . org-open-at-point)
-     ("M" . my-org-heading-send-dwim)
-     ("S" . my-org-heading-send-now)
+     ("M" . org-heading-send-dwim)
+     ("S" . org-heading-send-now)
      ("?" . org-speed-command-help)))
 
   ;; TODOS

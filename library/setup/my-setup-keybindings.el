@@ -85,7 +85,7 @@
    '("k" . consult-yank-from-kill-ring)
    '("l" . vertico-repeat)
    '("L" . my-transient-latex)
-   '("M" . my-transient-email)
+   '("M" . mu4e-transient-menu)
    '("n" . my-transient-notes)
    '("o" . my-transient-org)
    '("q" . my-transient-quit)
@@ -360,37 +360,6 @@
     ("O" "Cycle buffer" outline-cycle-buffer)]])
 
 
-;;*** Mail Keybindings
-(transient-define-prefix my-transient-email ()
-  "Mu4e main menu."
-  [["Main"
-    ("M" "Main screen"         (lambda ()
-                                 (interactive)
-                                 (my-open-email-in-workspace)))
-    ("U" "Update mail"         mu4e-update-mail-and-index)
-    ("M-q" "Quit"             mu4e-quit)]
-   ["Search"
-    ("b" "Bookmark"            mu4e-search-bookmark)
-    ("j" "Maildir"             mu4e-search-maildir)
-    ("c" "Choose query"        mu4e-search-query)
-    ("s" "Search"              mu4e-search)]
-   ["Composition"
-    ("C" "New"        (lambda ()
-                        (interactive)
-                        (my-open-email-in-workspace)
-                        (mu4e-compose-new)))
-    ("R" "Reply"               mu4e-compose-reply)
-    ("W" "Reply-to-all"        mu4e-compose-wide-reply)
-    ("F" "Forward"             mu4e-compose-forward )
-    ;; only draft messages can be edited
-    ("E" "Edit draft"          mu4e-compose-edit)
-    ("S" "Supersede"           mu4e-compose-supersede)]
-   ["Message"
-    ("e" "Email to Kill Ring" my-email-to-kill-ring)
-    ("d" "Send draft"         org-heading-mail-send)]
-   ])
-
-
 ;;*** Notes (with org-roam)
 (transient-define-prefix my-transient-notes ()
   "Transient menu for my notes keybindings."
@@ -440,7 +409,7 @@
     ("l" "Store Link" org-store-link)
     ("L" "Grab FF Link" (lambda () (interactive)
                           (grab-mac-link-dwim 'firefox)))
-    ("m" "Send from header" my-org-heading-send-dwim)]
+    ("m" "Send from header" org-heading-send-dwim)]
    ["Export"
     ("ep" "Export to PDF & Open" (lambda ()
                                    (interactive)
