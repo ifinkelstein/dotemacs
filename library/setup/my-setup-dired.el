@@ -14,7 +14,7 @@
   :commands (dired dired-jump dired-jump-other-window)
   :bind (:map dired-mode-map
               ("l" . dired-find-alternate-file)
-              ("h" . my-dired-updirectory)
+              ("h" . dired-up-directory)
               ("E" . gnus-dired-attach)
               ("O" . org-attach-dired-to-subtree)
               ("S" . xah-open-in-external-app)
@@ -60,11 +60,6 @@
       (if (cdr dired-windows)
           (select-window (cadr dired-windows))
         (user-error "No other Dired window to cycle to"))))
-
-  ;; Function to move up a directory like in ranger
-  (defun my-dired-updirectory ()
-    (interactive)
-    (find-alternate-file ".."))
 
   (when sys-mac
     ;; Suppress the warning: `ls does not support --dired'.
