@@ -151,28 +151,12 @@ For virtual buffers, output is saved to ~/Downloads with date-time.docx."
      (t
       (user-error "Not in a supported mode (dired, org, markdown, or text)"))))
 
-  (defun dwim-shell-commands-convert-to-doc ()
-    "Convert file(s) to docx using the NIH reference template.
-TODO: swap in a generic template when one is available."
-    (interactive)
-    (my--dwim-shell-commands-convert-to-docx
-     (expand-file-name "~/Work/80 other writing/80 letter-templates/nih-reference.docx")
-     "NIH template"))
-
   (defun dwim-shell-commands-convert-to-nih-docx ()
     "Convert file(s) to docx using NIH template."
     (interactive)
     (my--dwim-shell-commands-convert-to-docx
      (expand-file-name "~/Work/80 other writing/80 letter-templates/nih-reference.docx")
      "NIH template"))
-
-  (defun dwim-shell-command-rename-with-date ()
-    "Rename the file with the current date between the filename and extension"
-    (interactive)
-    (dwim-shell-command-on-marked-files
-     "Rename with date"
-     (concat "mv \"<<f>>\" \"<<fne>>." (format-time-string "%Y%m%d") ".<<e>>\" ")
-     :utils "mv"))
   ) ;;dwim-shell-command
 
 ;;* eshell and helpers
