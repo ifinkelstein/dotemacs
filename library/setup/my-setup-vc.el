@@ -22,12 +22,6 @@
 
 ;; * Magit
 (use-package magit
-  :commands
-  (magit-blame-mode
-   magit-commit
-   magit-diff
-   magit-log
-   magit-status)
   :hook ((git-commit-mode . jinx-mode)
 	     (git-commit-mode . cpm/git-commit-auto-fill-everywhere))
   :bind ((:map magit-log-mode-map
@@ -76,7 +70,6 @@
   ((prog-mode . diff-hl-mode)
    (text-mode . diff-hl-mode)
    (dired-mode . diff-hl-dired-mode)
-   (magit-pre-refresh . ignore)
    (magit-post-refresh . diff-hl-magit-post-refresh))
   :custom
   (diff-hl-margin-symbols-alist
