@@ -1,17 +1,13 @@
 ;;; my-setup-org.el -*- lexical-binding: t -*-
 
 (message "Setting up org mode...")
-;; re-enable org-modern, lambda-line
 
 ;;* Org
 ;; Use built-in org
 (use-package org
   :ensure nil
   :commands (org-mode org-capture org-attach-attach org-attach)
-  :hook ((org-mode . variable-pitch-mode)
-         ;; DISABLED: testing if org-table-face-mode causes hangs in org files with tables
-         ;; (org-mode . unpackaged/org-table-face-mode)
-         )
+  :hook (org-mode . variable-pitch-mode)
   :bind
   (:map global-map
         ("C-c a" . org-agenda)
@@ -132,7 +128,6 @@
      (" " . org-display-outline-path)
      ("s" . org-toggle-narrow-to-subtree)
      ("k" . org-cut-subtree)
-     ;; ("=" . org-columns)
      ("Outline Structure Editing")
      ("U" . org-metaup)
      ("D" . org-metadown)
@@ -145,8 +140,6 @@
      ("w" . org-refile)
      ("a" . org-archive-subtree-default-with-confirmation)
      ("m" . org-mark-subtree)
-     ;; ("@" . org-mark-subtree)
-     ;; ("#" . org-toggle-comment)
      ("Clock Commands")
      ("I" . org-clock-in)
      ("O" . org-clock-out)
@@ -159,14 +152,10 @@
      ("3" . (org-priority ?C))
      ("q" . org-set-tags-command)
      ("E" . org-set-effort)
-     ;; ("E" . org-inc-effort)
-     ;; ("W" . (lambda (m) (interactive "sMinutes before warning: ") (org-entry-put (point) "APPT_WARNTIME" m)))
      ("Agenda Views etc")
      ("v" . org-agenda)
      ("/" . org-sparse-tree)
      ("Misc")
-     ;; ("<" . (org-agenda-set-restriction-lock 'subtree))
-     ;; (">" . (org-agenda-remove-restriction-lock))  
      ("o" . org-open-at-point)
      ("M" . org-heading-send-dwim)
      ("S" . org-heading-send-now)
@@ -176,7 +165,6 @@
   (org-use-fast-todo-selection 'expert) ;; don't use popup window for todos
   ;; don't set to DONE if children aren’t DONE
   (org-enforce-todo-dependencies t)
-  ;; (org-enforce-todo-checkbox-dependencies t) ;; allow todo to be done even if checkboxes are open
   :config
   ;; Load additional org modules
   (add-to-list 'org-modules 'org-habit t)
@@ -261,8 +249,6 @@
            (todo category-up effort-up)
            (tags category-up effort-up)
            (search category-up))))
-  ;; (org-agenda-sorting-strategy
-  ;;  '((agenda time-up) (todo time-up) (tags time-up) (search time-up)))
 
   (calendar-week-start-day 1)) ;; Start week on Monday
   ;; use-package org-agenda
@@ -820,12 +806,6 @@ the region (or the current line), then refresh the agenda."
 (use-package org-transclusion
   :after (org org-roam)
   :config
-  ;; The frige is likely overwritten by org-modern, per org-transclusion manual
-  ;; (set-face-attribute
-  ;;  'org-transclusion-fringe nil
-  ;;  :foreground "green"
-  ;;  :background "green")
-
   (set-face-attribute
    'org-transclusion nil
    :background "#f5f5dc")
@@ -845,7 +825,6 @@ the region (or the current line), then refresh the agenda."
 (use-package org-super-agenda
   :after org
   :config
-  ;; (setq org-super-agenda-groups nil)
   (org-super-agenda-mode))
 ;;*** settings for org-super-agenda
 ;;*** age of an entry, for the triage prefix
