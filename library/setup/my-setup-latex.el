@@ -57,11 +57,8 @@
               ("s-h" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "highlight"))))
               ("s-$" . (lambda () (interactive) (yas-expand-snippet (yas-lookup-snippet "inline math"))))
               ("s-d" . my-TeX-delete-current-macro)
-              ("M-i" . tab-to-tab-stop)
               ("C-)" . puni-slurp-forward)
-              ("C-(" . puni-slurp-backward)
-              ("M-," . embark-act)
-              ("M-." . embark-dwim))
+              ("C-(" . puni-slurp-backward))
 
   :custom
   ;; https://emacs.stackexchange.com/questions/3083/how-to-indent-items-in-latex-auctex-itemize-environments
