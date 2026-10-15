@@ -270,7 +270,6 @@
    ("f" "Find emacs file" my-find-emacs-file)
    ("i" "Goto init.el" my-goto-init.el)
    ("I" "Load init file" my-load-init-file)
-   ("o" "Goto org files" my-goto-org-files)
    ("s" "Search emacs files" my-search-emacs-files)])
 
 
@@ -361,10 +360,7 @@
     ("j" "Capture Today's Daily" org-roam-dailies-capture-today)
     ("o" "Get/Create ID" org-id-get-create)
     ("t" "Goto Today's Daily" org-roam-dailies-goto-today)
-    ("y" "Capture Yesterday's Daily" org-roam-dailies-capture-yesterday)]
-   ["Consult & Citar"
-    ("A" "Consult Notes" consult-notes)
-    ("s" "Search in All Notes" consult-notes-search-in-all-notes)]])
+    ("y" "Capture Yesterday's Daily" org-roam-dailies-capture-yesterday)]])
 
 ;;*** Org-mode keybindings
 (transient-define-prefix my-transient-org ()
@@ -410,7 +406,7 @@
     ("p" "Pomodoro" org-pomodoro)
     ("f" "Agenda search" my-consult-org-ql-agenda-jump)
     ("s" "Search with org-ql" org-ql-search)
-    ("S" "Org reschedule" my-org-reschedule)
+    ("S" "Org reschedule" org-schedule)
     ("w" "Refile" org-refile)]
    ]
   ;; Several suffixes (e.g. `org-set-effort', `org-set-tags-command') live in
@@ -457,7 +453,6 @@
     ("j" "Forward/Backward Sexp" my-forward-or-backward-sexp)
     ("k" "Yank Pop" consult-yank-pop)
     ("L" "Locate" consult-locate)
-    ("n" "Notes Search All" consult-notes-search-in-all-notes)
     ("r" "Query Replace" vr/query-replace)
     ("R" "Substitute Target" substitute-target-in-buffer)
     ("s" "Line Search" consult-line)
