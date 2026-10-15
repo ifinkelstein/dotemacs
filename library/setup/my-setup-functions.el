@@ -676,56 +676,26 @@ duplex, color, 300 dpi); see scansnap -h for the underlying tool."
 (global-set-key (kbd "M-Q") #'my-unfill-paragraph)
 
 ;; Smart Yanking
-;;Courtesy of Marcin Borkowski http://mbork.pl/2018-07-02_Smart_yanking
-
-(defun has-space-at-boundary-p (string)
-  "Check whether STRING has any whitespace on the boundary.
-      Return 'left, 'right, 'both or nil."
-  (let ((result nil))
-    (when (string-match-p "^[[:space:]]+" string)
-      (setq result 'left))
-    (when (string-match-p "[[:space:]]+$" string)
-      (if (eq result 'left)
-          (setq result 'both)
-        (setq result 'right)))
-    result))
-
-(defun is-there-space-around-point-p ()
-  "Check whether there is whitespace around point.
-      Return 'left, 'right, 'both or nil."
-  (let ((result nil))
-    (when (< (save-excursion
-               (skip-chars-backward "[:space:]"))
-             0)
-      (setq result 'left))
-    (when (> (save-excursion
-               (skip-chars-forward "[:space:]"))
-             0)
-      (if (eq result 'left)
-          (setq result 'both)
-        (setq result 'right)))
-    result))
-
-(defun set-point-before-yanking (string)
-  "Put point in the appropriate place before yanking STRING."
-  (let ((space-in-yanked-string (has-space-at-boundary-p string))
-        (space-at-point (is-there-space-around-point-p)))
-    (cond ((and (eq space-in-yanked-string 'left)
-                (eq space-at-point 'left))
-           (skip-chars-backward "[:space:]"))
-          ((and (eq space-in-yanked-string 'right)
-                (eq space-at-point 'right))
-           (skip-chars-forward "[:space:]")))))
-
-(defun set-point-before-yanking-if-in-text-mode (string)
-  "Invoke `set-point-before-yanking' in text modes."
+;; Courtesy of Marcin Borkowski http://mbork.pl/2018-07-02_Smart_yanking
+(defun my-yank-skip-doubled-space (string)
+  "In text modes, move point so yanking STRING doesn't double whitespace.
+If STRING starts (but does not end) with whitespace and there is
+whitespace only before point, move back over it; if STRING ends (but
+does not start) with whitespace and there is whitespace only after
+point, move forward over it."
   (when (derived-mode-p 'text-mode)
-    (set-point-before-yanking string)))
+    (let* ((space-p (lambda (char)
+                      (and char (string-match-p "[[:space:]]" (string char)))))
+           (str-left (string-match-p "\\`[[:space:]]" string))
+           (str-right (string-match-p "[[:space:]]\\'" string))
+           (pt-left (funcall space-p (char-before)))
+           (pt-right (funcall space-p (char-after))))
+      (cond ((and str-left (not str-right) pt-left (not pt-right))
+             (skip-chars-backward "[:space:]"))
+            ((and str-right (not str-left) pt-right (not pt-left))
+             (skip-chars-forward "[:space:]"))))))
 
-(advice-add
- 'insert-for-yank
- :before
- #'set-point-before-yanking-if-in-text-mode)
+(advice-add 'insert-for-yank :before #'my-yank-skip-doubled-space)
 ;; http://lists.gnu.org/archive/html/help-gnu-emacs/2007-05/msg00975.html
 
 ;;* Scratch Buffer Functions
