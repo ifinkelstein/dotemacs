@@ -232,13 +232,12 @@ Skip buffers whose file changed on disk (let auto-revert handle those)."
                                                                                    "black"))
 ;; Buffer position as a nyan cat.  lambda-line renders its position segment
 ;; with `format-mode-line', so the (:eval ...) construct goes straight in.
+;; Only `nyan-create' is needed: `nyan-mode' just patches the stock mode
+;; line, and `nyan-animate-nyancat' runs a 0.2 s redraw timer.
 (use-package nyan-mode
   :custom
   (nyan-bar-length 16)
-  (nyan-animate-nyancat t)
-  (nyan-wavy-trail t)
-  :config
-  (nyan-mode 1))
+  (nyan-wavy-trail t))
 
 ;; minimal and cute
 ;; Official repo moved to Codeberg (2026-05); PR #25 fix is merged upstream
