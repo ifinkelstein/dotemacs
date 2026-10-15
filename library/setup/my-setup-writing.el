@@ -279,8 +279,7 @@ the candidate list with the current pick highlighted."
   :mode (("\\.markdown\\'" . markdown-mode)
          ("\\.md\\'"       . markdown-mode)
          ("README\\.md\\'" . gfm-mode))
-  :hook ((markdown-mode . auto-fill-mode)
-         (markdown-mode . hl-todo-mode))
+  :hook (markdown-mode . auto-fill-mode)
   :bind (:map markdown-mode-map
               ("s-*"        . markdown-insert-list-item)
               ("s-b"        . markdown-insert-bold)

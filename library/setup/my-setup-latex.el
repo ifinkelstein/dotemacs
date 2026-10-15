@@ -31,7 +31,6 @@
          (LaTeX-mode . LaTeX-preview-setup)
          (LaTeX-mode . outline-minor-mode) ;; clobbers TAB expansion of yas-snippets
          (LaTeX-mode . olivetti-mode)
-         (LaTeX-mode . hl-todo-mode)
          (LaTeX-mode . turn-on-reftex)
          (LaTeX-mode . TeX-fold-mode) ;; enable hiding various things
          (LaTeX-mode . electric-indent-local-mode)) ;; trying to see if I like this mode
