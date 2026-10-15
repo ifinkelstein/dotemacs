@@ -128,7 +128,7 @@
 ;; * Xwidget Browser
 (use-package xwidget
   :ensure nil
-  :defer 1
+  :defer t
   :config
   ;; No query on kill
   (remove-hook 'kill-buffer-query-functions #'xwidget-kill-buffer-query-function)
