@@ -555,10 +555,6 @@ Within those groups, sort by date and priority."
 (add-hook 'org-after-tags-change-hook #'my-org-log-tag-change)
 
 
-;;** Org Inline Tasks
-(use-package org-inlinetask :ensure nil
-  :commands org-inlinetask-insert-task)
-
 ;;** Org Archive
 ;; Tell org where to archive completed tasks
 (setq org-archive-location (concat org-directory "org-archive/archived.org::datetree/"))
@@ -1154,15 +1150,6 @@ Intended for the `%(...)' escape in `org-agenda-prefix-format'."
   :ensure nil
   :after org
   :commands (org-babel-execute:python))
-
-(use-package ob-lisp
-  :ensure nil
-  :commands (org-babel-execute:lisp))
-
-(use-package ob-latex
-  :ensure nil
-  :commands
-  (org-babel-execute:latex))
 
 (use-package ob-shell
   :ensure nil
