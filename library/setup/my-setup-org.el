@@ -1182,26 +1182,6 @@ Intended for the `%(...)' escape in `org-agenda-prefix-format'."
 
 ;;** org-babel
 
-;; Add mimore LaTeX class for org export
-;; Clone from: https://github.com/Pseudomanifold/latex-mimore
-(with-eval-after-load 'ox-latex
-  (add-to-list 'org-latex-classes
-               '("mimore"
-                 "\\documentclass{mimore}
-[NO-DEFAULT-PACKAGES]
-[NO-PACKAGES]
-\\usepackage{graphicx}"
-                 ("\\section{%s}" . "\\section*{%s}")
-                 ("\\subsection{%s}" . "\\subsection*{%s}")
-                 ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
-                 ("\\paragraph{%s}" . "\\paragraph*{%s}")
-                 ("\\subparagraph{%s}" . "\\subparagraph*{%s}")))
-  ;; Add path to mimore.cls
-  (setenv "TEXINPUTS"
-          (concat (getenv "TEXINPUTS")
-                  ":"
-                  (expand-file-name "my-org-export-themes/latex-mimore/" my-library-dir))))
-
 ;; macOS ships no bare `python', only `python3'.
 (setq org-babel-python-command "python3")
 
