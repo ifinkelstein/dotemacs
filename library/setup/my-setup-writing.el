@@ -299,15 +299,6 @@ the candidate list with the current pick highlighted."
         markdown-header-scaling t
         markdown-use-pandoc-style-yaml-metadata t
         markdown-asymmetric-header t)
-  (setq markdown-live-preview-window-function 'my--markdown-live-preview-window-xwidget)
-
-  (defun my--markdown-live-preview-window-xwidget (file)
-    "Preview file with xwidget browser"
-    (xwidget-webkit-browse-url (concat "file://" file))
-    (let ((buf (xwidget-buffer (xwidget-webkit-current-session))))
-      (when (buffer-live-p buf)
-        (and (eq buf (current-buffer)) (quit-window))
-        (pop-to-buffer buf))))
 
   ;; for use with meow point movement
   (modify-syntax-entry ?@ "_" markdown-mode-syntax-table)
