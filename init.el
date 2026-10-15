@@ -44,11 +44,6 @@ straight) and by `my-cache-dir'.")
   caches and ephemeral/temporary files. Anything that may need to
   be cleared if there are problems.")
 
-;; Find the user configuration file
-;; This file may need to be created first
-(defconst my-config-file (expand-file-name "config.el" my-user-dir)
-  "The user's configuration file.")
-
 ;; Make System Directories
 ;; Directory paths
 (dolist (dir (list my-library-dir my-var-dir my-cache-dir my-user-dir my-setup-dir))
@@ -100,8 +95,6 @@ straight) and by `my-cache-dir'.")
 ;;** Use-Package Settings
 (use-package use-package
   :custom
-  ;; Don't automatically defer
-  (use-package-always-defer nil)
   ;; Report loading details
   (use-package-verbose t)
   ;; auto-install packages
@@ -116,18 +109,10 @@ straight) and by `my-cache-dir'.")
 ;; NOTE: Setopt won't work here
 (setq byte-compile-warnings '(not free-vars unresolved noruntime lexical make-local))
 
-;; Don't produce backtraces when errors occur.
-;; This can be set to `t' interactively when debugging.
-(setopt debug-on-error nil)
-
 ;;* Security
 ;; Properly verify outgoing ssl connections.
 ;; See https://glyph.twistedmatrix.com/2015/11/editor-malware.html
-(use-package gnutls
-  :ensure nil
-  :defer 1
-  :custom
-  (gnutls-verify-error t))
+(setopt gnutls-verify-error t)
 
 ;;* Load configuration modules
 ;; This section loads a series of elisp libraries or 'modules' as defined below.
