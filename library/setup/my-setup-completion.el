@@ -221,18 +221,6 @@ Borrowed from: https://github.com/oantolin/embark/wiki/Additional-Actions"
 
 ;;* Consult
 (use-package consult
-  :commands (consult-line
-             consult-line-multi
-             consult-buffer
-             consult-project-buffer
-             consult-find
-             consult-apropos
-             consult-yank-pop
-             consult-goto-line
-             consult-outline
-             consult-org-agenda
-             consult-org-heading
-             consult-flymake)
   :bind (:map project-prefix-map
          ("b" . consult-project-buffer)
          ("m" .  consult-bookmark)
