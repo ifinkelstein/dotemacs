@@ -17,9 +17,8 @@
                       emms-player-vlc))
   (emms-playlist-buffer-name "*Music*") ;; name of EMMS buffer
   (emms-source-file-default-directory "~/Media/Music/")
-
-  ;; todo: fix this so that mpv can change the volume
-  ;; (emms-volume-change-function 'emms-volume-mpd-change)
+  ;; emms-volume-raise/lower talk to mpv over its IPC socket
+  (emms-volume-change-function #'emms-volume-mpv-change)
 
   ;; covers
   (emms-browser-covers #'emms-browser-cache-thumbnail-async)
@@ -27,48 +26,11 @@
   (emms-browser-thumbnail-medium-size 200)
 
   :config
+  ;; also sets up emms-info-native and per-track info initialization
   (emms-all)
 
-  ;; mpv integration
-  ;; https://www.reddit.com/r/emacs/comments/syop1h/control_emmsmpv_volume/
-  (defvar emms-player-mpv-volume 100)
-
-  (defun emms-player-mpv-get-volume ()
-    "Sets `emms-player-mpv-volume' to the current volume value
-and sends a message of the current volume status."
-    (emms-player-mpv-cmd '(get_property volume)
-                         #'(lambda (vol err)
-                             (unless err
-                               (let ((vol (truncate vol)))
-                                 (setq emms-player-mpv-volume vol)
-                                 (message "Music volume: %s%%"
-                                          vol))))))
-
-  (defun emms-player-mpv-raise-volume (&optional amount)
-    (interactive)
-    (let* ((amount (or amount 10))
-           (new-volume (+ emms-player-mpv-volume amount)))
-      (if (> new-volume 100)
-          (emms-player-mpv-cmd '(set_property volume 100))
-        (emms-player-mpv-cmd `(add volume ,amount))))
-    (emms-player-mpv-get-volume))
-
-  (defun emms-player-mpv-lower-volume (&optional amount)
-    (interactive)
-    (emms-player-mpv-cmd `(add volume ,(- (or amount '10))))
-    (emms-player-mpv-get-volume))
-
-
   ;; history
-  (emms-history-load)
-
-  ;; `emms-info-native' supports mp3,flac,ogg and requires NO CLI tools
-  (unless (memq 'emms-info-native emms-info-functions)
-    (require 'emms-info-native)
-    (push 'emms-info-native emms-info-functions))
-
-  ;; extract track info when loading the playlist
-  (push 'emms-info-initialize-track emms-track-initialize-functions))
+  (emms-history-load))
 
 ;;** EMMS helpers
 ;; transient to control EMMS
