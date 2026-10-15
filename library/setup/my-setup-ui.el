@@ -31,7 +31,7 @@
   ;; Follow symlinks
   (find-file-visit-truename t)
   ;; backups
-  (backup-by-copying t)              ; don't clobber symlinks
+  (backup-by-copying t)               ; don't clobber symlinks
   (version-control t)                 ; version numbers for backup files
   (delete-old-versions t)             ; delete excess backup files silently
   (kept-old-versions 2)               ; oldest versions to keep when a new numbered backup is made
@@ -428,20 +428,18 @@ of the tab bar."
 
 (use-package pulse
   :bind
-  ("C-<return>" . pulse-line)
-  :commands (pulse-line pulse-momentary-highlight-one-line)
+  ("C-<return>" . my-pulse-line)
   :config
   (setq pulse-delay 0.08)
-  (defun pulse-line (&rest _)
+  (defun my-pulse-line (&rest _)
     "Pulse the current line."
     (interactive)
-    (pulse-momentary-highlight-one-line (point)))
+    (pulse-momentary-highlight-one-line))
   ;; pulse for commands
-  (dolist (command '(scroll-up-command scroll-down-command
-                                       recenter-top-bottom other-window))
-    (advice-add command :after #'pulse-line))
-  ;; pulse on window change
-  (push 'pulse-line window-selection-change-functions))
+  (dolist (command '(scroll-up-command scroll-down-command recenter-top-bottom))
+    (advice-add command :after #'my-pulse-line))
+  ;; pulse on window change (covers `other-window')
+  (add-hook 'window-selection-change-functions #'my-pulse-line))
 
 ;;;; Goggles (Highlight Changes)
 (use-package goggles
