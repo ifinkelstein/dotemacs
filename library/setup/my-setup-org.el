@@ -865,13 +865,6 @@ the region (or the current line), then refresh the agenda."
 (add-hook 'org-agenda-mode-hook #'my-org--set-extra-faces)
 (add-hook 'org-mode-hook #'my-org-mode-hooks)
 ;; * Third party org-mode mode
-;;** Org-Web-Tools
-;; Download snapshots of websites straight into an org file
-(use-package org-web-tools
-  :commands (org-web-tools-insert-link-for-url
-             org-web-tools-read-url-as-org
-             org-web-tools-insert-web-page-as-entry))
-
 ;;** org-transclusion
 ;; include part of an org file in another file
 (use-package org-transclusion
