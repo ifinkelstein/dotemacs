@@ -12,31 +12,29 @@
  '(package-selected-packages
    '(ace-window activities affe ag aggressive-indent async auctex avy avy-menu
                 avy-zap bufler burly cape casual claude-code consult consult-dir
-                consult-notes consult-reftex consult-todo corfu cperl-mode crux
-                csharp-mode ctrlf deadgrep dictionary diff-hl dired-hacks
-                dired-narrow dired-preview dired-ranger dired-recent diredfl
-                dogears dwim-shell-command easy-kill easy-kill-extras eat
-                editorconfig elfeed elfeed-goodies elfeed-org elisp-def
-                elisp-refs elixir-ts-mode emacs-everywhere embark embark-consult
-                embrace emms exec-path-from-shell expreg faceup fancy-dabbrev
-                fix-word fzf ghostel goggles goto-chg grab-mac-link helpful
+                consult-notes consult-reftex consult-todo corfu crux ctrlf
+                deadgrep diff-hl dired-hacks dired-narrow dired-preview
+                dired-ranger dired-recent diredfl dogears dwim-shell-command
+                easy-kill easy-kill-extras eat elfeed elfeed-goodies elfeed-org
+                elisp-def elisp-refs emacs-everywhere embark embark-consult
+                embrace emms exec-path-from-shell expreg fancy-dabbrev fix-word
+                fzf ghostel goggles goto-chg grab-mac-link helpful
                 highlight-quoted hl-todo homebrew htmlize hungry-delete
                 imenu-list inheritenv javelin jinx json-snatcher keyfreq
-                kind-icon lambda-line lambda-themes less-css-mode link-hint
-                lua-mode magit marginalia markdown-mode markdown-table-wrap
-                markdown-ts-mode md-ts-mode meow mixed-pitch move-text
-                mu4e-column-faces mu4e-query mwim nerd-icons
+                kind-icon lambda-line lambda-themes link-hint magit marginalia
+                markdown-mode markdown-table-wrap md-ts-mode meow mixed-pitch
+                move-text mu4e-column-faces mu4e-query mwim nerd-icons
                 nerd-icons-completion nerd-icons-corfu nerd-icons-dired
                 nyan-mode olivetti orderless org org-appear org-autolist
                 org-contacts org-download org-modern org-mru-clock org-msg
                 org-pomodoro org-ql org-roam org-sticky-header org-super-agenda
                 org-timeblock org-transclusion org-web-tools origami ox-pandoc
-                pdf-tools peg phscroll popper popwin prism puni
-                rainbow-delimiters reveal-in-osx-finder revert-buffer-all rg
-                substitute svg-tag-mode tabspaces taxy-magit-section timeout
-                tramp trashed ultra-scroll vdiff vdiff-magit verilog-mode
-                vertico visual-regexp visual-regexp-steroids wallpaper
-                web-server wgrep whisper yasnippet yasnippet-snippets))
+                pdf-tools phscroll popper popwin prism puni rainbow-delimiters
+                reveal-in-osx-finder revert-buffer-all rg substitute
+                svg-tag-mode tabspaces taxy-magit-section timeout trashed
+                ultra-scroll vdiff vdiff-magit vertico visual-regexp
+                visual-regexp-steroids wallpaper web-server wgrep whisper
+                yasnippet yasnippet-snippets))
  '(package-vc-selected-packages
    '((phscroll :vc-backend Git :url "https://github.com/misohena/phscroll")
      (lambda-line :url "https://codeberg.org/Lambda-Emacs/lambda-line" :branch
