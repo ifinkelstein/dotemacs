@@ -1449,24 +1449,6 @@ If only the list buffer is shown, split the frame first with \\[org-timeblock-to
             (select-window w))))))
   (define-key org-timeblock-mode-map      (kbd "j") #'my-org-timeblock-avy-jump)
   (define-key org-timeblock-list-mode-map (kbd "j") #'my-org-timeblock-avy-jump))
-;;** org-agenda improvements
-;;*** origami -- fold agenda elements
-;; useful for folding elements in org-agenda
-;; I can use outline-mode for this, but this already exists and is ready to go
-;; https://www.reddit.com/r/orgmode/comments/1070bi2/a_little_elisp_to_kill_lines_in_the_agenda_like/
-(use-package origami
-  :hook (org-agenda-mode . origami-mode)
-  :bind (:map org-super-agenda-header-map
-              ("<tab>" . origami-toggle-node))
-  :config
-  ;; Fix upstream defface bug: ':inherit 'face' inside defface is data, not
-  ;; code, so the reader produces (quote face) — a two-face inherit list.
-  ;; Use face-spec-set to overwrite both the live attribute AND the stored
-  ;; defface-spec, so theme recalculation cannot re-apply the buggy spec.
-  (face-spec-set 'origami-fold-replacement-face
-                 '((t :inherit font-lock-comment-face))))
-
-
 
 ;;** org-mru-clock for better clocking into and out of tasks
 (use-package org-mru-clock
