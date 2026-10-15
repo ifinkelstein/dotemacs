@@ -395,6 +395,7 @@
     ("eX" "Export to DOCX" org-pandoc-export-to-docx)]
    ["Miscellaneous"
     ("h" "Timeblock" org-timeblock)
+    ("p" "Pomodoro" org-pomodoro)
     ("f" "Agenda search" my-consult-org-ql-agenda-jump)
     ("s" "Search with org-ql" org-ql-search)
     ("S" "Org reschedule" org-schedule)
