@@ -408,10 +408,6 @@ Within those groups, sort by date and priority."
      matched-heading
      (seq-difference all-matches matched-heading))))
 ;;* Other org-mode addons
-;;** svg-tag-mode
-;; A minor mode to replace keywords or regular expression with SVG tags.
-(use-package svg-tag-mode
-  :commands (svg-tag-make svg-tag-mode))
 ;;** Org-Appear (Show Markup/Pretty Entities)
 ;; show markup at point -- this should be part of org!
 (use-package org-appear
