@@ -3,32 +3,20 @@
 
 
 ;;* whisper local audio to text in Emacs
-
-;; example usage:
-;; (rk/find-device-matching "FaceTime" :video)
-;; (rk/find-device-matching "Macbook Pro Microphone" :audio)
-;; (rk/select-default-audio-device)
+;; Pick the microphone with `rk/select-default-audio-device' (AI menu D).
 (use-package whisper
-  :commands (whisper-run whisper-file rk/select-default-audio-device)
+  :commands (whisper-run whisper-file)
   :bind ("s-R" . whisper-run)
   :custom
-  (whisper-insert-text-at-point t)
-  (whisper-install-directory my-var-dir)
   ;; Use mlx_whisper (Apple Metal) as the inference engine instead of the
   ;; bundled whisper.cpp.  nil here routes `whisper-run' through the
   ;; "user-provided inference engine" branch, skipping the whisper.cpp
   ;; install/build and ggml model checks.  `whisper-model' is unused now;
   ;; the model is `my-whisper-mlx-model' below.
   (whisper-install-whispercpp nil)
-  (whisper-language "en")
-  (whisper-translate nil)
-  (whisper--ffmpeg-input-device-name "Macbook Pro Microphone")
-  ;; (whisper--ffmpeg-input-device (rk/find-device-matching whisper--ffmpeg-input-device-name :audio))
-  (whisper--ffmpeg-input-format "avfoundation")
   ;; move cursor to the end of the inserted text
   (whisper-return-cursor-to-start nil)
   :config
-  (setq rk/default-audio-device 0)
   (setq whisper--ffmpeg-input-device ":0")
 
   (defvar my-whisper-mlx-model "mlx-community/whisper-large-v3-turbo"
@@ -180,36 +168,21 @@ Runs in whisper's output buffer via `whisper-after-transcription-hook'."
 
   (add-hook 'whisper-after-transcription-hook #'my-whisper-fix-vocabulary t))
 
-(defcustom rk/default-audio-device nil
-  "The default audio device to use for whisper.el and other audio processes."
-  :type 'natnum)
-
-(defun rk/find-device-matching (string type)
-  "Get the devices from `rk/get-ffmpeg-device' and look for a device
-matching `STRING'. `TYPE' can be :video or :audio."
-  (let* ((devices (rk/get-ffmpeg-device))
-         (device-list (if (eq type :video)
-                          (car devices)
-                        (cadr devices))))
-    (message "Available %s devices: %s"
-             (if (eq type :video) "video" "audio")
-             (mapconcat (lambda (d) (format "[%s] %s" (car d) (cdr d)))
-                        device-list ", "))
-    (cl-loop for device in device-list
-             when (string-match-p string (cdr device))
-             return (car device))))
+(defvar whisper--ffmpeg-input-device)
 
 (defun rk/select-default-audio-device (&optional device-name)
-  "Interactively select an audio device to use for whisper.el and other audio processes.
-If `DEVICE-NAME' is provided, it will be used instead of prompting the user."
+  "Select the ffmpeg audio input device used by whisper.el.
+Prompt among the avfoundation audio devices unless DEVICE-NAME is given."
   (interactive)
+  ;; Load whisper first so its :config default (":0") can't override this.
+  (require 'whisper)
   (let* ((audio-devices (cadr (rk/get-ffmpeg-device)))
-         (indexes (mapcar #'car audio-devices))
-         (names (mapcar #'cdr audio-devices))
-         (name (or device-name (completing-read "Select audio device: " names nil t))))
-    (setq rk/default-audio-device (rk/find-device-matching name :audio))
-    (when (boundp 'whisper--ffmpeg-input-device)
-      (setq whisper--ffmpeg-input-device (format ":%s" rk/default-audio-device)))))
+         (name (or device-name
+                   (completing-read "Select audio device: "
+                                    (mapcar #'cdr audio-devices) nil t)))
+         (index (or (car (rassoc name audio-devices))
+                    (user-error "No audio device named %s" name))))
+    (setq whisper--ffmpeg-input-device (format ":%s" index))))
 
 (defun rk/get-ffmpeg-device ()
   "Gets the list of devices available to ffmpeg.
