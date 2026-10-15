@@ -145,18 +145,6 @@ When called from Lisp with FNAME, open that file instead.  Uses
 (use-package diredfl
   :hook (dired-mode . diredfl-mode))
 
-;;** Dired preview
-;; I disabled this bc it was getting annoying
-;; still useful to keep around so I can enable on a per-buffer basis
-(use-package dired-preview
-  :commands (dired-preview-mode dired-preview-global-mode)
-  :custom
-  (dired-preview-delay 1) ;; in sec
-  (dired-preview-max-size (expt 2 20))
-  (dired-preview-ignored-extensions-regexp
-   (concat "\\."
-           (regexp-opt '("gz" "zst" "tar" "xz" "rar" "zip" "iso" "epub")))))
-
 ;;** Dired Ranger
 ;; https://github.com/Fuco1/dired-hacks#dired-ranger
 ;; Very helpful way of copying/moving files
