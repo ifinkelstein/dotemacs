@@ -219,8 +219,6 @@
    ["Claude Code"
     ("c" "Start Claude" claude-code)
     ("C" "Claude in Dir" claude-code-start-in-directory)
-    ("s" "Send Region" my-claude-code-send-region-with-prompt)
-    ("t" "Toggle Window" claude-code-toggle)
     ("m" "Claude Menu" claude-code-transient)
     ("S" "Split with Agent" my-split-with-agent)
     ("e" "Edit at point via agent" my-agent-edit-dwim)]
@@ -444,11 +442,8 @@
     ("F" "Affe Find" affe-find)
     ("H" "Affe Find in Home" (lambda () (interactive) (affe-find "~")))
     ("h" "Org Heading" consult-org-heading)
-    ("k" "Yank Pop" consult-yank-pop)
-    ("L" "Locate" consult-locate)
     ("r" "Query Replace" vr/query-replace)
     ("R" "Substitute Target" substitute-target-in-buffer)
-    ("s" "Line Search" consult-line)
     ("W" "Affe Find in Work" (lambda () (interactive) (affe-find "~/Work")))
     ("." "Line Symbol at Point" consult-line-symbol-at-point)])
 
