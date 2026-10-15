@@ -192,8 +192,7 @@
 (dolist (hook '(emacs-lisp-mode-hook ielm-mode-hook lisp-interaction-mode-hook))
   (add-hook hook (lambda ()
                    (setq show-trailing-whitespace t)
-                   (setq show-paren-context-when-offscreen t)
-                   (yas-minor-mode 1))))
+                   (setq show-paren-context-when-offscreen t))))
 
 ;;* Shell
 ;;** Inherit env variables into emacs on Mac OSX
@@ -201,19 +200,6 @@
   :config
   (when (or (daemonp) (memq window-system '(mac ns x)))
     (exec-path-from-shell-initialize)))
-
-
-;;** Shell Scripts
-(use-package sh-script
-  :ensure nil
-  :init
-  ;; Use sh-mode when opening `.zsh' files, and when opening Prezto runcoms.
-  (dolist (pattern '("zlogin\\'"
-                     "zlogout\\'"
-                     "zpreztorc\\'"
-                     "zprofile\\'"
-                     "zshenv\\'"))
-    (add-to-list 'auto-mode-alist (cons pattern 'sh-mode))))
 
 ;;* Indentation
 (use-package aggressive-indent
