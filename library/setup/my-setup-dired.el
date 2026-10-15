@@ -40,7 +40,6 @@
   ;; reuse the same buffer when opening a new directory
   (dired-kill-when-opening-new-dired-buffer t)
   (dired-auto-revert-buffer t)
-  (delete-by-moving-to-trash t)
   ;; drag files from dired into other programs (!!!)
   (dired-mouse-drag-files t)
   ;; Cycle from bottom to top of buffer and vice versa (Emacs 30 built-in)
@@ -160,13 +159,9 @@ When called from Lisp with FNAME, open that file instead.  Uses
 ;; Open, view, browse, restore or permanently delete trashed files
 ;; or directories in trash can with Dired-like look and feel.
 (use-package trashed
-  :ensure t
   :commands (trashed)
   :config
-  (setq trashed-action-confirmer 'y-or-n-p)
-  (setq trashed-use-header-line t)
-  (setq trashed-sort-key '("Date deleted" . t))
-  (setq trashed-date-format "%Y-%m-%d %H:%M:%S"))
+  (setq trashed-action-confirmer 'y-or-n-p))
 
 (provide 'my-setup-dired)
 ;;; my-setup-dired.el ends here
