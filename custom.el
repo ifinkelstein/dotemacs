@@ -22,7 +22,7 @@
                 fix-word fzf ghostel goggles goto-chg grab-mac-link helpful
                 highlight-quoted hl-todo homebrew htmlize hungry-delete
                 imenu-list inheritenv javelin jinx json-snatcher keyfreq
-                kind-icon lambda-line lambda-themes less-css-mode link-hint llm
+                kind-icon lambda-line lambda-themes less-css-mode link-hint
                 lua-mode magit marginalia markdown-mode markdown-table-wrap
                 markdown-ts-mode md-ts-mode meow mixed-pitch move-text
                 mu4e-column-faces mu4e-query mwim nerd-icons
@@ -47,7 +47,7 @@
                      "main")
      (dired-hacks :url "https://github.com/Fuco1/dired-hacks")
      (lambda-themes :url "https://github.com/Lambda-Emacs/lambda-themes" :branch
-                    "main")))
+                    "main")) t)
  '(safe-local-variable-values
    '((eval add-hook 'before-save-hook
            (lambda nil
