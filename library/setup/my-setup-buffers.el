@@ -205,11 +205,6 @@ Returns to the full (un-narrowed) list, like reverting Dired with \"g\"."
            ;; Subgroup collecting all named workspaces.
            (auto-workspace))
           (group
-           ;; Subgroup collecting Claude Code agent buffers
-           (group-or "*LLMs*"
-                     (name-match "*LLM* " (rx bos "*Claude"))))
-
-          (group
            ;; Subgroup collecting all `mu4e' 'OrgMsg' and related buffers
            (group-or "*Mail*"
                      (mode-match "*mu4e*" (rx bos "mu4e"))
