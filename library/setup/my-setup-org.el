@@ -150,7 +150,6 @@
      ("Clock Commands")
      ("I" . org-clock-in)
      ("O" . org-clock-out)
-     ("P" . org-pomodoro)
      ("Meta Data Editing")
      ("t" . org-todo)
      ("," . (org-priority))
@@ -1373,55 +1372,24 @@ Intended for the `%(...)' escape in `org-agenda-prefix-format'."
 (use-package htmlize
   :commands (htmlize-buffer))
 
-;;** Productivity
-;; time tracking
-(use-package org-pomodoro
-  :commands (org-pomodoro)
-  :after org
-  :config
-  ;; integrate org-pomodoro with the xbar so I can see timer minutes remaining at all times
-  ;; ref: https://colekillian.com/posts/org-pomodoro-and-polybar/
-  (setq org-pomodoro-audio-player "/usr/bin/afplay")
-  (dolist (sound '(org-pomodoro-start-sound
-                   org-pomodoro-killed-sound
-                   org-pomodoro-finished-sound
-                   org-pomodoro-short-break-sound
-                   org-pomodoro-long-break-sound))
-    (set sound "~/.config/custom-sounds/water-drip.mp3"))
-  (setq org-pomodoro-keep-killed-pomodoro-time t)
-  (setq org-pomodoro-expiry-time 999999) ;; stop command from asking about resetting count
-  (setq org-pomodoro-length 45)) ;; org-pomodoro
-
-;; Defined at top level so hammerspoon/org-timer.sh can call it via
-;; emacsclient before org-pomodoro has been loaded (deferred by :defer 5).
+;;** Clock status for the menu bar
+;; Defined at top level so ~/.hammerspoon/org-timer.sh can call it via
+;; emacsclient before org-clock has been loaded.
 (defun my-org-clock-task ()
-  "If org-pomodoro is running, return the pomodoro state and time.
-If org-clock is running without a pomodoro timer, return the
-minutes on the current clock period. NOTE: I explicitly return
-just the clock-in on the current period; not the entire
-clock-time If nothing is clocked in, indicate that with a 'No
-Clock' message.
+  "Return a short string describing the running org clock.
+Show the minutes on the current clock period (not the task's total)
+and the first 20 characters of the heading.  When nothing is clocked
+in, prompt for the next task.
 
-Usage: I use this with xbar to display the current clock in the
-menu bar on MacOS. So the message is truncated to fit on screen.
-Also, server-mode must be enabled. If the server gets confused,
-use 'server-force-delete' and 'server-mode' to restart."
+Used by ~/.hammerspoon/org-timer.sh through emacsclient to show the
+clock in the macOS menu bar, so `server-mode' must be running."
   (interactive)
-  (require 'org-pomodoro)
-  (cond ((org-pomodoro-active-p)
-         (cl-case org-pomodoro-state
-           (:pomodoro
-            (format "🍅%d m: %s" (/ (org-pomodoro-remaining-seconds) 60) (string-limit org-clock-heading 20)))
-           (:short-break
-            (format "🍅Short: %d m" (/ (org-pomodoro-remaining-seconds) 60)))
-           (:long-break
-            (format "🍅Long: %d m" (/ (org-pomodoro-remaining-seconds) 60)))
-           (:overtime
-            (format "🍅Overtime! %d m" (/ (org-pomodoro-remaining-seconds) 60)))))
-        ((and (org-clocking-p) (not (org-pomodoro-active-p)))
-         (format "⏳%d m: %s" (/ (org-time-convert-to-integer (time-since org-clock-start-time)) 60) (string-limit org-clock-heading 20)))
-        (t
-         (format "What's the next task?"))))
+  (require 'org-clock)
+  (if (org-clocking-p)
+      (format "⏳%d m: %s"
+              (/ (org-time-convert-to-integer (time-since org-clock-start-time)) 60)
+              (string-limit org-clock-heading 20))
+    "What's the next task?"))
 
 ;;** org-timeblock to schedule the day
 (use-package org-timeblock
