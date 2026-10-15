@@ -3,7 +3,6 @@
 (message "Setting up reading...")
 ;;* Elfeed
 (use-package elfeed
-  :commands (elfeed-load-db-and-open)
   :bind (:map elfeed-search-mode-map
               ("<" . beginning-of-buffer)
               (">" . end-of-buffer)
@@ -50,15 +49,6 @@
     (when-let* ((entry (car (elfeed-search-selected)))
                 (url (elfeed-entry-link entry)))
       (start-process "mpv" nil "mpv" url)))
-
-  ;; Functions to support syncing .elfeed between machines makes sure elfeed
-  ;; reads index from disk before launching
-  (defun elfeed-load-db-and-open ()
-    "Wrapper to load the elfeed db from disk before opening."
-    (interactive)
-    (elfeed-db-load)
-    (elfeed)
-    (elfeed-search-update--force))
 
   ;; Write to disk when quitting
   (defun elfeed-save-db-and-bury ()
