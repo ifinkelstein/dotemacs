@@ -2,21 +2,6 @@
 
 (message "Setting up buffer settings...")
 
-;; * Hooks
-;; See https://github.com/doomemacs/doomemacs/blob/master/lisp/doom-ui.el
-(defvar my-switch-buffer-hook nil
-  "A list of hooks run after changing the current buffer.")
-
-(defun my-run-switch-buffer-hooks-h (&optional _)
-  (let ((gc-cons-threshold most-positive-fixnum)
-        (inhibit-redisplay t))
-    (run-hooks 'my-switch-buffer-hook)))
-
-;; Initialize `my-switch-buffer-hook'
-(add-hook 'window-buffer-change-functions #'my-run-switch-buffer-hooks-h)
-;; `window-buffer-change-functions' doesn't trigger for files visited via the server.
-(add-hook 'server-visit-hook #'my-run-switch-buffer-hooks-h)
-
 ;; * Scrolling
 (use-package emacs
   :ensure nil
