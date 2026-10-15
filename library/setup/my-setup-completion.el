@@ -183,11 +183,6 @@
                  (window-parameters (mode-line-format . none))))
 
   ;; Useful Functions
-  (define-key embark-file-map (kbd "D") 'my-dired-here)
-  (defun my-dired-here (file)
-    "Open dired in this directory"
-    (dired (file-name-directory file))) ;; embark
-
   (define-key embark-file-map (kbd "g") 'my-consult-rg-here)
   (defun my-consult-rg-here (file)
     "consult-ripgrep in this directory."
