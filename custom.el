@@ -19,21 +19,21 @@
                 editorconfig elfeed elfeed-goodies elfeed-org elisp-def
                 elisp-refs elixir-ts-mode emacs-everywhere embark embark-consult
                 embrace emms exec-path-from-shell expreg faceup fancy-dabbrev
-                fix-word fzf ghostel goggles goto-chg gptel gptel-prompts
-                grab-mac-link helpful highlight-quoted hl-todo homebrew htmlize
-                hungry-delete imenu-list inheritenv javelin jinx json-snatcher
-                keyfreq kind-icon lambda-line lambda-themes less-css-mode
-                link-hint llm lua-mode magit marginalia markdown-mode
-                markdown-table-wrap markdown-ts-mode mcp md-ts-mode meow
-                mixed-pitch move-text mu4e-column-faces mu4e-query mwim
-                nerd-icons nerd-icons-completion nerd-icons-corfu
-                nerd-icons-dired nyan-mode olivetti orderless org org-appear
-                org-autolist org-contacts org-download org-modern org-mru-clock
-                org-msg org-pomodoro org-ql org-roam org-sticky-header
-                org-super-agenda org-timeblock org-transclusion org-web-tools
-                origami ox-pandoc pdf-tools peg phscroll popper popwin prism
-                puni rainbow-delimiters reveal-in-osx-finder revert-buffer-all
-                rg substitute svg-tag-mode tabspaces taxy-magit-section timeout
+                fix-word fzf ghostel goggles goto-chg grab-mac-link helpful
+                highlight-quoted hl-todo homebrew htmlize hungry-delete
+                imenu-list inheritenv javelin jinx json-snatcher keyfreq
+                kind-icon lambda-line lambda-themes less-css-mode link-hint llm
+                lua-mode magit marginalia markdown-mode markdown-table-wrap
+                markdown-ts-mode md-ts-mode meow mixed-pitch move-text
+                mu4e-column-faces mu4e-query mwim nerd-icons
+                nerd-icons-completion nerd-icons-corfu nerd-icons-dired
+                nyan-mode olivetti orderless org org-appear org-autolist
+                org-contacts org-download org-modern org-mru-clock org-msg
+                org-pomodoro org-ql org-roam org-sticky-header org-super-agenda
+                org-timeblock org-transclusion org-web-tools origami ox-pandoc
+                pdf-tools peg phscroll popper popwin prism puni
+                rainbow-delimiters reveal-in-osx-finder revert-buffer-all rg
+                substitute svg-tag-mode tabspaces taxy-magit-section timeout
                 tramp trashed ultra-scroll vdiff vdiff-magit verilog-mode
                 vertico visual-regexp visual-regexp-steroids wallpaper
                 web-server wgrep whisper yasnippet yasnippet-snippets))
@@ -42,8 +42,6 @@
      (lambda-line :url "https://codeberg.org/Lambda-Emacs/lambda-line" :branch
                   "main")
      (homebrew :url "https://github.com/jdormit/homebrew.el")
-     (gptel-prompts :url "https://github.com/jwiegley/gptel-prompts" :branch
-                    "master")
      (mu4e-query :url "https://github.com/mickeynp/mu4e-query")
      (consult-reftex :url "https://github.com/karthink/consult-reftex" :branch
                      "main")

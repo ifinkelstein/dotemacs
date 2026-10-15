@@ -68,7 +68,6 @@
    ;; bindings for high frequency commands
    '("<SPC>" . meow-M-x)
    '(";" . comment-line)
-   '(":" . gptel-menu)
    '("a" . my-open-agenda-in-workspace)
    '("A" . my-transient-AI)
    '("b" . my-transient-buffer)
@@ -184,7 +183,6 @@
    '("y" . meow-save)
    '("Y" . meow-save-append)
    '("z" . meow-pop-selection)
-   '(":" . gptel-menu)
    '("'" . repeat)
    '("&" . meow-query-replace-regexp)
    '("%" . meow-query-replace)
@@ -214,11 +212,7 @@
 ;; TODO: make device selection a switch (-d)
 (transient-define-prefix my-transient-AI ()
   "AI commands menu"
-  [["LLM"
-    ("A" "Chat with GPT" gptel)
-    ("a" "GPT Menu" gptel-menu)
-    ("r" "Re-write" gptel-rewrite)]
-   ["Whisper"
+  [["Whisper"
     ("d" "Transcribe Audio" whisper-run)
     ("D" "Select Audio Device" rk/select-default-audio-device)
     ("f" "Transcribe from File" whisper-file)]
@@ -231,15 +225,7 @@
     ("S" "Split with Agent" my-split-with-agent)
     ("e" "Edit at point via agent" my-agent-edit-dwim)]
    ["Codex"
-    ("x" "Codex here" my-codex)]
-   ["Assistants"
-    ("O" "Toggle gptel-mode" (lambda ()
-                               "Toggle gptel-mode in Org and Markdown buffers."
-                               (interactive)
-                               (when (or (derived-mode-p 'org-mode)
-                                         (derived-mode-p 'markdown-mode))
-                                 (gptel-mode 'toggle))))
-    ]])
+    ("x" "Codex here" my-codex)]])
 
 (transient-define-prefix my-transient-buffer ()
   "Transient menu for buffer management commands."

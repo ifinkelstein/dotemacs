@@ -224,10 +224,8 @@ Returns to the full (un-narrowed) list, like reverting Dired with \"g\"."
            ;; Subgroup collecting all named workspaces.
            (auto-workspace))
           (group
-           ;; Subgroup collecting all gptel / LLM buffers
+           ;; Subgroup collecting Claude Code agent buffers
            (group-or "*LLMs*"
-                     (name-match "*LLM* " (rx (1+  "LLM*")))
-                     (name-match "*LLM* " (rx bos "*ChatGPT"))
                      (name-match "*LLM* " (rx bos "*Claude"))))
 
           (group

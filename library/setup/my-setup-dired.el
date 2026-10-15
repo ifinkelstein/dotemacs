@@ -18,7 +18,6 @@
               ("l" . dired-find-alternate-file)
               ("h" . my-dired-updirectory)
               ("E" . gnus-dired-attach)
-              ("G" . gptel-add)
               ("O" . org-attach-dired-to-subtree)
               ("S" . xah-open-in-external-app)
               ("TAB" . dired-cycle-dired-windows))
