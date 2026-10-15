@@ -2,7 +2,7 @@
 
 ;; I use mbsync and mu4e
 ;;; Mu4e
-;; Note: mu4e 1.12.* uses gnus for how it processes messages.
+;; Note: since 1.12, mu4e composes and displays messages via Gnus.
 ;;* mu4e
 (use-package mu4e
   :ensure nil
@@ -123,10 +123,9 @@
   ;;   1. STUCK TIMER — the repeating update timer's absolute fire-time
   ;;      ends up in the past after a long sleep and it never fires
   ;;      again; mbsync silently stops running.
-  ;;   2. STALE MBSYNC — mbsync was mid-sync when sleep hit; the OS
-  ;;      kills it but Emacs may not run the sentinel, so
-  ;;      `mu4e--update-buffer' still looks live and every later
-  ;;      `mu4e-update-mail-and-index' says "already running".
+  ;;   2. HUNG MBSYNC — mbsync was mid-sync when sleep hit and its
+  ;;      connection is dead after wake; while the process lives,
+  ;;      every `mu4e-update-mail-and-index' says "already running".
   ;;   3. NETWORK NOT READY — Wi-Fi needs a few seconds after wake; an
   ;;      immediate mbsync fails on DNS.
   ;;   4. MU SERVER DEATH — the mu subprocess occasionally dies during
@@ -138,10 +137,10 @@
   ;;
   ;;   pre-sleep : kill a running mbsync so Emacs sees it exit (2).
   ;;   post-wake : schedule `my-mu4e-sleep-wake-recover' a few seconds
-  ;;               later.  It cleans a stale update process (2), resets
-  ;;               the update timer (1), restarts the mu server if it
-  ;;               died (4), then waits for the network without blocking
-  ;;               and triggers a sync (3).
+  ;;               later.  It kills any leftover update process (2),
+  ;;               resets the update timer (1), restarts the mu server
+  ;;               if it died (4), then waits for the network without
+  ;;               blocking and triggers a sync (3).
   ;;
   ;; Hook functions must not signal (a signal halts the remaining hook
   ;; functions), so the real work runs from a timer and every step is
@@ -158,40 +157,7 @@
   (defvar my-mu4e--network-attempts 10
     "How many times to probe the network after wake, 3s apart.")
 
-  ;; ---- Stamp update-process start time ----
-
-  (defun my-mu4e--stamp-update-process (&rest _)
-    "Record start time on the mu4e update process so we can detect stuck syncs."
-    (when-let* ((buf (and (buffer-live-p mu4e--update-buffer) mu4e--update-buffer))
-                (proc (get-buffer-process buf)))
-      (unless (process-get proc 'my-start-time)
-        (process-put proc 'my-start-time (current-time)))))
-
-  (advice-add 'mu4e-update-mail-and-index :after #'my-mu4e--stamp-update-process)
-
   ;; ---- Recovery steps ----
-
-  (defun my-mu4e--kill-stale-update-process ()
-    "Kill a stale or stuck mbsync process left over from before sleep.
-The guard in `mu4e-update-mail-and-index' refuses to start a sync
-while `mu4e--update-buffer' has a live-looking process.  Kill the
-buffer if its process is gone, dead, or has been running for more
-than 10 minutes (normal mbsync finishes in well under one).
-Return non-nil if something was cleaned up."
-    (when (buffer-live-p mu4e--update-buffer)
-      (let* ((proc (get-buffer-process mu4e--update-buffer))
-             (stale (or (null proc)
-                        (not (process-live-p proc))
-                        (and (eq (process-status proc) 'run)
-                             (let ((start (process-get proc 'my-start-time)))
-                               (and start
-                                    (> (float-time (time-since start)) 600)))))))
-        (when stale
-          (mu4e-message "Cleaning up stale mu4e update process")
-          (when (and proc (process-live-p proc))
-            (kill-process proc))
-          (kill-buffer mu4e--update-buffer)
-          t))))
 
   (defun my-mu4e--reset-update-timer ()
     "Cancel and recreate the mu4e update timer with a fresh fire-time."
@@ -247,7 +213,9 @@ Steps run independently; a failure in one is logged and the rest
 still run.  Safe to call by hand (M-x) at any time."
     (interactive)
     (mu4e-message "Wake detected — running mu4e recovery…")
-    (dolist (step '(my-mu4e--kill-stale-update-process
+    ;; mu4e's own guard ignores a dead update process, so only a live
+    ;; (hung) one from before sleep needs killing.
+    (dolist (step '(mu4e-kill-update-mail
                     my-mu4e--reset-update-timer
                     my-mu4e--ensure-server))
       (condition-case err
@@ -279,50 +247,14 @@ still run.  Safe to call by hand (M-x) at any time."
 
   (add-hook 'system-sleep-event-functions #'my-mu4e--on-sleep-event)
 
-  ;;** Add SVG tags
-  (with-eval-after-load 'svg-tag-mode
-    ;; ref: https://github.com/rougier/nano-emacs/blob/master/nano-mu4e.el
-    ;; --- Nicer actions display using SVG tags -----------------------------------
-    (plist-put (cdr (assq 'refile   mu4e-marks)) :char "×")
-    (plist-put (cdr (assq 'trash    mu4e-marks)) :char "×")
-    (plist-put (cdr (assq 'untrash  mu4e-marks)) :char "×")
-    (plist-put (cdr (assq 'read   mu4e-marks)) :char "×")
-    (plist-put (cdr (assq 'unread   mu4e-marks)) :char "×")
-    (plist-put (cdr (assq 'delete   mu4e-marks)) :char "×")
-    (plist-put (cdr (assq 'flag     mu4e-marks)) :char "×")
-    (plist-put (cdr (assq 'unflag   mu4e-marks)) :char "×")
-    (plist-put (cdr (assq 'move     mu4e-marks)) :char "×")
-    (plist-put (cdr (assq 'tag      mu4e-marks)) :char "×")
-    (setq mu4e-headers-show-target nil)
-
-    (defun mu4e-mark-at-point-advice (mark _target)
-      "Show an SVG tag overlay at the end of the marked header line."
-      (let ((overlay (make-overlay (- (line-end-position) 12)
-                                   (line-end-position)))
-            (tag (alist-get mark '((refile  . "ARCHIVE")
-                                   (trash   . "TRASH")
-                                   (untrash . "UNTRASH")
-                                   (delete  . "DELETE")
-                                   (read    . "READ")
-                                   (unread  . "UNREAD")
-                                   (flag    . "FLAG")
-                                   (unflag  . "UNFLAG")
-                                   (move    . "MOVE")
-                                   (tag     . "TAG")))))
-        (save-excursion
-          (if (eql mark 'unmark)
-              (delete-overlay overlay)
-            (when tag
-              (overlay-put overlay 'display (svg-tag-make tag nil 3 0)))))))
-
-    (advice-add 'mu4e-mark-at-point :after #'mu4e-mark-at-point-advice)) ;;with-eval-after-load
-
   ;;** Attachments
   ;; Set default attachment dir (create if missing).  mu4e's built-in
   ;; `mu4e-view-save-attachments' (bound to `e' in view mode) saves all
   ;; attachments when none are selected.
   (setq mu4e-attachment-dir (expand-file-name "~/Downloads/_Mail"))
   (make-directory mu4e-attachment-dir t)
+  ;; File-type icons on attachments and MIME parts in the message view.
+  (setq mu4e-file-name-to-icon-function #'nerd-icons-icon-for-file)
 
   ;;** searching
   (defun my-mu4e-search-for-sender (&optional msg)
@@ -330,9 +262,8 @@ still run.  Safe to call by hand (M-x) at any time."
     (mu4e-search (concat "from:"
                          (plist-get (car (mu4e-message-field msg :from)) :email))))
 
-  (defun my-mu4e-capture-mail-todo (msg)
-    "Capture email MSG as a TODO with an org-link to the message."
-    (interactive)
+  (defun my-mu4e-capture-mail-todo (_msg)
+    "Capture the message at point as a TODO with an org-link to it."
     (org-store-link nil t)
     (org-capture nil "M"))
 
@@ -357,14 +288,12 @@ buffers, so MSG is only used to ensure a message is present."
                     ("Remove all tags"    . my-mu4e-remove-all-tags)
                     ("todo from email"   . my-mu4e-capture-mail-todo)
                     ("view in browser"   . mu4e-action-view-in-browser)
-                    ("yank path"         . my-mu4e-copy-message-path)
+                    ("yank path"         . mu4e-action-copy-message-file-path)
                     ("zsearch for sender" . my-mu4e-search-for-sender)))
     (setf (alist-get (car action) mu4e-headers-actions nil nil #'equal) (cdr action))
     (setf (alist-get (car action) mu4e-view-actions nil nil #'equal) (cdr action)))
   ;; Remove xwidget duplicate — "view in browser" covers it
-  (setq mu4e-view-actions
-        (cl-remove-if (lambda (a) (equal (car a) "xview in xwidget"))
-                       mu4e-view-actions))
+  (setf (alist-get "xview in xwidget" mu4e-view-actions nil 'remove #'equal) nil)
 
   ;;* Viewing
   (defun my-mu4e-get-mailbox (msg)
@@ -388,35 +317,20 @@ buffers, so MSG is only used to ensure a message is present."
                               (:subject        . nil)
                               ))
 
-  ;; how to handle html-formatted emails
-
-  ;; other display settings
-  (setq mu4e-speedbar-support t)
   (setq mu4e-use-fancy-chars t)
 
-  ;; enable seeing related messages in a thread.
-  ;; useful for searches: https://groups.google.com/g/mu-discuss/c/yWvilXfLunE
+  ;; Show only matching messages, not the rest of their threads.
+  ;; https://groups.google.com/g/mu-discuss/c/yWvilXfLunE
   (setq mu4e-search-include-related nil)
   (add-hook 'mu4e-view-mode-hook #'visual-line-mode)
 
   ;;** Useful functions and actions
-  ;; this function will remove all tags from a msg by erasing the mu4e-actions-tags-header-line
-  ;; based on mu4e-action-retag-message
   (defun my-mu4e-remove-all-tags (msg)
     "Remove all tags from MSG."
-    (let ((path   (mu4e-message-field msg :path))
-          (header mu4e-action-tags-header))
-      (if (not (mu4e--contains-line-matching (concat header ":.*") path))
-          ;; Add tags header just before the content
-          (mu4e--replace-first-line-matching
-           "^$" (concat header ": \n") path)
-        ;; replaces keywords, restricted to the header
-        (mu4e--replace-first-line-matching
-         (concat header ":.*")
-         (concat header ": ")
-         path))
-      (mu4e-message (concat "All tags removed."))
-      (mu4e--refresh-message path)))
+    (if-let* ((tags (mu4e-message-field msg :tags)))
+        (mu4e-action-retag-message
+         msg (mapconcat (lambda (tag) (concat "-" tag)) tags ","))
+      (mu4e-message "No tags to remove")))
 
   ;; tag or untag one or many emails in header view. Can use '*' to act on multiple.
   ;; Use setf/alist-get (not add-to-list) so config reloads don't stack duplicate
@@ -435,15 +349,6 @@ buffers, so MSG is only used to ensure a message is present."
           :action     (lambda (docid msg target)
                         (my-mu4e-remove-all-tags msg))))
 
-  (defun my-mu4e-copy-message-path (msg)
-    "Copy the file path of MSG to the kill ring."
-    (let ((path (mu4e-message-field msg :path)))
-      (kill-new path)
-      (message "Copied: %s" path)))
-
-  ;; create org link to message
-  (require 'mu4e-org)
-
   ;; org-contacts file for "add contact" action
   ;; NOTE: org-contacts can aggressively override mu4e's native contact
   ;; completion. If that happens, set `org-contacts-enable-completion' to
@@ -451,8 +356,8 @@ buffers, so MSG is only used to ensure a message is present."
   (setq mu4e-org-contacts-file my-org-contacts-file)
 
 ;;;; Composing Email
-  ;; Give compose the full frame.  We use `mu4e-compose-switch' = nil
-  ;; (current window), so compose already replaces whatever buffer was
+  ;; Give compose the full frame.  `mu4e-compose-switch' is nil (the
+  ;; default: current window), so compose already replaces whatever buffer was
   ;; in that window.  If mu4e split to show headers + view before
   ;; composing, delete the *other* window so compose is alone.
   ;;
@@ -476,9 +381,6 @@ buffers, so MSG is only used to ensure a message is present."
   (setq mail-user-agent 'mu4e-user-agent)
 
   (setopt read-mail-command 'mu4e)
-
-  ;; Compose in new buffer (can make 'window for new window)
-  (setq mu4e-compose-switch nil)
 
   ;; Inline forwarding of multipart/alternative messages (e.g. from
   ;; Outlook) leaves the body empty between the forward markers —
@@ -527,9 +429,8 @@ Checks `my-mu4e-suppressed-addresses' (private.el) and generic patterns."
 
   ;;tweak the composition window to include CC and BCC
   (defun my-mu4e-add-cc-bcc ()
-    "Add CC and BCC to all new e-mails"
+    "Add empty Cc: and Bcc: headers."
     (interactive)
-    "Add a Cc: & Bcc: header."
     (save-excursion (message-add-header "Cc: \nBcc: \n")))
 
   (defun my-swap-email-from-field ()
@@ -654,8 +555,6 @@ Uses `my-email-primary-name' and `my-email-primary-address' from private.el."
           ("/Lab/Inbox/@SaneNoReplies"   . ?x)
           ("/Lab/Inbox/@SaneNews"   . ?n)
           ("/Lab/Inbox/@SaneBlackHole"   . ?b)))
-  ;; Show maildirs with 0 messages
-  (setq mu4e-main-hide-fully-read nil)
 
 ;;;; Better Marking (w/Icons & SVG Tags)
 ;;;;; Unicode icons for marking
@@ -675,8 +574,9 @@ Uses `my-email-primary-name' and `my-email-primary-address' from private.el."
   ;;;; Miscellaneous helper functions
   ;; remap how replies are composed
   (defun my-mu4e-compose-reply-ask-wide ()
-    "Ask whether to reply-to-all (wide reply) when replying with 'R'.
-Tested with mu4e 1.12.2"
+    "Reply to the message at point, asking whether to reply to all.
+Only asks when the message has more than one To/Cc recipient and
+was not sent by me."
     (interactive)
     (if (mu4e-message-contact-field-matches-me (mu4e-message-at-point) :from)
         (mu4e-compose-reply)
@@ -903,22 +803,13 @@ when compilation finishes.  Compilation runs asynchronously."
                           (process-exit-status process) tmpdir)))))))))
 
   (defun my-email-to-kill-ring ()
-    "Prompt user to search for an email address. Save selected ones to the kill ring.
-
-If there's no match, return the input. Since I'm not using completing-read-multiple, can only
-select one email at a time.
-"
+    "Pick an address from mu4e contacts and copy it to the kill ring.
+Free input is accepted when nothing matches."
     (interactive)
     (let* ((contact (completing-read "Email address: " mu4e--contacts-set))
            (email (string-trim contact ".*<" ">*")))
       (message "Copied %s to the clipboard" email)
       (kill-new email)))
-
-  ;; Store link to message if in header view, not to header query
-  (setq mu4e-org-link-query-in-headers-mode nil)
-
-  ;; Go to unread. Only show unread mail from main inbox.
-  (defvar my-mu4e-unread-query "flag:unread AND NOT flag:trashed AND (maildir:/UT/Inbox OR maildir:/Lab/Inbox)")
   ) ;; use-package mu4e
 ;;** End Mu4e
 
@@ -943,22 +834,15 @@ select one email at a time.
   :after (mu4e)
   :ensure t
   :vc (:url "https://github.com/jeremy-compostella/org-msg" :branch "main")
-  ;; avoid pesky org ASCII Export buffer
-  ;; https://github.com/jeremy-compostella/org-msg/issues/169
-  :preface
-  (defun org-msg-no-temp-buffer (orig-fun &rest args)
-    "Advice to set `org-export-show-temporary-export-buffer' to `nil'."
-    (let ((org-export-show-temporary-export-buffer nil))
-      (apply orig-fun args)) )
-  (defun my-org-msg-maybe-enable ()
-    "Enable org-msg-mode except when forwarding."
-    (unless (eq mu4e-compose-type 'forward)
-      (org-msg-mode)))
+  :demand t
   :bind (:map org-msg-edit-mode-map
               ("s-<return>" . org-msg-goto-body)
               ("M-o" . my-transient-email-compose))
-  :hook ((mu4e-compose-pre . my-org-msg-maybe-enable))
   :config
+  ;; Global mode, so it covers forwards too: those come out as
+  ;; text+html with the original attached as message/rfc822.
+  (org-msg-mode)
+
   ;; org-msg-edit-mode-map shares org-mode-map's ESC prefix keymap by
   ;; reference — give it its own so :bind M-o doesn't collide.  This must
   ;; run in :config (not :init): org-msg-edit-mode-map is void until the
@@ -1007,30 +891,12 @@ select one email at a time.
             `(,key ,label (lambda () (interactive) (insert ,email))))
           (setq prev-key key)))))
 
-  ;;make org-msg work with mu4e 1.12
-  (defun my--ensure-text-not-read-only (orig &rest args)
-    (let ((inhibit-read-only t))
-      (remove-text-properties (point-min) (point-max) '(read-only nil))
-      (apply orig args)))
-
-  ;; fix to get working with mu 1.12.xx
-  (advice-add 'message-send :around #'my--ensure-text-not-read-only)
-
-  ;; avoid pesky org ASCII Export buffer
-  ;; https://github.com/jeremy-compostella/org-msg/issues/169
-  (advice-add 'org-msg-preview :around #'org-msg-no-temp-buffer)
-  (advice-add 'org-msg-ctrl-c-ctrl-c :around #'org-msg-no-temp-buffer)
-  (add-hook 'message-sent-hook
-            (lambda ()
-              (interactive)
-              ;; Do NOT kill *mu4e-article* here — it must survive until
-              ;; `mu4e-compose-post-restore-window-configuration' runs
-              ;; (via mu4e-compose-post-hook).  Killing it before the
-              ;; restore causes `set-window-configuration' to substitute
-              ;; the headers buffer into the dead article window slot,
-              ;; producing duplicate headers windows.
-              (when-let* ((buf (get-buffer "*Org ASCII Export*")))
-                (kill-buffer buf))))
+  ;; org-msg's text and HTML exports display their temporary export
+  ;; buffers before killing them, disturbing the window layout (#169).
+  ;; Preview and send both build parts here, so export without display.
+  (define-advice org-msg-build-alternatives (:around (fn &rest args) no-display)
+    (let ((org-export-show-temporary-export-buffer nil))
+      (apply fn args)))
 
   (setq org-msg-options "html-postamble:nil H:5 num:nil ^:{} toc:nil author:nil email:nil \\n:t"
 	    org-msg-startup "hidestars indent inlineimages"
@@ -1049,33 +915,16 @@ select one email at a time.
 
   (defun cpm/org-msg-hooks ()
     "Hooks for org-msg"
+    ;; org-msg already put point in the body, past its property
+    ;; drawer; mu4e's later "reasonable place" jump would move it back
+    ;; onto the #+OPTIONS line.
+    (setq-local mu4e-compose-jump-to-a-reasonable-place nil)
     (auto-fill-mode -1)
     (hl-line-mode -1)  ;; disable highlight line when composing emails
     (diff-hl-mode -1) ;; disable diff gutter
     ;; Shrink org-meta-line (#+begin_src, #+PROPERTIES, etc.) in compose buffers only
     (face-remap-add-relative 'org-meta-line :height 0.5 :foreground "gray60"))
   (add-hook 'org-msg-edit-mode-hook #'cpm/org-msg-hooks)
-
-  ;; After compose setup, `mu4e--jump-to-a-reasonable-place' calls
-  ;; `message-goto-body' which lands on the #+OPTIONS line (inside the
-  ;; org-msg metadata).  Adjust it to land after :END: instead.
-  ;; Unlike the old `message-goto-body' advice this only fires during
-  ;; compose setup so it cannot interfere with `org-msg-prepare-to-send'.
-  (defun my--org-msg-fix-jump (orig &rest args)
-    "In org-msg buffers, ensure cursor lands after :END:, not in metadata."
-    (apply orig args)
-    (when (derived-mode-p 'org-msg-edit-mode)
-      (let ((end-pos (save-excursion
-                       (goto-char (point-min))
-                       (when (re-search-forward "^[ \t]*:END:[ \t]*$" nil t)
-                         (line-beginning-position 2)))))
-        (when (and end-pos (< (point) end-pos)
-                   (message-field-value "To")
-                   (message-field-value "Subject"))
-          (goto-char end-pos)))))
-  (advice-add 'mu4e--jump-to-a-reasonable-place :around #'my--org-msg-fix-jump)
-
-
 
   (defun my-mu4e-add-attachment-icons ()
     "Display file-type icons next to the PROPERTIES drawer for each attachment.
