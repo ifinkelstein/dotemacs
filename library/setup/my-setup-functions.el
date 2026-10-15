@@ -51,7 +51,7 @@
   (require 'consult)
   (let ((consult-ripgrep-args
          "rg --null --line-buffered --max-columns=1000 --path-separator /\
-   --smart-case --no-heading --line-number --hidden --glob=library/** --glob=!straight --glob=!var --glob=!.git/ ."))
+   --smart-case --no-heading --line-number --hidden --glob=library/** --glob=!var --glob=!.git/ ."))
     (if (executable-find "rg")
         (consult-ripgrep my-emacs-dir)
       (message "Please install `rg' first."))))
