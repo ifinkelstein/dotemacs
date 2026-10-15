@@ -83,7 +83,6 @@
 (use-package crux
   :defer 1
   :bind
-  ;; C-a is left to mwim (remap of move-beginning-of-line)
   ("C-k"   . crux-smart-kill-line))
 
 ;;* Search Functions

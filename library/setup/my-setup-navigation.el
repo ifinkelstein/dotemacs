@@ -76,14 +76,6 @@
                           #'consult-org-heading
                         #'consult-outline)))
 
-
-;;;; mwim -- move where i mean
-;; Provide several commands to switch between various line positions,
-;; like moving to the beginning/end of code, line or comment.
-(use-package mwim
-  :bind (([remap move-beginning-of-line] . 'mwim-beginning)
-	     ([remap move-end-of-line] . 'mwim-end)))
-
 ;;* avy
 (use-package avy
   :bind   (("C-c C-j" . avy-resume)
