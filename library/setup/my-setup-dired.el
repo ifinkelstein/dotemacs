@@ -13,8 +13,6 @@
   :ensure nil
   :commands (dired dired-jump dired-jump-other-window)
   :bind (:map dired-mode-map
-              ("M-<up>"   . my-dired-drag-item-up)
-              ("M-<down>" . my-dired-drag-item-down)
               ("l" . dired-find-alternate-file)
               ("h" . my-dired-updirectory)
               ("E" . gnus-dired-attach)
@@ -81,51 +79,6 @@
 
 ;;** Dired Helper Functions
 
-;; interactive way of reordering dired items. ref:
-;; https://xenodium.com/interactive-ordering-of-dired-items
-
-(defun my-dired-drag-item-up ()
-  "Drag dired item up in buffer."
-  (interactive)
-  (unless (dired-get-filename nil t)
-    (error "Not a dired draggable item"))
-  (when (= (line-number-at-pos) 2)
-    (error "Already at top"))
-  (let* ((inhibit-read-only t)
-         (col (current-column))
-         (item-start (line-beginning-position))
-         (item-end (1+ (line-end-position)))
-         (item (buffer-substring item-start item-end)))
-    (delete-region item-start item-end)
-    (forward-line -1)
-    (beginning-of-line)
-    (insert item)
-    (forward-line -1)
-    (move-to-column col)))
-
-(defun my-dired-drag-item-down ()
-  "Drag dired item down in buffer."
-  (interactive)
-  (unless (dired-get-filename nil t)
-    (error "Not a dired draggable item"))
-  (when (save-excursion
-          (forward-line 1)
-          (eobp))
-    (error "Already at bottom"))
-  (let* ((inhibit-read-only t)
-         (col (current-column))
-         (item-start (line-beginning-position))
-         (item-end (1+ (line-end-position)))
-         (item (buffer-substring item-start item-end)))
-    (delete-region item-start item-end)
-    (forward-line 1)
-    (beginning-of-line)
-    (insert item)
-    (forward-line -1)
-    (move-to-column col)))
-
-
-
 (defun add-todays-date-remove-old (str)
   "Remove any date in the format YYYYMMDD from the end of STR, then add today's date.
    If the date that was removed was today's date, add a lowercase letter as well."
@@ -185,20 +138,6 @@ When called from Lisp with FNAME, open that file instead.  Uses
 (use-package dired-recent
   :after dired
   :config
-  (defun my-dired-recent-insert ()
-    "insert a string with the selected directory from the dired-recent-directories"
-    (interactive)
-    (unless dired-recent-directories
-      (dired-recent-load-list))
-    (let* ((label (completing-read "Dired recent: " dired-recent-directories))
-           (res (or (get-text-property
-                     0 'dired-recent-restore-file-list
-                     ;; Get from original string stored in list, completing-read
-                     ;; strips the properties.
-                     (car (member label dired-recent-directories)))
-                    label)))
-      (insert res)))
-
   (dired-recent-mode 1))
 
 ;;** Narrow Dired to Match Filter
