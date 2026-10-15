@@ -337,23 +337,7 @@ sessions can run at once (in different windows or tabs)."
   (pilish-bash-preview-lines 5)
   (pilish-context-warning-threshold 70)
   (pilish-context-error-threshold 90)
-  (pilish-visit-file-other-window t)
-
-  :config
-  ;; Register pilish faces as fixed-pitch for mixed-pitch-mode.
-  ;; The chat buffer derives from gfm-mode which gets mixed-pitch-mode;
-  ;; tool output and commands should stay monospaced.
-  (with-eval-after-load 'mixed-pitch
-    (dolist (face '(pilish-tool-command
-                    pilish-tool-output
-                    pilish-tool-name
-                    pilish-tool-block
-                    pilish-tool-block-error
-                    pilish-collapsed-indicator
-                    pilish-diff-line-added
-                    pilish-diff-line-removed
-                    pilish-timestamp))
-      (add-to-list 'mixed-pitch-fixed-pitch-faces face))))
+  (pilish-visit-file-other-window t))
 
 ;;* provide
 (provide 'my-setup-ai)
