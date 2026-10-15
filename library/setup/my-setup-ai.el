@@ -247,16 +247,9 @@ Each list contains a list of cons cells, where the car is the device number and 
 
 
 ;;* claude-code
-;; Deferred via :commands; the keymap prefix binding is set in :init so the
-;; global key works immediately without loading claude-code at startup.
-;; install required dependencies:
-(use-package inheritenv)
+;; Deferred via :commands.  inheritenv comes in as a claude-code dependency.
 (use-package claude-code
-  :commands (claude-code claude-code-toggle claude-code-transient
-             claude-code-send-command claude-code-start-in-directory)
-  :init
-  ;; Make the keymap prefix available immediately (before claude-code loads).
-  (autoload 'claude-code-command-map "claude-code" nil t 'keymap)
+  :commands (claude-code claude-code-transient claude-code-start-in-directory)
   :config
   (setq claude-code-terminal-backend 'ghostel)
 
@@ -280,95 +273,6 @@ Each list contains a list of cons cells, where the car is the device number and 
     (define-key ghostel-mode-map (kbd "C-c C-l") #'my-claude-code-insert-org-link)
     (define-key ghostel-mode-map (kbd "C-c .") #'my-claude-code-insert-timestamp)
     (define-key ghostel-mode-map (kbd "s-V") #'yank))
-
-  ;;** Region sending
-  (defun my-claude-code--build-region-cmd (beg end)
-    "Build command string for sending region BEG to END with a prompt."
-    (let* ((region-text (buffer-substring-no-properties beg end))
-           (prompt (read-string "Prompt for Claude: " nil 'claude-code-command-history)))
-      (format "```\n%s\n```\n\n%s" region-text prompt)))
-
-  (defun my-claude-code-send-region (beg end)
-    "Send region to Claude without a prompt."
-    (interactive "r")
-    (unless (use-region-p)
-      (user-error "No region selected"))
-    (let ((region-text (buffer-substring-no-properties beg end)))
-      (claude-code--do-send-command (format "```\n%s\n```" region-text))))
-
-  (defun my-claude-code-send-region-with-prompt (beg end)
-    "Send region to Claude wrapped in delimiters, then ask for a prompt."
-    (interactive "r")
-    (unless (use-region-p)
-      (user-error "No region selected"))
-    (claude-code--do-send-command (my-claude-code--build-region-cmd beg end)))
-
-  ;;** Instance selection
-  (defun my-claude-code--send-to-instance (cmd)
-    "Prompt for a Claude instance and send CMD to it."
-    (let* ((all-buffers (claude-code--find-all-claude-buffers))
-           (target (claude-code--select-buffer-from-choices
-                    "Send to Claude instance: " all-buffers)))
-      (if target
-          (with-current-buffer target
-            (claude-code--term-send-string claude-code-terminal-backend cmd)
-            (sit-for 0.1)
-            (claude-code--term-send-string claude-code-terminal-backend (kbd "RET"))
-            (display-buffer target))
-        (user-error "No Claude instance selected"))))
-
-  (defun my-claude-code-send-region-select-instance (beg end)
-    "Send region with prompt to a chosen Claude instance."
-    (interactive "r")
-    (unless (use-region-p)
-      (user-error "No region selected"))
-    (my-claude-code--send-to-instance (my-claude-code--build-region-cmd beg end)))
-
-  (defun my-claude-code-send-command-with-context-select-instance ()
-    "Send command with file context to a chosen Claude instance."
-    (interactive)
-    (let* ((cmd (read-string "Claude command: " nil 'claude-code-command-history))
-           (file-ref (if (use-region-p)
-                         (claude-code--format-file-reference
-                          nil
-                          (line-number-at-pos (region-beginning) t)
-                          (line-number-at-pos (region-end) t))
-                       (claude-code--format-file-reference)))
-           (cmd-with-context (if file-ref (format "%s\n%s" cmd file-ref) cmd)))
-      (my-claude-code--send-to-instance cmd-with-context)))
-
-  ;;** Profile switching
-  (defvar my-claude-code-current-profile "personal"
-    "Current Claude Code profile.")
-
-  (defun my-claude-code-use-work-account ()
-    "Switch Claude Code to work account settings."
-    (interactive)
-    (setq claude-code-program-switches
-          (list "--settings" (expand-file-name "~/.claude/settings.work.json")))
-    (setq my-claude-code-current-profile "work")
-    (message "Claude Code: Switched to work account."))
-
-  (defun my-claude-code-use-personal-account ()
-    "Switch Claude Code to personal account settings."
-    (interactive)
-    (setq claude-code-program-switches nil)
-    (setq my-claude-code-current-profile "personal")
-    (message "Claude Code: Switched to personal account."))
-
-  (defun my-claude-code-toggle-account ()
-    "Toggle between personal and work Claude Code accounts."
-    (interactive)
-    (if (string= my-claude-code-current-profile "personal")
-        (my-claude-code-use-work-account)
-      (my-claude-code-use-personal-account)))
-
-  ;;** Keybindings
-  (define-key claude-code-command-map (kbd "p") #'claude-code-send-command)
-  (define-key claude-code-command-map (kbd "r") #'my-claude-code-send-region)
-  (define-key claude-code-command-map (kbd "R") #'my-claude-code-send-region-with-prompt)
-  (define-key claude-code-command-map (kbd "I") #'my-claude-code-send-region-select-instance)
-  (define-key claude-code-command-map (kbd "X") #'my-claude-code-send-command-with-context-select-instance)
 
   (add-hook 'claude-code-start-hook
             (lambda ()
