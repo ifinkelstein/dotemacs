@@ -60,21 +60,6 @@
 
   (org-roam-db-autosync-mode))
 
-;;** Consult Notes
-;; Adapted from https://github.com/minad/consult/wiki/hrm-notes
-(use-package consult-notes
-  :defer 10
-  :after org-roam
-  :commands (consult-notes
-             consult-notes-search-in-all-notes)
-  :config
-  (consult-notes-org-roam-mode 1)
-  (consult-notes-org-headings-mode)
-
-  ;; make embark-export use dired for notes
-  (with-eval-after-load 'embark
-    (setf (alist-get consult-notes-category embark-exporters-alist) #'embark-export-dired)))
-
 ;;* Org Contacts
 (defvar my-org-contacts-file (concat org-directory "contacts/contacts.org")
   "Path to the org-contacts file.")
