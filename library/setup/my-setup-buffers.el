@@ -21,12 +21,8 @@
   ;; Trackpads send a lot more scroll events than regular mouse wheels,
   ;; so the scroll amount and acceleration must be tuned to smooth it out.
   (setq
-   ;; If the frame contains multiple windows, scroll the one under the cursor
-   ;; instead of the one that currently has keyboard focus.
-   mouse-wheel-follow-mouse 't
    ;; Completely disable mouse wheel acceleration to avoid speeding away.
    mouse-wheel-progressive-speed nil
-   mwheel-coalesce-scroll-events t
    ;; The most important setting of all! Make each scroll-event move 1 line at a
    ;; time (instead of 5 at default). Simply hold down shift to move twice as
    ;; fast. Perfect for trackpads.
@@ -35,8 +31,8 @@
 ;; ultra-smooth scrolling across images and with fast mouse wheels
 (use-package ultra-scroll
   :init
-  (setq scroll-conservatively 101 ; important!
-        scroll-margin 0)
+  ;; ultra-scroll only forces this while scrolling; keep it for cursor motion
+  (setq scroll-conservatively 101)
   :config
   (ultra-scroll-mode 1))
 
