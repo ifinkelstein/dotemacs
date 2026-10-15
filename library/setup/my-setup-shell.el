@@ -165,9 +165,7 @@ For virtual buffers, output is saved to ~/Downloads with date-time.docx."
 (use-package eat
   :commands (eat eat-eshell-mode)
   :custom-face
-  (ansi-color-bright-blue ((t (:foreground "#00afff" :background "#00afff"))))
-  :config
-  (add-hook 'eshell-load-hook #'eat-eshell-mode))
+  (ansi-color-bright-blue ((t (:foreground "#00afff" :background "#00afff")))))
 
 ;;* ghostel (libghostty terminal)
 (use-package ghostel
@@ -179,13 +177,14 @@ For virtual buffers, output is saved to ~/Downloads with date-time.docx."
 ;; An easy way to manage files over ssh/scp
 (use-package tramp
   :ensure nil
-  :defer 1
-  :config
-  (setq tramp-persistency-file-name (concat my-cache-dir "tramp")
-        ;; the most reliable tramp setup I have found (used at work every day...)
-        tramp-default-method "ssh"
-        tramp-copy-size-limit nil
-        tramp-use-ssh-controlmaster-options nil))
+  :defer t
+  :custom
+  ;; set before tramp-cache loads so the cache is read from here
+  (tramp-persistency-file-name (concat my-cache-dir "tramp"))
+  ;; the most reliable tramp setup I have found (used at work every day...)
+  (tramp-default-method "ssh")
+  (tramp-copy-size-limit nil)
+  (tramp-use-connection-share nil))
 
 ;; I recommend the following ~/.ssh/config settings be used with the tramp settings in this cfg:
 ;; Host *
