@@ -107,6 +107,8 @@
         ("https://theoatmeal.com/feed/rss" comics)
         ;; Academics
         ("https://writepublishthrive.blogspot.com/feeds/posts/default" academic)
+        ;; Mine
+        ("https://finkelsteinlab.org/blog/feed.xml" lab)
         ))
 
 
