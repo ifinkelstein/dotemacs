@@ -182,8 +182,12 @@ there is no Emacs process object to inspect."
                           bufs))
             my-agent-split-preference)))
 
-(defun my-agent--start-claude (dir window)
-  "Start a Claude Code session in DIR, displayed in WINDOW."
+(declare-function claude-code--start "claude-code"
+                  (arg extra-switches &optional force-prompt force-switch-to-buffer))
+
+(defun my-agent--start-claude (dir window &optional prompt)
+  "Start a Claude Code session in DIR, displayed in WINDOW.
+With PROMPT, pass it on the command line as the session's first message."
   (require 'cl-lib)
   (require 'claude-code)
   ;; `claude-code--directory' prefers the project root; we want the file's
@@ -192,7 +196,7 @@ there is no Emacs process object to inspect."
   (let ((claude-code-display-window-fn
          (lambda (buffer) (set-window-buffer window buffer) window)))
     (cl-letf (((symbol-function 'claude-code--directory) (lambda () dir)))
-      (claude-code))))
+      (claude-code--start nil (and prompt (list prompt))))))
 
 (defun my-split-with-agent (&optional new)
   "Put this buffer on the left and an agent terminal on the right.
@@ -242,23 +246,36 @@ reformat unrelated text."
 (defvar my-agent-edit-history nil
   "Minibuffer history for `my-agent-edit-dwim' instructions.")
 
-(defun my-agent--edit-target (dir)
+(defun my-agent--choose-session (buffers)
+  "Ask which of the agent BUFFERS to send to; the first is the default.
+Buffer names already carry the session kind and directory."
+  (let ((names (mapcar #'buffer-name buffers)))
+    (get-buffer (completing-read "Send to agent: " names nil t nil nil (car names)))))
+
+(defun my-agent--edit-target (dir &optional noerror)
   "Agent buffer to send to: one visible in this frame, else one running in DIR.
-Only `claude' and `codex' sessions qualify.  Among visible ones a session
-in DIR wins; otherwise any visible agent does, since the agent for a
-project is often started at the repo root rather than the file's folder."
+Only `claude' and `codex' sessions qualify.  Visible ones in DIR win;
+otherwise visible agents in any directory count alongside those running
+in DIR, since the agent for a project is often started at the repo root
+rather than the file's folder.  When the winning group holds more than
+one session, ask which with `my-agent--choose-session'.  With none,
+signal a `user-error', or return nil if NOERROR is non-nil."
   (let* ((agent-p (lambda (buf)
                     (and (eq (buffer-local-value 'major-mode buf) 'ghostel-mode)
                          (memq (my-agent--session-kind buf) '(claude codex)))))
-         (visible (seq-filter agent-p (mapcar #'window-buffer (window-list nil 'no-mini))))
+         (visible (delete-dups
+                   (seq-filter agent-p (mapcar #'window-buffer (window-list nil 'no-mini)))))
          (in-dir (lambda (buf)
                    (string= dir (file-truename
-                                 (buffer-local-value 'default-directory buf))))))
-    (or (seq-find in-dir visible)
-        (car visible)
-        (seq-find agent-p (my-agent--sessions dir))
-        (user-error "No Claude Code or Codex session visible or running in %s"
-                    (abbreviate-file-name dir)))))
+                                 (buffer-local-value 'default-directory buf)))))
+         (candidates (or (seq-filter in-dir visible)
+                         (delete-dups
+                          (append visible (seq-filter agent-p (my-agent--sessions dir)))))))
+    (cond ((cdr candidates) (my-agent--choose-session candidates))
+          (candidates (car candidates))
+          (noerror nil)
+          (t (user-error "No Claude Code or Codex session visible or running in %s"
+                         (abbreviate-file-name dir))))))
 
 (defun my-agent--heading-regexp ()
   "Regexp for lines that start a section, or nil outside Org and LaTeX.
@@ -307,11 +324,11 @@ or before \\end{document} in the last LaTeX section."
     (_ (or (bounds-of-thing-at-point unit)
            (user-error "No %s at point" unit)))))
 
-(defun my-agent--read-instruction (target unit)
-  "Read a non-empty instruction for TARGET about UNIT from the minibuffer."
+(defun my-agent--read-instruction (kind unit)
+  "Read a non-empty instruction for a KIND agent about UNIT from the minibuffer."
   (let ((instruction (string-trim
                       (read-string
-                       (format "Agent (%s), %s: " (my-agent--session-kind target) unit)
+                       (format "Agent (%s), %s: " kind unit)
                        nil 'my-agent-edit-history))))
     (when (string-empty-p instruction)
       (user-error "Empty instruction"))
@@ -338,7 +355,8 @@ ARG is the raw prefix argument, interpreted by `my-agent--edit-unit'."
                (text (string-trim (buffer-substring-no-properties beg end)))
                (line1 (line-number-at-pos beg t))
                (line2 (line-number-at-pos (max beg (1- end)) t))
-               (instruction (my-agent--read-instruction target unit)))
+               (instruction (my-agent--read-instruction
+                             (my-agent--session-kind target) unit)))
     (when (buffer-modified-p)
       (save-buffer))
     (format "In %s, line%s%s:\n\n\"\"\"\n%s\n\"\"\"\n\nInstruction: %s\n\n%s"
@@ -358,6 +376,11 @@ answer briefly here.  Attachments are already saved at the paths listed; \
 the Source line is the raw message for anything else (mu view, mu \
 extract).  Do not move, edit or delete anything in the maildir."
   "Standing instructions appended to every mail request from `my-agent-edit-dwim'.")
+
+(defvar my-agent-mail-directory "~/Work/org/"
+  "Directory whose agent session receives mail requests.
+mu4e buffers have no useful directory of their own; replies are drafted
+into drafts.org, which lives here.")
 
 (defvar my-agent-mail-attachment-dir
   (expand-file-name "mu4e-agent/" (bound-and-true-p my-cache-dir))
@@ -451,8 +474,8 @@ parts over `my-agent-mail-attachment-max' bytes are skipped."
               (string-join (seq-take lines max) "\n")
               (- (length lines) max)))))
 
-(defun my-agent--mail-request (target)
-  "Request about the mu4e message at point, for TARGET.
+(defun my-agent--mail-request (kind)
+  "Request about the mu4e message at point, for a KIND agent.
 Works in the headers view and the message view.  The request carries the
 envelope, the rendered body, the saved attachments and the maildir path;
 in the message view an active region is quoted as the passage the
@@ -462,7 +485,7 @@ instruction applies to."
                             (string-trim (buffer-substring-no-properties
                                           (region-beginning) (region-end)))))
                (instruction (my-agent--read-instruction
-                             target (if region "message region" "message")))
+                             kind (if region "message region" "message")))
                (path (mu4e-message-field msg :path))
                (msgid (mu4e-message-field msg :message-id))
                (`(,body . ,files) (my-agent--mail-parts path msgid))
@@ -489,6 +512,24 @@ instruction applies to."
           (format "The instruction applies to this passage:\n\n\"\"\"\n%s\n\"\"\"\n\n" region))
      (format "Instruction: %s\n\n%s" instruction my-agent-mail-brief))))
 
+(defun my-agent--mail-dwim ()
+  "Send the mu4e message at point to an agent, offering to start one.
+The target is found as in `my-agent-edit-dwim', in
+`my-agent-mail-directory'.  With none, ask whether to start Claude Code
+there in a window to the right, with the request as its first prompt."
+  (let* ((dir (file-truename my-agent-mail-directory))
+         (target (my-agent--edit-target dir t)))
+    (cond
+     (target
+      (my-agent--send target (my-agent--mail-request (my-agent--session-kind target))))
+     ((y-or-n-p (format "No agent session; start Claude Code in %s? "
+                        (abbreviate-file-name dir)))
+      (let ((request (my-agent--mail-request 'claude)))
+        (save-selected-window
+          (my-agent--start-claude dir (split-window-right) request))
+        (deactivate-mark)
+        (message "Started Claude Code in %s" (abbreviate-file-name dir)))))))
+
 (defun my-agent-edit-dwim (&optional arg)
   "Send the thing at point with an instruction to the agent.
 In a file buffer the thing is the region if active, else the section
@@ -498,17 +539,18 @@ headers or message view it is the message at point: envelope, rendered
 body, saved attachments and maildir path (see `my-agent--mail-request').
 
 The target is the Claude Code or Codex ghostel session visible in this
-frame, else one running in this file's directory.  The request names the
-file and line range, quotes the text (only the heading line for a
-section, since the agent reads the file anyway), adds the instruction
-typed at the prompt, and closes with the standing brief.  It is
-submitted at once; point stays here."
+frame, else one running in this file's directory (for mail,
+`my-agent-mail-directory'; with no session there, offer to start one,
+see `my-agent--mail-dwim').  The request names the file and line range,
+quotes the text (only the heading line for a section, since the agent
+reads the file anyway), adds the instruction typed at the prompt, and
+closes with the standing brief.  It is submitted at once; point stays
+here."
   (interactive "P")
-  (let ((target (my-agent--edit-target (my-agent--directory))))
-    (my-agent--send target
-                    (if (derived-mode-p 'mu4e-headers-mode 'mu4e-view-mode)
-                        (my-agent--mail-request target)
-                      (my-agent--text-request target arg)))))
+  (if (derived-mode-p 'mu4e-headers-mode 'mu4e-view-mode)
+      (my-agent--mail-dwim)
+    (let ((target (my-agent--edit-target (my-agent--directory))))
+      (my-agent--send target (my-agent--text-request target arg)))))
 
 ;;* Buffer Functions
 (defun my-narrow-or-widen-dwim (p)
