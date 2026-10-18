@@ -8,92 +8,20 @@
   :commands (whisper-run whisper-file)
   :bind ("s-R" . whisper-run)
   :custom
-  ;; Use mlx_whisper (Apple Metal) as the inference engine instead of the
-  ;; bundled whisper.cpp.  nil here routes `whisper-run' through the
-  ;; "user-provided inference engine" branch, skipping the whisper.cpp
-  ;; install/build and ggml model checks.  `whisper-model' is unused now;
-  ;; the model is `my-whisper-mlx-model' below.
+  ;; Transcribe with a resident Parakeet TDT v3 server (parakeet-mlx on
+  ;; Metal), run by launchd from library/bin/parakeet-server.py.  It speaks
+  ;; the whisper.cpp /inference protocol, so whisper.el's `remote' mode talks
+  ;; to it directly.  The model stays loaded (~1.4 GB), so a dictation takes
+  ;; ~0.3 s instead of ~3 s for a fresh mlx_whisper process.
+  (whisper-server-mode 'remote)
+  (whisper-server-baseurl "http://127.0.0.1:8642")
   (whisper-install-whispercpp nil)
   ;; move cursor to the end of the inserted text
   (whisper-return-cursor-to-start nil)
   :config
   (setq whisper--ffmpeg-input-device ":0")
 
-  (defvar my-whisper-mlx-model "mlx-community/whisper-large-v3-turbo"
-    "Hugging Face repo id (or local path) of the mlx_whisper model.
-`whisper-large-v3-turbo' is fast and fine for clean mic input.  Switch to
-\"mlx-community/whisper-large-v3-mlx\" (full large-v3) for more accuracy
-and extra resistance to hallucination loops, at the cost of speed.")
-
-  (defvar my-whisper-mlx-extra-flags
-    '("--condition-on-previous-text" "False"   ; main loop fix: don't feed one
-                                               ; window's output forward as the
-                                               ; next window's prompt
-      "--word-timestamps" "True"               ; required by the next flag
-      "--hallucination-silence-threshold" "2") ; skip silent gaps >2s when a
-                                               ; hallucination is suspected
-    "Extra mlx_whisper flags that suppress the silence/hallucination loop.")
-
-  ;; Override the package's whisper.cpp command builder.  mlx_whisper only
-  ;; writes output files (no clean-text-to-stdout mode), so run it and then
-  ;; `cat' the resulting .txt, which is what whisper.el reads from stdout.
-  (defun whisper-command (input-file)
-    "Transcribe INPUT-FILE locally with mlx_whisper.
-See `my-whisper-mlx-model' and `my-whisper-mlx-extra-flags' to tune."
-    (let* ((dir (file-name-directory input-file))
-           (base (file-name-base input-file))
-           (txt (expand-file-name (concat base ".txt") dir))
-           (args (append
-                  (list (or (executable-find "mlx_whisper") "mlx_whisper")
-                        input-file
-                        "--model" my-whisper-mlx-model
-                        "--output-dir" dir
-                        "--output-name" base
-                        "--output-format" "txt"
-                        "--verbose" "False"
-                        "--task" (if whisper-translate "translate" "transcribe"))
-                  (unless (string-equal whisper-language "auto")
-                    (list "--language" whisper-language))
-                  my-whisper-mlx-extra-flags)))
-      (list "sh" "-c"
-            (concat (mapconcat #'shell-quote-argument args " ")
-                    " && cat " (shell-quote-argument txt)))))
-
-  (defun my-whisper-mlx-model-installed-p ()
-    "Return non-nil if `my-whisper-mlx-model' is available locally.
-True for an explicit local directory path, or a populated Hugging Face
-cache entry for the repo id."
-    (or (file-directory-p my-whisper-mlx-model)
-        (let* ((hf-home (or (getenv "HF_HOME")
-                            (expand-file-name "~/.cache/huggingface")))
-               (snapshots (expand-file-name
-                           (format "hub/models--%s/snapshots"
-                                   (replace-regexp-in-string "/" "--" my-whisper-mlx-model))
-                           hf-home)))
-          (and (file-directory-p snapshots)
-               (directory-files snapshots nil "\\`[^.]" t)))))
-
-  ;; Mirror whisper.el's "model isn't available, download now?" prompt for the
-  ;; mlx_whisper model, so the first run doesn't silently stall on a large
-  ;; Hugging Face download.
-  (defun my-whisper-mlx-ensure-model ()
-    "Offer to download `my-whisper-mlx-model' if it isn't installed yet.
-Downloads via uv: \"uvx --from huggingface_hub hf download REPO\"."
-    (unless (my-whisper-mlx-model-installed-p)
-      (if (yes-or-no-p
-           (format "mlx_whisper model %S isn't installed, download now? "
-                   my-whisper-mlx-model))
-          (let* ((uvx (or (executable-find "uvx")
-                          (error "uvx not found; install uv")))
-                 (cmd (format "%s --from huggingface_hub hf download %s"
-                              (shell-quote-argument uvx)
-                              (shell-quote-argument my-whisper-mlx-model))))
-            (compile cmd)
-            (error "Downloading %s; re-run whisper (s-R) when it finishes"
-                   my-whisper-mlx-model))
-        (error "mlx_whisper model %S not installed" my-whisper-mlx-model))))
-
-  (add-hook 'whisper-before-transcription-hook #'my-whisper-mlx-ensure-model)
+  (add-hook 'whisper-before-transcription-hook #'my-whisper-check-server)
 
   ;; Route dictation into ghostel terminal buffers through the subprocess
   ;; (bracketed paste) instead of `insert', which fails on the renderer-owned,
@@ -169,6 +97,17 @@ Runs in whisper's output buffer via `whisper-after-transcription-hook'."
   (add-hook 'whisper-after-transcription-hook #'my-whisper-fix-vocabulary t))
 
 (defvar whisper--ffmpeg-input-device)
+
+(defun my-whisper-check-server ()
+  "Signal an error before recording if the Parakeet server isn't up.
+Kickstarts its launchd job so the next attempt can succeed."
+  (condition-case nil
+      (delete-process
+       (open-network-stream "parakeet-check" nil "127.0.0.1" 8642))
+    (file-error
+     (call-process "launchctl" nil 0 nil "kickstart" "-k"
+                   (format "gui/%d/com.ilya.parakeet-server" (user-uid)))
+     (user-error "Parakeet server was down; restarting it, retry s-R in ~10 s"))))
 
 (defun rk/select-default-audio-device (&optional device-name)
   "Select the ffmpeg audio input device used by whisper.el.
