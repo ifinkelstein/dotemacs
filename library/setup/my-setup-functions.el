@@ -146,7 +146,7 @@ Works with exactly two windows in any split direction."
 (declare-function ghostel-paste-string "ghostel" (string))
 (declare-function ghostel-send-string "ghostel" (string))
 
-(defvar my-agent-split-preference '(claude codex shell)
+(defvar my-agent-split-preference '(claude codex agy shell)
   "Kinds of terminal session to reuse, most preferred first.
 Also the order the right window cycles through on repeat calls.")
 
@@ -158,7 +158,7 @@ The current file's directory, or `default-directory' in a non-file buffer."
                    default-directory)))
 
 (defun my-agent--session-kind (buffer)
-  "Classify ghostel BUFFER as `claude', `codex' or `shell'.
+  "Classify ghostel BUFFER as `claude', `codex', `agy' or `shell'.
 Reads the exec'd program from `ghostel-identity'; with the native PTY
 there is no Emacs process object to inspect."
   (let ((cmd (string-join
@@ -168,6 +168,7 @@ there is no Emacs process object to inspect."
               " ")))
     (cond ((string-match-p "\\bclaude\\b" cmd) 'claude)
           ((string-match-p "\\bcodex\\b" cmd) 'codex)
+          ((string-match-p "\\bagy\\b" cmd) 'agy)
           (t 'shell))))
 
 (defun my-agent--sessions (dir)
@@ -221,7 +222,9 @@ Claude Code session."
       (let* ((pos (seq-position sessions (window-buffer right)))
              (next (nth (if pos (mod (1+ pos) (length sessions)) 0) sessions)))
         (set-window-buffer right next)))
-    (select-window right)))
+    (select-window right)
+    (when (fboundp 'my-ghostel-ensure-meow-insert)
+      (my-ghostel-ensure-meow-insert))))
 
 ;;** Agent Edit DWIM
 ;; Hand the section/sentence/paragraph/region at point, or the mu4e
@@ -254,7 +257,7 @@ Buffer names already carry the session kind and directory."
 
 (defun my-agent--edit-target (dir &optional noerror)
   "Agent buffer to send to: one visible in this frame, else one running in DIR.
-Only `claude' and `codex' sessions qualify.  Visible ones in DIR win;
+Only `claude', `codex' and `agy' sessions qualify.  Visible ones in DIR win;
 otherwise visible agents in any directory count alongside those running
 in DIR, since the agent for a project is often started at the repo root
 rather than the file's folder.  When the winning group holds more than
@@ -262,7 +265,7 @@ one session, ask which with `my-agent--choose-session'.  With none,
 signal a `user-error', or return nil if NOERROR is non-nil."
   (let* ((agent-p (lambda (buf)
                     (and (eq (buffer-local-value 'major-mode buf) 'ghostel-mode)
-                         (memq (my-agent--session-kind buf) '(claude codex)))))
+                         (memq (my-agent--session-kind buf) '(claude codex agy)))))
          (visible (delete-dups
                    (seq-filter agent-p (mapcar #'window-buffer (window-list nil 'no-mini)))))
          (in-dir (lambda (buf)
@@ -274,7 +277,7 @@ signal a `user-error', or return nil if NOERROR is non-nil."
     (cond ((cdr candidates) (my-agent--choose-session candidates))
           (candidates (car candidates))
           (noerror nil)
-          (t (user-error "No Claude Code or Codex session visible or running in %s"
+          (t (user-error "No Claude Code, Codex or agy session visible or running in %s"
                          (abbreviate-file-name dir))))))
 
 (defun my-agent--heading-regexp ()

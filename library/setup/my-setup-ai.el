@@ -158,12 +158,39 @@ Each list contains a list of cons cells, where the car is the device number and 
              finally return (list (nreverse video-devices) (nreverse audio-devices)))))
 
 
+;;* ghostel + Meow insert state
+;; Selecting an interactive ghostel window (or opening a coding agent there)
+;; should always leave Meow in insert state, even if `<escape>' was pressed
+;; earlier in that buffer to reach the `<SPC>' leader map.
+(defvar ghostel--input-mode)
+(declare-function meow-insert-mode-p "meow-util" ())
+(declare-function meow--disable-current-state "meow-util" ())
+(declare-function meow--switch-state "meow-util" (state &optional no-hook))
+(declare-function meow-update-display "meow-util" ())
+
+(defun my-ghostel-ensure-meow-insert (&rest _)
+  "Ensure the selected window's buffer is in `meow-insert-mode' when in an interactive ghostel terminal."
+  (with-selected-window (selected-window)
+    (when (and (derived-mode-p 'ghostel-mode)
+               (bound-and-true-p meow-mode)
+               (not (memq ghostel--input-mode '(copy emacs))))
+      (unless (meow-insert-mode-p)
+        (meow--disable-current-state)
+        (meow--switch-state 'insert))
+      (meow-update-display))))
+
+(with-eval-after-load 'ghostel
+  (add-hook 'window-selection-change-functions #'my-ghostel-ensure-meow-insert))
+
 ;;* claude-code
 ;; Deferred via :commands.  inheritenv comes in as a claude-code dependency.
 (use-package claude-code
   :commands (claude-code claude-code-transient claude-code-start-in-directory)
   :config
   (setq claude-code-terminal-backend 'ghostel)
+  (setq claude-code-toggle-auto-select t)
+  (advice-add 'claude-code--start :after #'my-ghostel-ensure-meow-insert)
+  (advice-add 'claude-code-toggle :after #'my-ghostel-ensure-meow-insert)
 
   (defun my-claude-code-insert-org-link ()
     "Insert the top stored org link into the Claude Code buffer, no prompts."
@@ -191,6 +218,20 @@ Each list contains a list of cons cells, where the car is the device number and 
               (local-set-key (kbd "M-o") #'claude-code-transient)))
 
   (claude-code-mode))
+
+;;* agy (Google Antigravity CLI)
+;; Own package, modeled on claude-code.el.  Run `agy-install-hooks' once so
+;; agy's Stop hook tells Emacs when a turn ends.
+(use-package agy
+  :load-path "~/projects/elisp/agy"
+  :commands (agy agy-transient agy-resume agy-start-in-directory)
+  :config
+  (setq agy-terminal-backend 'ghostel)
+  (setq agy-toggle-auto-select t)
+  (advice-add 'agy--start :after #'my-ghostel-ensure-meow-insert)
+  (advice-add 'agy-toggle :after #'my-ghostel-ensure-meow-insert)
+  (add-hook 'agy-start-hook
+            (lambda () (local-set-key (kbd "M-o") #'agy-transient))))
 
 ;;* codex (OpenAI Codex CLI in a ghostel terminal)
 ;; Minimal launcher modeled on how claude-code.el starts its terminal:
@@ -225,6 +266,7 @@ sessions can run at once (in different windows or tabs)."
     ;; showing BUFFER (else falls back to 80x24).
     (pop-to-buffer buffer)
     (inheritenv (ghostel-exec buffer my-codex-program))
+    (my-ghostel-ensure-meow-insert)
     buffer))
 
 ;;* pilish (pi coding agent)

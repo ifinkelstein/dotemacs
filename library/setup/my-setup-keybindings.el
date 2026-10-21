@@ -223,7 +223,11 @@
     ("S" "Split with Agent" my-split-with-agent)
     ("e" "Edit at point via agent" my-agent-edit-dwim)]
    ["Codex"
-    ("x" "Codex here" my-codex)]])
+    ("x" "Codex here" my-codex)]
+   ["Antigravity"
+    ("a" "Start agy" agy)
+    ("A" "agy Menu" agy-transient)
+    ("r" "Resume agy" agy-resume)]])
 
 (transient-define-prefix my-transient-buffer ()
   "Transient menu for buffer management commands."
