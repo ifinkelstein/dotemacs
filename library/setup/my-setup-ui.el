@@ -361,7 +361,17 @@ Filter-args advice for `lambda-line-compose'."
                     tab-bar-format-tabs-groups
                     my--tab-bar-suffix
                     tab-bar-format-add-tab))
+  ;; `tab-bar-format-tabs-groups' draws tabs with this instead of
+  ;; `tab-bar-tab-face-function'.  The default gives ungrouped tabs
+  ;; `tab-bar-tab-ungrouped', which lambda themes make nearly invisible.
+  (tab-bar-tab-group-face-function #'my--tab-bar-tab-group-face)
   :config
+  (defun my--tab-bar-tab-group-face (tab)
+    "Face for TAB in a grouped tab bar: the same as without groups."
+    (if (bound-and-true-p activities-tabs-mode)
+        (activities-tabs--tab-bar-tab-face-function tab)
+      (tab-bar-tab-face-default tab)))
+
   ;; https://christiantietze.de/posts/2022/02/emacs-tab-bar-numbered-tabs/
   (defvar my-tab-bar--circle-numbers-alist
     '((0 . "⓪")
