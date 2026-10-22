@@ -224,7 +224,8 @@ Each list contains a list of cons cells, where the car is the device number and 
 ;; agy's Stop hook tells Emacs when a turn ends.
 (use-package agy
   :load-path "~/projects/elisp/agy"
-  :commands (agy agy-transient agy-resume agy-start-in-directory)
+  ;; `agy-bookmark-handler' restores sessions saved in bookmarks and activities.
+  :commands (agy agy-transient agy-resume agy-start-in-directory agy-bookmark-handler)
   :config
   (setq agy-terminal-backend 'ghostel)
   (setq agy-toggle-auto-select t)

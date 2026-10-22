@@ -356,8 +356,9 @@ Filter-args advice for `lambda-line-compose'."
   (tab-bar-new-button nil)
   (tab-bar-close-button nil)
   (tab-bar-auto-width nil)
+  ;; Tabs of the current group show in full; other groups collapse to their name.
   (tab-bar-format '(tab-bar-format-history
-                    tab-bar-format-tabs
+                    tab-bar-format-tabs-groups
                     my--tab-bar-suffix
                     tab-bar-format-add-tab))
   :config
@@ -382,15 +383,18 @@ Filter-args advice for `lambda-line-compose'."
 
     "Alist of integers to strings of circled unicode numbers.")
   (defun my--tab-bar-tab-name-format (tab i)
-    (let ((current-p (eq (car tab) 'current-tab))
-          (tab-num (if (and tab-bar-tab-hints (< i 16))
-                       (alist-get i my-tab-bar--circle-numbers-alist) "")))
+    (let* ((current-p (eq (car tab) 'current-tab))
+           (tab-num (if (and tab-bar-tab-hints (< i 16))
+                        (alist-get i my-tab-bar--circle-numbers-alist) ""))
+           ;; Agent tabs show a status mark and the agent's short name.
+           (agent (and (fboundp 'my-agent-tab-label) (my-agent-tab-label tab))))
       (propertize
        (concat
         " "
         tab-num
         (propertize " " 'display '(space :width (4)))
-        (truncate-string-to-width (alist-get 'name tab) 10 nil nil t)
+        (car agent)
+        (truncate-string-to-width (or (cdr agent) (alist-get 'name tab)) 10 nil nil t)
         (or (and tab-bar-close-button-show
                  (not (eq tab-bar-close-button-show
                           (if current-p 'non-selected 'selected)))

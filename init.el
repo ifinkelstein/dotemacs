@@ -157,6 +157,7 @@ Loading modules
 (my-require my-setup-mail)
 
 (my-require my-setup-ai)
+(my-require my-setup-agent-fleet)
 (my-require my-setup-media)
 
 

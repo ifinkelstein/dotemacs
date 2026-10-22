@@ -227,7 +227,12 @@
    ["Antigravity"
     ("a" "Start agy" agy)
     ("A" "agy Menu" agy-transient)
-    ("r" "Resume agy" agy-resume)]])
+    ("r" "Resume agy" agy-resume)]
+   ["Agent fleet"
+    ("b" "Sidebar" my-agent-sidebar)
+    ("o" "Open agent" my-agent-open)
+    ("F" "Start fleet" my-agent-fleet-start)
+    ("K" "Stop fleet" my-agent-fleet-stop)]])
 
 (transient-define-prefix my-transient-buffer ()
   "Transient menu for buffer management commands."
