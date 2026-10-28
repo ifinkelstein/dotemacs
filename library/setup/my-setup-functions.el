@@ -183,21 +183,76 @@ there is no Emacs process object to inspect."
                           bufs))
             my-agent-split-preference)))
 
+(declare-function agy--buffer-name "agy" (dir instance))
+(declare-function agy--start "agy" (dir &optional switches force-name select))
+(declare-function claude-code--prompt-for-instance-name "claude-code"
+                  (dir existing &optional force))
 (declare-function claude-code--start "claude-code"
                   (arg extra-switches &optional force-prompt force-switch-to-buffer))
+(declare-function ghostel-exec "ghostel" (buffer program &optional args identity))
+(defvar agy-display-window-fn)
+(defvar claude-code-display-window-fn)
+(defvar my-codex-program)
 
-(defun my-agent--start-claude (dir window &optional prompt)
+(defun my-agent--start-claude (dir window &optional prompt instance)
   "Start a Claude Code session in DIR, displayed in WINDOW.
-With PROMPT, pass it on the command line as the session's first message."
+With PROMPT, pass it on the command line as the session's first message.
+With INSTANCE, use it as the instance name without prompting."
   (require 'cl-lib)
   (require 'claude-code)
   ;; `claude-code--directory' prefers the project root; we want the file's
   ;; own directory, so shadow it for the duration of the call the same way
   ;; `claude-code-start-in-directory' does.
-  (let ((claude-code-display-window-fn
+  (let (started
+        (claude-code-display-window-fn
+         (lambda (buffer)
+           (setq started buffer)
+           (set-window-buffer window buffer)
+           window)))
+    (cl-letf (((symbol-function 'claude-code--directory) (lambda () dir))
+              ((symbol-function 'claude-code--prompt-for-instance-name)
+               (if instance
+                   (lambda (&rest _) instance)
+                 (symbol-function 'claude-code--prompt-for-instance-name))))
+      (claude-code--start nil (and prompt (list prompt))))
+    started))
+
+(defun my-agent--start-agy (dir window &optional prompt instance)
+  "Start an agy session in DIR, displayed in WINDOW.
+With PROMPT, pass it via `-i' as the session's first message.
+With INSTANCE, use it as the instance name without prompting."
+  (require 'agy)
+  (let ((agy-display-window-fn
          (lambda (buffer) (set-window-buffer window buffer) window)))
-    (cl-letf (((symbol-function 'claude-code--directory) (lambda () dir)))
-      (claude-code--start nil (and prompt (list prompt))))))
+    (agy--start dir (and prompt (list "-i" prompt)) instance)))
+
+(defun my-agent--start-codex (dir window &optional prompt instance)
+  "Start a Codex session in DIR, displayed in WINDOW.
+With PROMPT, pass it on the command line as the session's first message.
+With INSTANCE, include it in the buffer name."
+  (require 'ghostel)
+  (require 'inheritenv)
+  (let* ((default-directory (file-name-as-directory (expand-file-name dir)))
+         (short-dir (abbreviate-file-name (directory-file-name default-directory)))
+         (buffer (generate-new-buffer
+                  (if instance
+                      (format "*codex:%s:%s*" short-dir instance)
+                    (format "*codex: %s*" short-dir)))))
+    (set-window-buffer window buffer)
+    (inheritenv (ghostel-exec buffer my-codex-program (and prompt (list prompt))))
+    (when (fboundp 'my-ghostel-ensure-meow-insert)
+      (my-ghostel-ensure-meow-insert))
+    buffer))
+
+(defun my-agent--start (kind dir window &optional prompt instance)
+  "Start a KIND (`agy', `claude' or `codex') session in DIR in WINDOW.
+With PROMPT, pass it on the command line as the session's first message.
+With INSTANCE, name the session without prompting."
+  (pcase kind
+    ('agy (my-agent--start-agy dir window prompt instance))
+    ('claude (my-agent--start-claude dir window prompt instance))
+    ('codex (my-agent--start-codex dir window prompt instance))
+    (_ (user-error "Unknown agent kind: %S" kind))))
 
 (defun my-split-with-agent (&optional new)
   "Put this buffer on the left and an agent terminal on the right.
@@ -227,13 +282,21 @@ Claude Code session."
       (my-ghostel-ensure-meow-insert))))
 
 ;;** Agent Edit DWIM
-;; Hand the section/sentence/paragraph/region at point, or the mu4e
-;; message at point, to the live Claude Code or Codex session next door,
-;; with a one-line instruction typed at the minibuffer.  The agent gets
-;; the file, line range, quoted text and a standing brief: edit the file
-;; in place when asked to rewrite, otherwise act on the text (fact-check,
-;; explain, verify) and report.  For mail it gets the maildir path and
-;; headers and reads the message itself.
+;; Hand the section/sentence/paragraph/region at point, the Dired file(s) at
+;; point, or the mu4e message at point to a dedicated full-screen agent tab
+;; `<tab>-llm' grouped with the current tab, with a one-line instruction typed
+;; at the minibuffer.
+
+(declare-function activities-activity-name "activities" (activity))
+(declare-function dired-get-marked-files "dired"
+                  (&optional localp arg filter distinguish-one-marked error))
+(declare-function dired-get-filename "dired" (&optional localp no-error-if-not-filep))
+
+(defvar my-agent-default-agent 'agy
+  "Default agent kind (`agy', `claude' or `codex') started in `<tab>-llm' tabs.")
+
+(defvar my-agent--tab-buffers (make-hash-table :test #'equal)
+  "Live ghostel agent buffers keyed by `<tab>-llm' tab name.")
 
 (defvar my-agent-edit-brief
   "The instruction applies to the quoted passage, or to the whole section \
@@ -246,39 +309,12 @@ briefly; edit only if the instruction implies a fix.  Do not reflow or \
 reformat unrelated text."
   "Standing instructions appended to every `my-agent-edit-dwim' request.")
 
+(defvar my-agent-dired-brief
+  "Act on the file or files listed above according to the instruction."
+  "Standing instructions appended to every Dired request from `my-agent-edit-dwim'.")
+
 (defvar my-agent-edit-history nil
   "Minibuffer history for `my-agent-edit-dwim' instructions.")
-
-(defun my-agent--choose-session (buffers)
-  "Ask which of the agent BUFFERS to send to; the first is the default.
-Buffer names already carry the session kind and directory."
-  (let ((names (mapcar #'buffer-name buffers)))
-    (get-buffer (completing-read "Send to agent: " names nil t nil nil (car names)))))
-
-(defun my-agent--edit-target (dir &optional noerror)
-  "Agent buffer to send to: one visible in this frame, else one running in DIR.
-Only `claude', `codex' and `agy' sessions qualify.  Visible ones in DIR win;
-otherwise visible agents in any directory count alongside those running
-in DIR, since the agent for a project is often started at the repo root
-rather than the file's folder.  When the winning group holds more than
-one session, ask which with `my-agent--choose-session'.  With none,
-signal a `user-error', or return nil if NOERROR is non-nil."
-  (let* ((agent-p (lambda (buf)
-                    (and (eq (buffer-local-value 'major-mode buf) 'ghostel-mode)
-                         (memq (my-agent--session-kind buf) '(claude codex agy)))))
-         (visible (delete-dups
-                   (seq-filter agent-p (mapcar #'window-buffer (window-list nil 'no-mini)))))
-         (in-dir (lambda (buf)
-                   (string= dir (file-truename
-                                 (buffer-local-value 'default-directory buf)))))
-         (candidates (or (seq-filter in-dir visible)
-                         (delete-dups
-                          (append visible (seq-filter agent-p (my-agent--sessions dir)))))))
-    (cond ((cdr candidates) (my-agent--choose-session candidates))
-          (candidates (car candidates))
-          (noerror nil)
-          (t (user-error "No Claude Code, Codex or agy session visible or running in %s"
-                         (abbreviate-file-name dir))))))
 
 (defun my-agent--heading-regexp ()
   "Regexp for lines that start a section, or nil outside Org and LaTeX.
@@ -337,19 +373,8 @@ or before \\end{document} in the last LaTeX section."
       (user-error "Empty instruction"))
     instruction))
 
-(defun my-agent--send (target request)
-  "Submit REQUEST to the ghostel buffer TARGET and make sure it is shown."
-  (with-current-buffer target
-    (ghostel-paste-string request)
-    (sit-for 0.1)
-    (ghostel-send-string "\r"))
-  (unless (get-buffer-window target)
-    (display-buffer target))
-  (deactivate-mark)
-  (message "Sent to %s" (buffer-name target)))
-
-(defun my-agent--text-request (target arg)
-  "Request about the text at point in this file buffer, for TARGET.
+(defun my-agent--text-request (kind dir arg)
+  "Request about the text at point in this file buffer, for a KIND agent in DIR.
 ARG is the raw prefix argument, interpreted by `my-agent--edit-unit'."
   (unless buffer-file-name
     (user-error "Buffer is not visiting a file"))
@@ -358,17 +383,51 @@ ARG is the raw prefix argument, interpreted by `my-agent--edit-unit'."
                (text (string-trim (buffer-substring-no-properties beg end)))
                (line1 (line-number-at-pos beg t))
                (line2 (line-number-at-pos (max beg (1- end)) t))
-               (instruction (my-agent--read-instruction
-                             (my-agent--session-kind target) unit)))
+               (instruction (my-agent--read-instruction kind unit)))
     (when (buffer-modified-p)
       (save-buffer))
     (format "In %s, line%s%s:\n\n\"\"\"\n%s\n\"\"\"\n\nInstruction: %s\n\n%s"
-            (file-relative-name buffer-file-name
-                                (buffer-local-value 'default-directory target))
+            (file-relative-name buffer-file-name dir)
             (if (= line1 line2) (format " %d" line1) (format "s %d-%d" line1 line2))
             (if (eq unit 'section) ", the section headed" "")
             (if (eq unit 'section) (car (split-string text "\n")) text)
             instruction my-agent-edit-brief)))
+
+(defun my-agent--dired-files ()
+  "Full paths of the marked, region-selected, or current file(s) in Dired."
+  (let ((files (cond
+                ((dired-get-marked-files nil 'marked))
+                ((use-region-p)
+                 (let ((beg (region-beginning))
+                       (end (save-excursion
+                              (goto-char (region-end))
+                              (if (and (bolp) (> (point) (region-beginning)))
+                                  (1- (point))
+                                (point))))
+                       acc)
+                   (save-excursion
+                     (goto-char beg)
+                     (forward-line 0)
+                     (while (and (<= (point) end) (not (eobp)))
+                       (when-let* ((f (dired-get-filename nil t)))
+                         (push f acc))
+                       (forward-line 1)))
+                   (nreverse acc)))
+                (t (dired-get-marked-files nil nil nil nil "No file at point")))))
+    (unless files
+      (user-error "No file at point"))
+    (mapcar #'expand-file-name files)))
+
+(defun my-agent--dired-request (kind)
+  "Request about the selected or current Dired file(s), for a KIND agent."
+  (let* ((files (my-agent--dired-files))
+         (unit (if (cdr files) (format "%d files" (length files)) "file"))
+         (instruction (my-agent--read-instruction kind unit)))
+    (format "%s:\n%s\n\nInstruction: %s\n\n%s"
+            (if (cdr files) "Files" "File")
+            (mapconcat (lambda (f) (format "- %s" f)) files "\n")
+            instruction
+            my-agent-dired-brief)))
 
 (defvar my-agent-mail-brief
   "Act on the message above.  If the instruction asks for a reply or a \
@@ -515,45 +574,115 @@ instruction applies to."
           (format "The instruction applies to this passage:\n\n\"\"\"\n%s\n\"\"\"\n\n" region))
      (format "Instruction: %s\n\n%s" instruction my-agent-mail-brief))))
 
-(defun my-agent--mail-dwim ()
-  "Send the mu4e message at point to an agent, offering to start one.
-The target is found as in `my-agent-edit-dwim', in
-`my-agent-mail-directory'.  With none, ask whether to start Claude Code
-there in a window to the right, with the request as its first prompt."
-  (let* ((dir (file-truename my-agent-mail-directory))
-         (target (my-agent--edit-target dir t)))
+(defun my-agent--tab-base-name (&optional tab)
+  "Base name of TAB (default: current tab), without activity prefix or `-llm'."
+  (let* ((tab (or tab (tab-bar--current-tab-find)))
+         (name (if-let* ((act (alist-get 'activity (cdr tab)))
+                         ((fboundp 'activities-activity-name)))
+                   (activities-activity-name act)
+                 (alist-get 'name (cdr tab)))))
+    (string-remove-suffix "-llm" name)))
+
+(defun my-agent--tab-target (dir llm-tab)
+  "Return the live agent buffer for LLM-TAB in DIR, or nil."
+  (let ((saved (gethash llm-tab my-agent--tab-buffers)))
     (cond
-     (target
-      (my-agent--send target (my-agent--mail-request (my-agent--session-kind target))))
-     ((y-or-n-p (format "No agent session; start Claude Code in %s? "
-                        (abbreviate-file-name dir)))
-      (let ((request (my-agent--mail-request 'claude)))
-        (save-selected-window
-          (my-agent--start-claude dir (split-window-right) request))
-        (deactivate-mark)
-        (message "Started Claude Code in %s" (abbreviate-file-name dir)))))))
+     ((buffer-live-p saved) saved)
+     ((and (featurep 'agy)
+           (get-buffer (agy--buffer-name dir llm-tab))))
+     ((seq-find (lambda (buf)
+                  (memq (my-agent--session-kind buf) '(claude codex agy)))
+                (my-agent--sessions dir))))))
+
+(defun my-agent--ensure-llm-tab (origin-tab llm-tab group)
+  "Group ORIGIN-TAB and LLM-TAB under GROUP, placing LLM-TAB to the right.
+Keep ORIGIN-TAB at its current position in the tab bar."
+  (let ((tab-bar-tab-post-change-group-functions nil))
+    (when-let* ((idx (tab-bar--tab-index-by-name origin-tab)))
+      (tab-bar-change-tab-group group (1+ idx)))
+    (if (tab-bar--tab-index-by-name llm-tab)
+        (tab-bar-switch-to-tab llm-tab)
+      (tab-bar-new-tab)
+      (tab-bar-rename-tab llm-tab))
+    (tab-bar-change-tab-group group))
+  (when-let* ((anchor (tab-bar--tab-index-by-name origin-tab))
+              (cur (tab-bar--current-tab-index))
+              ((not (= cur anchor))))
+    (let ((pos (if (< cur anchor) (1+ anchor) (+ 2 anchor))))
+      (unless (= (1+ cur) pos)
+        (tab-bar-move-tab-to pos)))))
+
+(defun my-agent--send-in-llm-tab (dir request-fn &optional switch)
+  "Send the prompt from REQUEST-FN to the agent for DIR in `<tab>-llm'.
+Convert the current tab and `<tab>-llm' into a tab group named after the
+current tab, placing `<tab>-llm' immediately to its right and running a
+full-screen agent session there.  If no agent is running for `<tab>-llm'
+or DIR yet, start `my-agent-default-agent' with the request as its first
+prompt.  Stay in the current tab unless SWITCH is non-nil."
+  (let* ((cur-tab (tab-bar--current-tab-find))
+         (origin-tab (alist-get 'name (cdr cur-tab)))
+         (base (my-agent--tab-base-name cur-tab))
+         (group (or (alist-get 'group (cdr cur-tab)) base))
+         (llm-tab (concat base "-llm"))
+         (target (my-agent--tab-target dir llm-tab))
+         (kind (if target (my-agent--session-kind target) my-agent-default-agent))
+         (request (funcall request-fn kind)))
+    (my-agent--ensure-llm-tab origin-tab llm-tab group)
+    (delete-other-windows)
+    (if target
+        (progn
+          (switch-to-buffer target)
+          (puthash llm-tab target my-agent--tab-buffers)
+          (when (and (not switch) origin-tab (not (equal origin-tab llm-tab)))
+            (tab-bar-switch-to-tab origin-tab))
+          (with-current-buffer target
+            (ghostel-paste-string request)
+            (sit-for 0.1)
+            (ghostel-send-string "\r")))
+      (setq target (my-agent--start kind dir (selected-window) request llm-tab))
+      (puthash llm-tab target my-agent--tab-buffers)
+      (when (and (not switch) origin-tab (not (equal origin-tab llm-tab)))
+        (tab-bar-switch-to-tab origin-tab)))
+    (when (and switch (fboundp 'my-ghostel-ensure-meow-insert))
+      (my-ghostel-ensure-meow-insert))
+    (deactivate-mark)
+    (message "Sent to %s in tab %s" (buffer-name target) llm-tab)))
 
 (defun my-agent-edit-dwim (&optional arg)
-  "Send the thing at point with an instruction to the agent.
-In a file buffer the thing is the region if active, else the section
-when point is on an Org or LaTeX heading line, else the sentence, or the
-paragraph with prefix ARG (see `my-agent--edit-unit').  In a mu4e
-headers or message view it is the message at point: envelope, rendered
-body, saved attachments and maildir path (see `my-agent--mail-request').
+  "Send the thing at point with an instruction to the agent in `<tab>-llm'.
+Convert the current tab into a tab group and open (or reuse) a full-screen
+agent session in `<tab>-llm' immediately to its right, starting
+`my-agent-default-agent' automatically if needed.
 
-The target is the Claude Code or Codex ghostel session visible in this
-frame, else one running in this file's directory (for mail,
-`my-agent-mail-directory'; with no session there, offer to start one,
-see `my-agent--mail-dwim').  The request names the file and line range,
-quotes the text (only the heading line for a section, since the agent
-reads the file anyway), adds the instruction typed at the prompt, and
-closes with the standing brief.  It is submitted at once; point stays
-here."
+What is sent depends on the buffer:
+- In `mu4e-headers-mode' or `mu4e-view-mode': the message at point
+  \(envelope, rendered body, saved attachments and maildir path; see
+  `my-agent--mail-request'), rooted in `my-agent-mail-directory'.
+- In `dired-mode': full paths of the marked/selected files, or the file
+  at point (see `my-agent--dired-request').
+- In a file buffer: the active region, else the section on an Org or
+  LaTeX heading line, else the paragraph with prefix ARG or the sentence
+  without (see `my-agent--text-request').
+
+In `mu4e' and `dired' buffers, prefix ARG switches to `<tab>-llm' after
+sending; otherwise point and tab stay where they are."
   (interactive "P")
-  (if (derived-mode-p 'mu4e-headers-mode 'mu4e-view-mode)
-      (my-agent--mail-dwim)
-    (let ((target (my-agent--edit-target (my-agent--directory))))
-      (my-agent--send target (my-agent--text-request target arg)))))
+  (cond
+   ((derived-mode-p 'mu4e-headers-mode 'mu4e-view-mode)
+    (my-agent--send-in-llm-tab
+     (file-name-as-directory (file-truename my-agent-mail-directory))
+     #'my-agent--mail-request
+     arg))
+   ((derived-mode-p 'dired-mode)
+    (my-agent--send-in-llm-tab
+     (file-name-as-directory (my-agent--directory))
+     #'my-agent--dired-request
+     arg))
+   (t
+    (let ((dir (file-name-as-directory (my-agent--directory))))
+      (my-agent--send-in-llm-tab
+       dir
+       (lambda (kind) (my-agent--text-request kind dir arg)))))))
 
 ;;* Buffer Functions
 (defun my-narrow-or-widen-dwim (p)

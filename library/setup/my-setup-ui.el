@@ -358,13 +358,17 @@ Filter-args advice for `lambda-line-compose'."
   (tab-bar-auto-width nil)
   ;; Tabs of the current group show in full; other groups collapse to their name.
   (tab-bar-format '(tab-bar-format-history
-                    tab-bar-format-tabs-groups
+                    my--tab-bar-format-tabs-groups
                     my--tab-bar-suffix
                     tab-bar-format-add-tab))
   ;; `tab-bar-format-tabs-groups' draws tabs with this instead of
   ;; `tab-bar-tab-face-function'.  The default gives ungrouped tabs
   ;; `tab-bar-tab-ungrouped', which lambda themes make nearly invisible.
   (tab-bar-tab-group-face-function #'my--tab-bar-tab-group-face)
+  (tab-bar-tab-group-format-function #'my--tab-bar-tab-group-format)
+  :custom-face
+  (tab-bar-tab-group-inactive ((t (:inherit tab-bar-tab-inactive))))
+  (tab-bar-tab-group-current ((t (:inherit tab-bar-tab))))
   :config
   (defun my--tab-bar-tab-group-face (tab)
     "Face for TAB in a grouped tab bar: the same as without groups."
@@ -390,21 +394,56 @@ Filter-args advice for `lambda-line-compose'."
       (13 . "⑬")
       (14 . "⑭")
       (15 . "⑮"))
-
     "Alist of integers to strings of circled unicode numbers.")
-  (defun my--tab-bar-tab-name-format (tab i)
+
+  (defun my--tab-bar-slots (&optional tabs)
+    "Group TABS into numbered slots, as a list of ((RAW-INDEX . TAB) ...) lists.
+Consecutive tabs sharing a non-nil tab group share a single slot so
+companion tabs (such as `<tab>-llm') do not consume extra `s-1'..`s-0' keys."
+    (let ((tabs (or tabs (funcall tab-bar-tabs-function)))
+          (i 0)
+          prev-group
+          slots)
+      (dolist (tab tabs)
+        (setq i (1+ i))
+        (let ((group (funcall tab-bar-tab-group-function tab)))
+          (if (and group (equal group prev-group))
+              (setcdr (car slots) (append (cdar slots) (list (cons i tab))))
+            (push (list (cons i tab)) slots))
+          (setq prev-group group)))
+      (nreverse slots)))
+
+  (defun my--tab-bar-slot-number (tab)
+    "Return the 1-based slot number for TAB if it heads a slot, else nil."
+    (let ((slots (my--tab-bar-slots))
+          (n 1)
+          found)
+      (while (and slots (not found))
+        (when (eq (cdar (car slots)) tab)
+          (setq found n))
+        (setq slots (cdr slots)
+              n (1+ n)))
+      found))
+
+  (defun my--tab-bar-tab-name-format (tab _i &optional override-name)
+    "Format TAB with its slot number (if it heads a slot) and truncated name.
+When OVERRIDE-NAME is non-nil, display it instead of TAB's own name."
     (let* ((current-p (eq (car tab) 'current-tab))
-           (tab-num (if (and tab-bar-tab-hints (< i 16))
-                        (alist-get i my-tab-bar--circle-numbers-alist) ""))
+           (slot (my--tab-bar-slot-number tab))
+           (tab-num (if (and tab-bar-tab-hints slot (< slot 16))
+                        (alist-get slot my-tab-bar--circle-numbers-alist)
+                      ""))
            ;; Agent tabs show a status mark and the agent's short name.
-           (agent (and (fboundp 'my-agent-tab-label) (my-agent-tab-label tab))))
+           (agent (and (not override-name)
+                       (fboundp 'my-agent-tab-label)
+                       (my-agent-tab-label tab))))
       (propertize
        (concat
         " "
         tab-num
-        (propertize " " 'display '(space :width (4)))
+        (if (string-empty-p tab-num) "" (propertize " " 'display '(space :width (4))))
         (car agent)
-        (truncate-string-to-width (or (cdr agent) (alist-get 'name tab)) 10 nil nil t)
+        (truncate-string-to-width (or override-name (cdr agent) (alist-get 'name tab)) 10 nil nil t)
         (or (and tab-bar-close-button-show
                  (not (eq tab-bar-close-button-show
                           (if current-p 'non-selected 'selected)))
@@ -412,6 +451,56 @@ Filter-args advice for `lambda-line-compose'."
             "")
         (propertize " " 'display '(space :width (4))))
        'face (funcall tab-bar-tab-face-function tab))))
+
+  (defun my--tab-bar-tab-group-format (tab i &optional _current-p)
+    "Format collapsed group TAB at index I like a normal tab with its slot number."
+    (let* ((tab-bar-tab-face-function tab-bar-tab-group-face-function)
+           (agent (and (fboundp 'my-agent-tab-label) (my-agent-tab-label tab))))
+      (my--tab-bar-tab-name-format
+       tab i (and agent (funcall tab-bar-tab-group-function tab)))))
+
+  (defun my--tab-bar-format-tabs-groups ()
+    "Produce tabs grouped by tab group without a redundant active-group title."
+    (let* ((tabs (funcall tab-bar-tabs-function))
+           (current-group (funcall tab-bar-tab-group-function
+                                   (tab-bar--current-tab-find tabs)))
+           (previous-group nil)
+           (i 0))
+      (mapcan
+       (lambda (tab)
+         (let ((tab-group (funcall tab-bar-tab-group-function tab)))
+           (setq i (1+ i))
+           (prog1 (cond
+                   ;; Current group's tabs and ungrouped tabs: show in full.
+                   ((or (equal tab-group current-group) (not tab-group))
+                    (let ((tab-bar-tab-face-function tab-bar-tab-group-face-function))
+                      (tab-bar--format-tab tab i)))
+                   ;; First tab of an inactive group: show collapsed group tab.
+                   ((not (equal previous-group tab-group))
+                    (tab-bar--format-tab-group tab i)))
+             (setq previous-group tab-group))))
+       tabs)))
+
+  (defun my--tab-bar-select-tab-by-slot (orig-fn &optional tab-number)
+    "Select tab by slot number on `s-1'..`s-0', cycling within the slot if active."
+    (if tab-number
+        (funcall orig-fn tab-number)
+      (let* ((key (event-basic-type last-command-event))
+             (slot-num (if (and (characterp key) (>= key ?0) (<= key ?9))
+                           (let ((n (- key ?0)))
+                             (if (zerop n) 10 n))
+                         1))
+             (slots (my--tab-bar-slots))
+             (slot (or (nth (1- slot-num) slots) (car (last slots))))
+             (pos (seq-position slot 'current-tab
+                                (lambda (entry tag) (eq (cadr entry) tag)))))
+        (when slot
+          (funcall orig-fn
+                   (car (if (and pos (cdr slot))
+                            (nth (mod (1+ pos) (length slot)) slot)
+                          (car slot))))))))
+
+  (advice-add 'tab-bar-select-tab :around #'my--tab-bar-select-tab-by-slot)
 
 
   ;; See https://github.com/rougier/nano-modeline/issues/33
