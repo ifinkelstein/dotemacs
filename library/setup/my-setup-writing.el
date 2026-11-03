@@ -313,9 +313,9 @@ the candidate list with the current pick highlighted."
 (defun my-forward-to-sentence-end ()
   "Move point to just before the end of the current sentence."
   (forward-sentence)
-  (backward-char)
-  (unless (looking-back "[[:alnum:]]" (1- (point)))
-    (backward-char)))
+  (when (looking-back sentence-end-base (pos-bol))
+    (goto-char (match-beginning 0))
+    (skip-chars-backward ".?!…‽")))
 
 (defun my-beginning-of-sentence-p ()
   "Return  t if point is at the beginning of a sentence."
