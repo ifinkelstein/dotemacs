@@ -574,14 +574,39 @@ instruction applies to."
           (format "The instruction applies to this passage:\n\n\"\"\"\n%s\n\"\"\"\n\n" region))
      (format "Instruction: %s\n\n%s" instruction my-agent-mail-brief))))
 
+(require 'subr-x)
+(declare-function my--tab-bar-fleet-group-p "my-setup-ui" (group))
+(declare-function my--tab-bar-llm-tab-p "my-setup-ui" (tab))
+(declare-function my--tab-bar-slots "my-setup-ui" (&optional tabs))
+
 (defun my-agent--tab-base-name (&optional tab)
   "Base name of TAB (default: current tab), without activity prefix or `-llm'."
   (let* ((tab (or tab (tab-bar--current-tab-find)))
-         (name (if-let* ((act (alist-get 'activity (cdr tab)))
-                         ((fboundp 'activities-activity-name)))
-                   (activities-activity-name act)
-                 (alist-get 'name (cdr tab)))))
+         (name (cond
+                ((when-let* ((act (alist-get 'activity (cdr tab)))
+                             ((fboundp 'activities-activity-name)))
+                   (activities-activity-name act)))
+                ((when-let* ((group (alist-get 'group (cdr tab)))
+                             ((not (and (fboundp 'my--tab-bar-fleet-group-p)
+                                        (my--tab-bar-fleet-group-p group)))))
+                   group))
+                (t (alist-get 'name (cdr tab))))))
     (string-remove-suffix "-llm" name)))
+
+(defun my-agent--origin-tab-index (&optional tabs)
+  "Return the 0-based index of the current slot's main tab in TABS."
+  (let* ((tabs (or tabs (funcall tab-bar-tabs-function)))
+         (cur (tab-bar--current-tab-index tabs))
+         (cur-tab (nth cur tabs))
+         (slot (and (fboundp 'my--tab-bar-llm-tab-p)
+                    (my--tab-bar-llm-tab-p cur-tab)
+                    (fboundp 'my--tab-bar-slots)
+                    (seq-find (lambda (s)
+                                (seq-some (lambda (entry) (eq (cadr entry) 'current-tab)) s))
+                              (my--tab-bar-slots tabs)))))
+    (if slot
+        (1- (caar slot))
+      cur)))
 
 (defun my-agent--tab-target (dir llm-tab)
   "Return the live agent buffer for LLM-TAB in DIR, or nil."
@@ -594,23 +619,41 @@ instruction applies to."
                   (memq (my-agent--session-kind buf) '(claude codex agy)))
                 (my-agent--sessions dir))))))
 
-(defun my-agent--ensure-llm-tab (origin-tab llm-tab group)
-  "Group ORIGIN-TAB and LLM-TAB under GROUP, placing LLM-TAB to the right.
-Keep ORIGIN-TAB at its current position in the tab bar."
-  (let ((tab-bar-tab-post-change-group-functions nil))
-    (when-let* ((idx (tab-bar--tab-index-by-name origin-tab)))
-      (tab-bar-change-tab-group group (1+ idx)))
-    (if (tab-bar--tab-index-by-name llm-tab)
-        (tab-bar-switch-to-tab llm-tab)
-      (tab-bar-new-tab)
+(defun my-agent--ensure-llm-tab (origin-idx llm-tab group)
+  "Group the tab at 0-based ORIGIN-IDX and LLM-TAB under GROUP.
+Place LLM-TAB immediately to the right of ORIGIN-IDX, mark it with
+`llm-tab', select it, and return the final 0-based index of the origin tab."
+  (let* ((tab-bar-tab-post-change-group-functions nil)
+         (tabs (funcall tab-bar-tabs-function))
+         (origin-group (funcall tab-bar-tab-group-function (nth origin-idx tabs)))
+         (next-tab (nth (1+ origin-idx) tabs))
+         (llm-idx (cond
+                   ((and next-tab
+                         (fboundp 'my--tab-bar-llm-tab-p)
+                         (my--tab-bar-llm-tab-p next-tab)
+                         origin-group
+                         (equal (funcall tab-bar-tab-group-function next-tab)
+                                origin-group))
+                    (1+ origin-idx))
+                   ((tab-bar--tab-index-by-name llm-tab)))))
+    (tab-bar-change-tab-group group (1+ origin-idx))
+    (if llm-idx
+        (progn
+          (tab-bar-select-tab (1+ llm-idx))
+          (unless (equal (alist-get 'name (cdr (tab-bar--current-tab-find))) llm-tab)
+            (tab-bar-rename-tab llm-tab)))
+      (unless (= (tab-bar--current-tab-index) origin-idx)
+        (tab-bar-select-tab (1+ origin-idx)))
+      (tab-bar-new-tab 1)
       (tab-bar-rename-tab llm-tab))
-    (tab-bar-change-tab-group group))
-  (when-let* ((anchor (tab-bar--tab-index-by-name origin-tab))
-              (cur (tab-bar--current-tab-index))
-              ((not (= cur anchor))))
-    (let ((pos (if (< cur anchor) (1+ anchor) (+ 2 anchor))))
+    (setf (alist-get 'llm-tab (cdr (tab-bar--current-tab-find))) t)
+    (tab-bar-change-tab-group group)
+    (let* ((cur (tab-bar--current-tab-index))
+           (anchor (if (< cur origin-idx) (1- origin-idx) origin-idx))
+           (pos (if (< cur origin-idx) (1+ origin-idx) (+ 2 origin-idx))))
       (unless (= (1+ cur) pos)
-        (tab-bar-move-tab-to pos)))))
+        (tab-bar-move-tab-to pos))
+      anchor)))
 
 (defun my-agent--send-in-llm-tab (dir request-fn &optional switch)
   "Send the prompt from REQUEST-FN to the agent for DIR in `<tab>-llm'.
@@ -619,31 +662,41 @@ current tab, placing `<tab>-llm' immediately to its right and running a
 full-screen agent session there.  If no agent is running for `<tab>-llm'
 or DIR yet, start `my-agent-default-agent' with the request as its first
 prompt.  Stay in the current tab unless SWITCH is non-nil."
-  (let* ((cur-tab (tab-bar--current-tab-find))
-         (origin-tab (alist-get 'name (cdr cur-tab)))
-         (base (my-agent--tab-base-name cur-tab))
-         (group (or (alist-get 'group (cdr cur-tab)) base))
+  (let* ((tabs (funcall tab-bar-tabs-function))
+         (cur-tab (tab-bar--current-tab-find tabs))
+         (started-in-llm (and (fboundp 'my--tab-bar-llm-tab-p)
+                              (my--tab-bar-llm-tab-p cur-tab)))
+         (origin-idx (my-agent--origin-tab-index tabs))
+         (origin-tab (nth origin-idx tabs))
+         (base (my-agent--tab-base-name origin-tab))
+         (orig-group (alist-get 'group (cdr origin-tab)))
+         (group (if (and orig-group
+                         (fboundp 'my--tab-bar-fleet-group-p)
+                         (my--tab-bar-fleet-group-p orig-group))
+                    orig-group
+                  base))
          (llm-tab (concat base "-llm"))
          (target (my-agent--tab-target dir llm-tab))
          (kind (if target (my-agent--session-kind target) my-agent-default-agent))
-         (request (funcall request-fn kind)))
-    (my-agent--ensure-llm-tab origin-tab llm-tab group)
+         (request (funcall request-fn kind))
+         (anchor (my-agent--ensure-llm-tab origin-idx llm-tab group)))
     (delete-other-windows)
     (if target
         (progn
           (switch-to-buffer target)
           (puthash llm-tab target my-agent--tab-buffers)
-          (when (and (not switch) origin-tab (not (equal origin-tab llm-tab)))
-            (tab-bar-switch-to-tab origin-tab))
+          (when (and (not switch) (not started-in-llm))
+            (tab-bar-select-tab (1+ anchor)))
           (with-current-buffer target
             (ghostel-paste-string request)
             (sit-for 0.1)
             (ghostel-send-string "\r")))
       (setq target (my-agent--start kind dir (selected-window) request llm-tab))
       (puthash llm-tab target my-agent--tab-buffers)
-      (when (and (not switch) origin-tab (not (equal origin-tab llm-tab)))
-        (tab-bar-switch-to-tab origin-tab)))
-    (when (and switch (fboundp 'my-ghostel-ensure-meow-insert))
+      (when (and (not switch) (not started-in-llm))
+        (tab-bar-select-tab (1+ anchor))))
+    (when (and (or switch started-in-llm)
+               (fboundp 'my-ghostel-ensure-meow-insert))
       (my-ghostel-ensure-meow-insert))
     (deactivate-mark)
     (message "Sent to %s in tab %s" (buffer-name target) llm-tab)))
