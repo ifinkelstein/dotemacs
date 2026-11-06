@@ -19,6 +19,12 @@
   (elfeed-enclosure-default-dir (expand-file-name "~/Downloads"))
 
   :config
+  ;; Elfeed 4.0 renamed `elfeed-search--count-unread' to
+  ;; `elfeed-search--unread-count', which `lambda-line-elfeed-search-mode'
+  ;; still calls when rendering the header line.
+  (unless (fboundp 'elfeed-search--count-unread)
+    (defalias 'elfeed-search--count-unread #'elfeed-search--unread-count))
+
   ;; save the elfeed DB when emacs is idle for two minutes
   (defvar my-elfeed-db-save-timer nil
     "Idle timer that periodically saves the elfeed database.")
