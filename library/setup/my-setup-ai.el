@@ -19,7 +19,10 @@
   ;; move cursor to the end of the inserted text
   (whisper-return-cursor-to-start nil)
   :config
-  (setq whisper--ffmpeg-input-device ":0")
+  ;; ":default" tells ffmpeg's avfoundation indev to use the macOS default
+  ;; input device ([AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeAudio]),
+  ;; avoiding index shifts when virtual devices like BlackHole 2ch are present.
+  (setq whisper--ffmpeg-input-device ":default")
 
   (add-hook 'whisper-before-transcription-hook #'my-whisper-check-server)
 
