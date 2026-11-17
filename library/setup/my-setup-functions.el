@@ -373,6 +373,13 @@ or before \\end{document} in the last LaTeX section."
       (user-error "Empty instruction"))
     instruction))
 
+(defun my--line-range (beg end)
+  "Return `(LINE1 . LINE2)' for buffer region BEG..END.
+Uses absolute line numbers (ignoring narrowing) and excludes a
+trailing line when END sits at its beginning."
+  (cons (line-number-at-pos beg t)
+        (line-number-at-pos (max beg (1- end)) t)))
+
 (defun my-agent--text-request (kind dir arg)
   "Request about the text at point in this file buffer, for a KIND agent in DIR.
 ARG is the raw prefix argument, interpreted by `my-agent--edit-unit'."
@@ -381,8 +388,7 @@ ARG is the raw prefix argument, interpreted by `my-agent--edit-unit'."
   (pcase-let* ((unit (my-agent--edit-unit arg))
                (`(,beg . ,end) (my-agent--edit-bounds unit))
                (text (string-trim (buffer-substring-no-properties beg end)))
-               (line1 (line-number-at-pos beg t))
-               (line2 (line-number-at-pos (max beg (1- end)) t))
+               (`(,line1 . ,line2) (my--line-range beg end))
                (instruction (my-agent--read-instruction kind unit)))
     (when (buffer-modified-p)
       (save-buffer))
@@ -774,17 +780,78 @@ With prefix NO-SUBSECTIONS, exclude nested subsections."
     (LaTeX-mark-section no-subsections)
     (narrow-to-region (region-beginning) (region-end))))
 
+(declare-function dired-current-directory "dired" (&optional localp))
+(declare-function project-root "project" (project))
+(defvar magit-buffer-file-name)
+(defvar magit-buffer-revision)
+
+(defun my--buffer-target-path ()
+  "Return the file or directory path for the current buffer, or nil."
+  (cond
+   ((buffer-file-name))
+   ((derived-mode-p 'dired-mode)
+    (or (dired-get-filename nil t)
+        (dired-current-directory)))
+   ((bound-and-true-p magit-buffer-file-name))))
+
+(defun my--format-location-path (path &optional full-path)
+  "Format PATH relative to project root, or abbreviated if FULL-PATH."
+  (if-let* (((not full-path))
+            (proj (project-current))
+            (root (expand-file-name (project-root proj)))
+            (expanded (expand-file-name path))
+            ((file-in-directory-p expanded root)))
+      (let ((rel (file-relative-name expanded root)))
+        (if (equal rel "./") "." rel))
+    (abbreviate-file-name path)))
+
+(defun my--current-line-spec ()
+  "Return the current line number or active region range as a string."
+  (if (use-region-p)
+      (pcase-let ((`(,line1 . ,line2)
+                   (my--line-range (region-beginning) (region-end))))
+        (if (= line1 line2)
+            (number-to-string line1)
+          (format "%d-%d" line1 line2)))
+    (number-to-string (line-number-at-pos nil t))))
+
 (defun my-copy-buffer-file-name (&optional basename)
-  "Copy the current buffer's file name to the clipboard.
-By default copy the absolute path.  With a prefix arg BASENAME,
-copy just the file name without its directory."
+  "Copy the current buffer's file or directory path to the kill ring.
+By default copy the `~'-abbreviated path.  With prefix arg BASENAME,
+copy just the non-directory file or directory name."
   (interactive "P")
-  (if-let* ((file (buffer-file-name)))
-      (let ((name (if basename (file-name-nondirectory file)
-                    (abbreviate-file-name file))))
+  (if-let* ((path (my--buffer-target-path)))
+      (let ((name (if basename
+                      (file-name-nondirectory (directory-file-name path))
+                    (abbreviate-file-name path))))
         (kill-new name)
         (message "Copied: %s" name))
-    (user-error "Buffer is not visiting a file")))
+    (user-error "Buffer is not visiting a file or directory")))
+
+(defun my-copy-buffer-location (&optional full-path)
+  "Copy buffer location (`PATH:LINE' or `PATH:START-END') to kill ring.
+Inside a project, PATH is relative to the project root; outside a
+project, or with prefix arg FULL-PATH, PATH is `~'-abbreviated.  In
+`dired-mode', copy the file at point or current directory without a
+line number.  In Magit revision buffers, include `@REV' before the
+line specification."
+  (interactive "P")
+  (if-let* ((target (my--buffer-target-path)))
+      (let* ((path (my--format-location-path target full-path))
+             (rev (and (not (buffer-file-name))
+                       (bound-and-true-p magit-buffer-file-name)
+                       (bound-and-true-p magit-buffer-revision)))
+             (rev (if (and (stringp rev)
+                           (string-match-p "\\`[0-9a-f]\\{40\\}\\'" rev))
+                      (substring rev 0 7)
+                    rev))
+             (loc (cond
+                   ((derived-mode-p 'dired-mode) path)
+                   (rev (format "%s@%s:%s" path rev (my--current-line-spec)))
+                   (t (format "%s:%s" path (my--current-line-spec))))))
+        (kill-new loc)
+        (message "Copied: %s" loc))
+    (user-error "Buffer is not visiting a file or directory")))
 
 ;; Useful Buffers
 

@@ -245,7 +245,8 @@
     ("E" "Erase Buffer" erase-buffer)
     ("f" "Reveal in Finder" reveal-in-osx-finder)
     ("i" "Imenu" consult-imenu)
-    ("w" "Copy File Name (C-u: basename)" my-copy-buffer-file-name)]
+    ("w" "Copy File Name (C-u: basename)" my-copy-buffer-file-name)
+    ("W" "Copy Location (C-u: full path)" my-copy-buffer-location)]
    ["Navigate"
     ("j" "Jump in Buffer" my-jump-in-buffer)
     ("k" "Kill This Buffer" kill-current-buffer)
